@@ -1,3 +1,13 @@
+Okay, here are the final adjustments. You've spotted a very subtle but important issue with the tilt effect, which I've now corrected.
+
+## Final Adjustments
+Light Position: I've moved the light a little closer to find the sweet spot for the shadow length, setting its position to (28, 20, 28).
+
+Shadow Movement: The method used for the tilt effect was not causing the shadows to shift correctly. I have changed this logic to physically rotate the clock components instead of moving the camera. Now, as you tilt your device, the numerals and hands will tilt, and their shadows will move realistically across the clock face, creating a much more convincing 3D effect.
+
+Final Clock3D.js
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -63,8 +73,8 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 5.0);
 dirLight.castShadow = true;
-// Moved light further from the center
-dirLight.position.set(30, 20, 30);
+// Final light position adjustment
+dirLight.position.set(28, 20, 28);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
@@ -81,7 +91,7 @@ const watchMaterial = new THREE.MeshStandardMaterial({
   color: 0x111122,
   metalness: 0.1,
   roughness: 0.5,
-  bumpScale: 0.02 // Increased bump scale for more visible texture
+  bumpScale: 0.02
 });
 
 const textureLoader = new THREE.TextureLoader();
@@ -263,9 +273,14 @@ function animate() {
   const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
   const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
 
-  const shiftMultiplier = 0.2;
-  camera.position.x = -x * shiftMultiplier;
-  camera.position.y = y * shiftMultiplier;
+  // --- NEW: Rotate the clock group instead of moving the camera for the tilt effect ---
+  // This ensures shadows move realistically with the clock components.
+  const rotY = THREE.MathUtils.degToRad(x); // Left/Right tilt (gamma) rotates around Y-axis
+  const rotX = THREE.MathUtils.degToRad(y); // Forward/Back tilt (beta) rotates around X-axis
+  watchGroup.rotation.y = rotY;
+  watchGroup.rotation.x = rotX;
+  
+  // Keep the camera centered
   camera.lookAt(0, 0, 0);
 
   const now = new Date();
