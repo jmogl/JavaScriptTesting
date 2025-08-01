@@ -1,5 +1,3 @@
-
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -60,13 +58,13 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
 });
 
 // --- Lighting ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 2.0); // Increased intensity
+const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 5.0); // Increased intensity
+const dirLight = new THREE.DirectionalLight(0xffffff, 5.0);
 dirLight.castShadow = true;
-// Set to an extremely high, almost perfectly centered position
-dirLight.position.set(0.01, 50, 0.01);
+// Positioned light at a classic 3/4 angle for visible, short shadows
+dirLight.position.set(10, 20, 10);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
