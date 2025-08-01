@@ -1,3 +1,4 @@
+RRR
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -259,7 +260,6 @@ watchGroup.add(secondHand);
 
 // --- Border Wall Creation ---
 const wallGroup = new THREE.Group();
-// --- MODIFICATION: Added wallGroup to the main clockUnit so it tilts correctly. ---
 clockUnit.add(wallGroup);
 
 function buildWalls() {
@@ -275,11 +275,10 @@ function buildWalls() {
     const viewHeight = 2 * Math.tan(vFov / 2) * distance;
     const viewWidth = viewHeight * camera.aspect;
 
-    // Wall properties
-    const wallHeight = 1.0; 
-    const wallThickness = 0.4;
-    // --- MODIFICATION: Adjusted base Z to account for parent group's position. (-2.1 world) ---
-    const wallBaseZ = -1.1; 
+    // --- MODIFICATION: Updated Wall properties ---
+    const wallHeight = 15.0; // Total extrusion depth (10 up, 5 down)
+    const wallThickness = 10.0; // Width of the wall
+    const wallBaseZ = -6.0;  // Corresponds to -5 units from the clock face plane
 
     const wallMaterial = new THREE.MeshStandardMaterial({
         color: 0xff0000,
@@ -296,29 +295,27 @@ function buildWalls() {
         bevelSegments: 2,
     };
 
+    // --- MODIFICATION: Make Top/Bottom walls wider to cover corners ---
+    const topBottomWidth = viewWidth + 2 * wallThickness;
+
     // Top Wall
     const topShape = new THREE.Shape();
-    topShape.moveTo(-viewWidth / 2, -wallThickness / 2);
-    topShape.lineTo(viewWidth / 2, -wallThickness / 2);
-    topShape.lineTo(viewWidth / 2, wallThickness / 2);
-    topShape.lineTo(-viewWidth / 2, wallThickness / 2);
+    topShape.moveTo(-topBottomWidth / 2, -wallThickness / 2);
+    topShape.lineTo(topBottomWidth / 2, -wallThickness / 2);
+    topShape.lineTo(topBottomWidth / 2, wallThickness / 2);
+    topShape.lineTo(-topBottomWidth / 2, wallThickness / 2);
     topShape.closePath();
     const topGeometry = new THREE.ExtrudeGeometry(topShape, wallExtrudeSettings);
     const topWall = new THREE.Mesh(topGeometry, wallMaterial);
-    topWall.position.set(0, viewHeight / 2 - wallThickness / 2, wallBaseZ);
+    // Position wall so its inner edge touches the viewport
+    topWall.position.set(0, viewHeight / 2 + wallThickness / 2, wallBaseZ);
     topWall.castShadow = true;
     wallGroup.add(topWall);
 
     // Bottom Wall
-    const bottomShape = new THREE.Shape();
-    bottomShape.moveTo(-viewWidth / 2, -wallThickness / 2);
-    bottomShape.lineTo(viewWidth / 2, -wallThickness / 2);
-    bottomShape.lineTo(viewWidth / 2, wallThickness / 2);
-    bottomShape.lineTo(-viewWidth / 2, wallThickness / 2);
-    bottomShape.closePath();
-    const bottomGeometry = new THREE.ExtrudeGeometry(bottomShape, wallExtrudeSettings);
+    const bottomGeometry = new THREE.ExtrudeGeometry(topShape, wallExtrudeSettings); // Can reuse shape
     const bottomWall = new THREE.Mesh(bottomGeometry, wallMaterial);
-    bottomWall.position.set(0, -viewHeight / 2 + wallThickness / 2, wallBaseZ);
+    bottomWall.position.set(0, -viewHeight / 2 - wallThickness / 2, wallBaseZ);
     bottomWall.castShadow = true;
     wallGroup.add(bottomWall);
 
@@ -331,20 +328,14 @@ function buildWalls() {
     leftShape.closePath();
     const leftGeometry = new THREE.ExtrudeGeometry(leftShape, wallExtrudeSettings);
     const leftWall = new THREE.Mesh(leftGeometry, wallMaterial);
-    leftWall.position.set(-viewWidth / 2 + wallThickness / 2, 0, wallBaseZ);
+    leftWall.position..set(-viewWidth / 2 - wallThickness / 2, 0, wallBaseZ);
     leftWall.castShadow = true;
     wallGroup.add(leftWall);
 
     // Right Wall
-    const rightShape = new THREE.Shape();
-    rightShape.moveTo(-wallThickness / 2, -viewHeight / 2);
-    rightShape.lineTo(wallThickness / 2, -viewHeight / 2);
-    rightShape.lineTo(wallThickness / 2, viewHeight / 2);
-    rightShape.lineTo(-wallThickness / 2, viewHeight / 2);
-    rightShape.closePath();
-    const rightGeometry = new THREE.ExtrudeGeometry(rightShape, wallExtrudeSettings);
+    const rightGeometry = new THREE.ExtrudeGeometry(leftShape, wallExtrudeSettings); // Can reuse shape
     const rightWall = new THREE.Mesh(rightGeometry, wallMaterial);
-    rightWall.position.set(viewWidth / 2 - wallThickness / 2, 0, wallBaseZ);
+    rightWall.position.set(viewWidth / 2 + wallThickness / 2, 0, wallBaseZ);
     rightWall.castShadow = true;
     wallGroup.add(rightWall);
 }
