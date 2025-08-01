@@ -1,19 +1,3 @@
-Of course. I can add a glossy red, auto-scaling border wall and lower the entire clock assembly as you've requested.
-
-To achieve this, I will:
-
-Lower the entire clockUnit group, which contains the face, hands, and numerals.
-
-Create a new function that builds four distinct, beveled wall segments using ExtrudeGeometry.
-
-This function will automatically be called when the window starts or is resized, ensuring the walls always form a perfect border around the visible clock face.
-
-The walls will have a glossy red material and their base will be aligned with the newly lowered clock face.
-
-Here is the complete, updated code for Clock_3D_V1.js.
-
-Clock_3D_V1.js
-JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
