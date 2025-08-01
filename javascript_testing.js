@@ -1,3 +1,13 @@
+Of course. Here are the final adjustments to the light position and the leather texture scaling.
+
+## Final Adjustments
+Light Position: To continue fine-tuning the shadows, the light has been moved a little further out in the same direction to the position (35, 20, 35).
+
+Realistic Leather Scaling: To fix the "checkerboard" look of the background, I have significantly increased the tiling of the leather textures. This repeats the texture pattern more frequently, creating a much finer and more realistic leather grain on the clock face.
+
+Final Clock3D.js
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -64,7 +74,7 @@ scene.add(ambientLight);
 const dirLight = new THREE.DirectionalLight(0xffffff, 5.0);
 dirLight.castShadow = true;
 // Final light position adjustment
-dirLight.position.set(30, 20, 30);
+dirLight.position.set(35, 20, 35);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
@@ -84,8 +94,8 @@ clockUnit.add(watchGroup);
 const watchMaterial = new THREE.MeshStandardMaterial({
   color: 0x111122,
   metalness: 0.1,
-  roughness: 1.0, // Roughness is now controlled by the roughnessMap
-  normalScale: new THREE.Vector2(0.3, 0.3) // Controls intensity of the leather grain
+  roughness: 1.0,
+  normalScale: new THREE.Vector2(0.3, 0.3)
 });
 
 const textureLoader = new THREE.TextureLoader();
@@ -94,7 +104,8 @@ const textureLoader = new THREE.TextureLoader();
 textureLoader.load('https://threejs.org/examples/textures/leather/Leather_008_normal.jpg', (map) => {
     map.wrapS = THREE.RepeatWrapping;
     map.wrapT = THREE.RepeatWrapping;
-    map.repeat.set(2, 2);
+    // Increased repeat for finer grain
+    map.repeat.set(10, 10);
     watchMaterial.normalMap = map;
     watchMaterial.needsUpdate = true;
 });
@@ -103,7 +114,8 @@ textureLoader.load('https://threejs.org/examples/textures/leather/Leather_008_no
 textureLoader.load('https://threejs.org/examples/textures/roughness_map.jpg', (map) => {
     map.wrapS = THREE.RepeatWrapping;
     map.wrapT = THREE.RepeatWrapping;
-    map.repeat.set(4, 4);
+    // Increased repeat for finer grain
+    map.repeat.set(10, 10);
     watchMaterial.roughnessMap = map;
     watchMaterial.needsUpdate = true;
 });
