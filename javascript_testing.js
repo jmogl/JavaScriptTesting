@@ -1,3 +1,4 @@
+EEEE
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -64,8 +65,7 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 5.0);
 dirLight.castShadow = true;
-// Final light position adjustment
-dirLight.position.set(40, 20, 40);
+dirLight.position.set(28, 20, 28);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
@@ -81,33 +81,21 @@ scene.add(clockUnit);
 const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
 
-// --- Background Plane (Realistic Leather) ---
+// --- Background Plane (Realistic Marble) ---
 const watchMaterial = new THREE.MeshStandardMaterial({
-  color: 0x111122,
-  metalness: 0.1,
-  roughness: 1.0,
-  normalScale: new THREE.Vector2(0.3, 0.3)
+  color: 0xffffff, // White color to not tint the texture
+  metalness: 0.0,  // Marble is not a metal
+  roughness: 0.1,  // Polished, glossy surface
 });
 
 const textureLoader = new THREE.TextureLoader();
-
-// Normal map for leather grain
-textureLoader.load('https://threejs.org/examples/textures/leather/Leather_008_normal.jpg', (map) => {
-    // Use ClampToEdgeWrapping to stretch the single texture instead of repeating it
-    map.wrapS = THREE.ClampToEdgeWrapping;
-    map.wrapT = THREE.ClampToEdgeWrapping;
-    watchMaterial.normalMap = map;
+textureLoader.load('https://threejs.org/examples/textures/marble.jpg', (map) => {
+    map.wrapS = THREE.RepeatWrapping;
+    map.wrapT = THREE.RepeatWrapping;
+    map.repeat.set(2, 2); // Tile the texture twice in each direction
+    watchMaterial.map = map; // Apply as the main color texture
     watchMaterial.needsUpdate = true;
 });
-
-// Roughness map for satin sheen
-textureLoader.load('https://threejs.org/examples/textures/roughness_map.jpg', (map) => {
-    map.wrapS = THREE.ClampToEdgeWrapping;
-    map.wrapT = THREE.ClampToEdgeWrapping;
-    watchMaterial.roughnessMap = map;
-    watchMaterial.needsUpdate = true;
-});
-
 
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
