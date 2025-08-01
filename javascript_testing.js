@@ -22,17 +22,16 @@ document.body.appendChild(renderer.domElement);
 const digitalClock = document.getElementById('digitalClock');
 if (digitalClock) {
     // The container DIV is now only for positioning and font styles.
+    // Positioning (top, left) is now handled dynamically.
     Object.assign(digitalClock.style, {
         position: 'absolute',
-        // Moved to 80% to be above the '6' numeral and tick mark.
-        top: '80%',
-        left: '50%',
         transform: 'translate(-50%, -50%)',
         textAlign: 'center', // This will center the inner span
         color: 'white',
         fontSize: '1.75em',
         fontFamily: '"Courier New", Courier, monospace',
         textShadow: '0 0 8px black',
+        zIndex: '10' // Ensure it's above the canvas
     });
 }
 
@@ -251,6 +250,28 @@ function setupTiltControls() {
 const tickSound = new Audio('https://cdn.jsdelivr.net/gh/freebiesupply/sounds/tick.mp3');
 tickSound.volume = 0.2;
 
+/**
+ * Calculates and updates the CSS position of the digital clock element
+ * by projecting a 3D point from the scene to 2D screen coordinates.
+ */
+function updateDigitalClockPosition() {
+    if (!digitalClock) return;
+
+    // This 3D point is an anchor just above the '6' numeral (which is at y=-8.5).
+    const targetPosition3D = new THREE.Vector3(0, -7.5, 0);
+
+    // Project the 3D point to Normalized Device Coordinates (NDC).
+    const projectedPosition = targetPosition3D.clone().project(camera);
+
+    // Convert NDC (-1 to +1) to CSS pixel coordinates.
+    const cssX = (projectedPosition.x * 0.5 + 0.5) * window.innerWidth;
+    const cssY = (-projectedPosition.y * 0.5 + 0.5) * window.innerHeight;
+
+    // Apply the new position to the DOM element.
+    digitalClock.style.left = `${cssX}px`;
+    digitalClock.style.top = `${cssY}px`;
+}
+
 function animate() {
   requestAnimationFrame(animate);
 
@@ -284,6 +305,9 @@ function animate() {
     // The padding is in 'em' units to scale proportionally with the font size.
     digitalClock.innerHTML = `<span style="background-color: rgba(0, 0, 0, 0.5); padding: 0.1em 0.3em; border-radius: 4px;">${timeString}</span>`;
   }
+  
+  // Update the digital clock's position on every frame to account for camera tilt.
+  updateDigitalClockPosition();
 
   const currentSecond = Math.floor(now.getSeconds());
   if (animate.lastSecond !== currentSecond) {
@@ -295,8 +319,12 @@ function animate() {
   renderer.render(scene, camera);
 }
 
+// Initial setup calls
 updateCameraPosition();
 updateBackgroundSize();
+// Initial call to position the clock before the first animation frame.
+updateDigitalClockPosition();
+
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -304,6 +332,8 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   updateCameraPosition();
   updateBackgroundSize();
+  // Update the clock's position on resize as well.
+  updateDigitalClockPosition();
 });
 
 setupTiltControls();
