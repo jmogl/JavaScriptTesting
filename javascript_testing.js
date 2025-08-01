@@ -24,8 +24,8 @@ if (digitalClock) {
     // The container DIV is now only for positioning and font styles.
     Object.assign(digitalClock.style, {
         position: 'absolute',
-        // Increased from 92% to move the clock down by about one text height.
-        top: '96%',
+        // Moved to 80% to be above the '6' numeral and tick mark.
+        top: '80%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
         textAlign: 'center', // This will center the inner span
@@ -125,7 +125,11 @@ fontLoader.load(fontURL, (font) => {
 });
 
 const hourHeight = 4;
-const hourGeometry = new THREE.BoxGeometry(0.5, hourHeight, 0.5);
+// Use a ConeGeometry with 4 segments to create a pyramid shape for the hour hand.
+const hourGeometry = new THREE.ConeGeometry(0.3, hourHeight, 4);
+// Rotate the pyramid so a flat side faces up at the 12 o'clock position.
+hourGeometry.rotateZ(Math.PI / 4);
+// Move the pivot point to the base of the hand.
 hourGeometry.translate(0, hourHeight / 2, 0);
 const hourHand = new THREE.Mesh(hourGeometry, silverMaterial);
 hourHand.position.z = 1.8;
