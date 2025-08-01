@@ -1,4 +1,4 @@
-
+eeee
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -59,13 +59,12 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
 });
 
 // --- Lighting ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 3.5); // Slightly reduced intensity for new background
+const dirLight = new THREE.DirectionalLight(0xffffff, 5.0);
 dirLight.castShadow = true;
-// Positioned light at a 5-degree angle from vertical for very short, visible shadows
-dirLight.position.set(1.25, 20, 1.25);
+dirLight.position.set(28, 20, 28);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
@@ -74,32 +73,47 @@ dirLight.shadow.camera.bottom = -15;
 dirLight.shadow.bias = -0.0001;
 scene.add(dirLight);
 
+// --- Create a master "clockUnit" group to handle tilting ---
+const clockUnit = new THREE.Group();
+scene.add(clockUnit);
+
 const watchGroup = new THREE.Group();
-scene.add(watchGroup);
+clockUnit.add(watchGroup);
 
-// --- Background Plane (Darker and Textured) ---
+// --- Background Plane (Local Wood Texture) ---
 const watchMaterial = new THREE.MeshStandardMaterial({
-  color: 0x111122, // Darker blue
-  metalness: 0.1,
-  roughness: 0.5,
-  bumpScale: 0.005 // Controls intensity of the texture
+  color: 0xffffff,
+  metalness: 0.0,
+  roughness: 0.2,
 });
 
-// Add bump map texture for a rough surface feel
 const textureLoader = new THREE.TextureLoader();
-textureLoader.load('https://threejs.org/examples/textures/roughness_map.jpg', (map) => {
-    map.wrapS = THREE.RepeatWrapping;
-    map.wrapT = THREE.RepeatWrapping;
-    map.repeat.set(4, 4);
-    watchMaterial.bumpMap = map;
-    watchMaterial.needsUpdate = true;
-});
+textureLoader.load(
+    'textures/laminate_floor_02_diff_4k.jpg',
+    (map) => {
+        map.wrapS = THREE.RepeatWrapping;
+        map.wrapT = THREE.RepeatWrapping;
+        // Repeat the texture many times for a realistic scale
+        map.repeat.set(25, 25);
+        // Improve texture quality at sharp angles
+        map.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        map.needsUpdate = true; // Important after changing repeat
+        
+        watchMaterial.map = map;
+        watchMaterial.needsUpdate = true;
+    },
+    undefined,
+    (err) => {
+        console.error('Failed to load the clock face texture.');
+    }
+);
 
-const watchGeometry = new THREE.PlaneGeometry(1, 1);
+// Create a large, static plane instead of scaling a small one
+const watchGeometry = new THREE.PlaneGeometry(50, 50);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
 watch.position.z = -1;
 watch.receiveShadow = true;
-scene.add(watch);
+clockUnit.add(watch);
 
 // --- Metallic Materials ---
 const silverMaterial = new THREE.MeshStandardMaterial({
@@ -202,19 +216,18 @@ watchGroup.add(secondHand);
 function updateCameraPosition() {
     const clockSize = 22;
     const fovInRadians = THREE.MathUtils.degToRad(camera.fov);
-    const distance = (clockSize / 2) / Math.tan(fovInRadians / 2);
-    camera.position.z = distance;
+    
+    const distanceForHeight = (clockSize / 2) / Math.tan(fovInRadians / 2);
+    
+    const width = clockSize;
+    const cameraWidth = width / camera.aspect;
+    const distanceForWidth = (cameraWidth / 2) / Math.tan(fovInRadians / 2);
+
+    camera.position.z = Math.max(distanceForHeight, distanceForWidth);
 }
 
-function updateBackgroundSize() {
-    if (!watch) return;
-    const distance = camera.position.z - watch.position.z;
-    const vFov = THREE.MathUtils.degToRad(camera.fov);
-    const height = 2 * Math.tan(vFov / 2) * distance;
-    const width = height * camera.aspect;
-    const safetyMargin = 1.4;
-    watch.scale.set(width * safetyMargin, height * safetyMargin, 1);
-}
+// This function is no longer needed as the background plane is a fixed, large size
+// function updateBackgroundSize() {}
 
 let tiltX = 0, tiltY = 0;
 
@@ -258,10 +271,14 @@ function animate() {
   const maxTilt = 15;
   const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
   const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
+  
+  const rotationMultiplier = 0.5;
+  const rotY = THREE.MathUtils.degToRad(x) * rotationMultiplier;
+  const rotX = THREE.MathUtils.degToRad(y) * rotationMultiplier;
 
-  const shiftMultiplier = 0.2;
-  camera.position.x = -x * shiftMultiplier;
-  camera.position.y = y * shiftMultiplier;
+  clockUnit.rotation.y = rotY;
+  clockUnit.rotation.x = rotX;
+  
   camera.lookAt(0, 0, 0);
 
   const now = new Date();
@@ -300,14 +317,14 @@ function animate() {
 camera.aspect = window.innerWidth / window.innerHeight;
 camera.updateProjectionMatrix();
 updateCameraPosition();
-updateBackgroundSize();
+// updateBackgroundSize() is no longer needed
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   updateCameraPosition();
-  updateBackgroundSize();
+  // updateBackgroundSize() is no longer needed
 });
 
 setupTiltControls();
