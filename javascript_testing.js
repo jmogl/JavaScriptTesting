@@ -1,11 +1,3 @@
-It seems the lighting and environment are still too intense, causing the texture to be washed out. The most effective way to solve this is to specifically reduce the influence of the bright environment map on the wood material itself, without dimming the reflections on the shiny metallic parts.
-
-This can be done by setting the envMapIntensity property on the watchMaterial. Let's also further decrease the global light sources and exposure.
-
-Here is the revised full code listing with these more aggressive adjustments.
-
-Clock_3D_V1.js (Corrected)
-JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
