@@ -34,8 +34,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // --- Scene Setup ---
 const scene = new THREE.Scene();
-// Changed camera FOV from 35 to 25 to further reduce perspective distortion
-const camera = new THREE.PerspectiveCamera(25, window.innerWidth / window.innerHeight, 1, 1000);
+// Changed camera FOV from 25 to 20 to get the flattest possible perspective
+const camera = new THREE.PerspectiveCamera(20, window.innerWidth / window.innerHeight, 1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 
 renderer.setClearColor(0xcccccc);
@@ -43,11 +43,11 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+// Increased exposure for a brighter scene
+renderer.toneMappingExposure = 1.2;
 document.body.appendChild(renderer.domElement);
 
 // --- Environment Map for Reflections ---
-// Using PMREMGenerator for higher quality reflections
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 pmremGenerator.compileEquirectangularShader();
 
@@ -59,18 +59,21 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
     pmremGenerator.dispose();
 });
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+// --- Lighting (Increased Intensity) ---
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
 scene.add(ambientLight);
 
-// --- Directional Light (for shadows) ---
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
 dirLight.castShadow = true;
-dirLight.position.set(10, 20, 10); // Positioned to cast shadows from the top-right
+dirLight.position.set(10, 20, 10);
 dirLight.shadow.mapSize.set(2048, 2048);
-// Added camera to the light to see where shadows are cast from
-// const cameraHelper = new THREE.CameraHelper(dirLight.shadow.camera);
-// scene.add(cameraHelper);
-scene.add(dirLight); // Add light directly to the scene, not the camera
+// Constrain the shadow camera's frustum to the clock area for sharper shadows
+dirLight.shadow.camera.left = -15;
+dirLight.shadow.camera.right = 15;
+dirLight.shadow.camera.top = 15;
+dirLight.shadow.camera.bottom = -15;
+dirLight.shadow.bias = -0.0001; // Prevents shadow acne
+scene.add(dirLight);
 
 const watchGroup = new THREE.Group();
 scene.add(watchGroup);
