@@ -1,13 +1,3 @@
-Of course. Here are the final adjustments to the light position and the leather texture scaling.
-
-## Final Adjustments
-Light Position: To continue fine-tuning the shadows, the light has been moved a little further out in the same direction to the position (35, 20, 35).
-
-Realistic Leather Scaling: To fix the "checkerboard" look of the background, I have significantly increased the tiling of the leather textures. This repeats the texture pattern more frequently, creating a much finer and more realistic leather grain on the clock face.
-
-Final Clock3D.js
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
