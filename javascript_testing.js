@@ -24,31 +24,35 @@ document.body.appendChild(renderer.domElement);
 const digitalClock = document.getElementById('digitalClock');
 const digitalDate = document.getElementById('digitalDate');
 
-// Define common font styles for the parent DIV containers
-const textContainerStyles = {
-    position: 'absolute',
-    color: 'white',
-    fontSize: '1.75em',
-    fontFamily: '"Courier New", Courier, monospace',
-    textShadow: '0 0 8px black',
-    zIndex: '10' // Ensure it's above the canvas
-};
-
-// Style and position the digital clock in the lower right
-if (digitalClock) {
-    Object.assign(digitalClock.style, textContainerStyles, {
+// Style and position the digital date in the lower left
+if (digitalDate) {
+    Object.assign(digitalDate.style, {
+        position: 'absolute',
         bottom: '20px',
-        right: '20px',
-        textAlign: 'right' // Force alignment to the right
+        left: '20px',
+        color: 'white',
+        fontFamily: '"Courier New", Courier, monospace',
+        fontSize: '1.75em',
+        textShadow: '0 0 8px black',
+        zIndex: '10'
     });
 }
 
-// Style and position the digital date in the lower left
-if (digitalDate) {
-    Object.assign(digitalDate.style, textContainerStyles, {
+// Style and position the digital clock in the lower right
+if (digitalClock) {
+    Object.assign(digitalClock.style, {
+        position: 'absolute',
         bottom: '20px',
-        left: '20px',
-        textAlign: 'left' // Force alignment to the left
+        // By setting left: 0 and right: 20px, we define a container
+        // that spans the screen, allowing textAlign to work reliably.
+        left: '0',
+        right: '20px',
+        textAlign: 'right', // Force alignment of content to the right
+        color: 'white',
+        fontFamily: '"Courier New", Courier, monospace',
+        fontSize: '1.75em',
+        textShadow: '0 0 8px black',
+        zIndex: '10'
     });
 }
 
@@ -339,3 +343,6 @@ window.addEventListener('resize', () => {
   updateCameraPosition();
   updateBackgroundSize();
 });
+
+setupTiltControls();
+animate();
