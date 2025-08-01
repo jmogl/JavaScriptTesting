@@ -24,8 +24,8 @@ if (digitalClock) {
     // The container DIV is now only for positioning and font styles.
     Object.assign(digitalClock.style, {
         position: 'absolute',
-        // Increased from 70% to move the clock below the '6' numeral.
-        top: '92%',
+        // Increased from 92% to move the clock down by about one text height.
+        top: '96%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
         textAlign: 'center', // This will center the inner span
@@ -72,7 +72,8 @@ scene.add(watch);
 const silverMaterial = new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 1.0, roughness: 0.4 });
 const brightSilverMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1.0, roughness: 0.4 });
 
-const markerRadius = 8.5;
+// Increased radius to place tick marks outside the numerals.
+const markerRadius = 10.0;
 for (let i = 0; i < 60; i++) {
     if (i % 5 === 0) continue;
     const angle = (i / 60) * Math.PI * 2;
@@ -264,6 +265,3 @@ window.addEventListener('resize', () => {
   updateCameraPosition();
   updateBackgroundSize();
 });
-
-setupTiltControls();
-animate();
