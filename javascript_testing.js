@@ -1,12 +1,3 @@
-You are right, my apologies. It appears that threejs.org is preventing the marble texture from being loaded directly from their server. This is a common issue when linking to assets on other websites.
-
-I have found a more reliable URL for the same marble texture and updated the script. This should fix the loading error.
-
-## Code Update
-The URL for the marble texture has been updated to a reliable source.
-
-Final Clock3D.js
-JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
