@@ -1,3 +1,4 @@
+EE
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -84,18 +85,31 @@ clockUnit.add(watchGroup);
 const watchMaterial = new THREE.MeshStandardMaterial({
   color: 0xffffff,
   metalness: 0.0,
-  roughness: 0.2, // A bit of roughness for a satin/polyurethane finish
+  roughness: 0.2,
 });
 
 const textureLoader = new THREE.TextureLoader();
-// Load the local texture file
-textureLoader.load('textures/laminate_floor_02_diff_4k.jpg', (map) => {
-    map.wrapS = THREE.RepeatWrapping;
-    map.wrapT = THREE.RepeatWrapping;
-    map.repeat.set(2, 2);
-    watchMaterial.map = map;
-    watchMaterial.needsUpdate = true;
-});
+textureLoader.load(
+    // URL of the texture
+    'textures/laminate_floor_02_diff_4k.jpg', 
+    
+    // onLoad callback
+    (map) => {
+        map.wrapS = THREE.RepeatWrapping;
+        map.wrapT = THREE.RepeatWrapping;
+        map.repeat.set(16, 16);
+        watchMaterial.map = map;
+        watchMaterial.needsUpdate = true;
+    },
+    
+    // onProgress callback (undefined)
+    undefined,
+
+    // onError callback
+    (err) => {
+        console.error('Failed to load the clock face texture. Make sure the file exists at "textures/laminate_floor_02_diff_4k.jpg" and you are running a local server.');
+    }
+);
 
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
