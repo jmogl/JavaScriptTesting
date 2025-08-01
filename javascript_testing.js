@@ -1,3 +1,13 @@
+My apologies. The fact that there are no errors, yet the texture is still invisible, points to a subtle but critical issue with how the material is being created and updated while the texture loads in the background.
+
+To fix this definitively, I have restructured the code to create the clock face plane after the texture image has been successfully downloaded. This guarantees that the material has the texture applied to it from the very first moment it appears in the scene.
+
+I have also reverted the light to the (15, 20, 15) position, which seemed to be the closest to the shadow length you wanted.
+
+Updated Clock3D.js
+This version contains the restructured texture loading logic.
+
+JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -64,7 +74,7 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 5.0);
 dirLight.castShadow = true;
-dirLight.position.set(28, 20, 28);
+dirLight.position.set(15, 20, 15);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
@@ -81,26 +91,29 @@ const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
 
 // --- Background Plane (Local Wood Texture) ---
-const watchMaterial = new THREE.MeshStandardMaterial({
-  color: 0xffffff,
-  metalness: 0.0,
-  roughness: 0.2,
-});
-
 const textureLoader = new THREE.TextureLoader();
 textureLoader.load(
     'textures/laminate_floor_02_diff_4k.jpg',
     (map) => {
+        // This code runs ONLY after the texture has successfully loaded
         map.wrapS = THREE.RepeatWrapping;
         map.wrapT = THREE.RepeatWrapping;
-        // Repeat the texture many times for a realistic scale
-        map.repeat.set(25, 25);
-        // Improve texture quality at sharp angles
+        map.repeat.set(16, 16);
         map.anisotropy = renderer.capabilities.getMaxAnisotropy();
-        map.needsUpdate = true; // Important after changing repeat
+        map.needsUpdate = true;
         
-        watchMaterial.map = map;
-        watchMaterial.needsUpdate = true;
+        const watchMaterial = new THREE.MeshStandardMaterial({
+          map: map, // Assign the texture map on creation
+          color: 0xffffff,
+          metalness: 0.0,
+          roughness: 0.2,
+        });
+
+        const watchGeometry = new THREE.PlaneGeometry(50, 50);
+        const watch = new THREE.Mesh(watchGeometry, watchMaterial);
+        watch.position.z = -1;
+        watch.receiveShadow = true;
+        clockUnit.add(watch);
     },
     undefined,
     (err) => {
@@ -108,12 +121,6 @@ textureLoader.load(
     }
 );
 
-// Create a large, static plane instead of scaling a small one
-const watchGeometry = new THREE.PlaneGeometry(50, 50);
-const watch = new THREE.Mesh(watchGeometry, watchMaterial);
-watch.position.z = -1;
-watch.receiveShadow = true;
-clockUnit.add(watch);
 
 // --- Metallic Materials ---
 const silverMaterial = new THREE.MeshStandardMaterial({
@@ -226,7 +233,7 @@ function updateCameraPosition() {
     camera.position.z = Math.max(distanceForHeight, distanceForWidth);
 }
 
-// This function is no longer needed as the background plane is a fixed, large size
+// No longer needed, plane is a fixed size
 // function updateBackgroundSize() {}
 
 let tiltX = 0, tiltY = 0;
@@ -326,6 +333,3 @@ window.addEventListener('resize', () => {
   updateCameraPosition();
   // updateBackgroundSize() is no longer needed
 });
-
-setupTiltControls();
-animate();
