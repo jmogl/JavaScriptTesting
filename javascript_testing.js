@@ -1,3 +1,4 @@
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -258,7 +259,8 @@ watchGroup.add(secondHand);
 
 // --- Border Wall Creation ---
 const wallGroup = new THREE.Group();
-scene.add(wallGroup);
+// --- MODIFICATION: Added wallGroup to the main clockUnit so it tilts correctly. ---
+clockUnit.add(wallGroup);
 
 function buildWalls() {
     // Clear existing walls and free memory
@@ -276,8 +278,8 @@ function buildWalls() {
     // Wall properties
     const wallHeight = 1.0; 
     const wallThickness = 0.4;
-    // --- MODIFICATION: Lowered the wall base by 0.1 ---
-    const wallBaseZ = -2.1; 
+    // --- MODIFICATION: Adjusted base Z to account for parent group's position. (-2.1 world) ---
+    const wallBaseZ = -1.1; 
 
     const wallMaterial = new THREE.MeshStandardMaterial({
         color: 0xff0000,
