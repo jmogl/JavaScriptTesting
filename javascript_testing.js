@@ -1,9 +1,3 @@
-Of course. To make the numerals and tick marks touch the clock face, their Z-axis positions will be lowered to match the clock face's position at -1.0.
-
-Here is the final, updated code with those adjustments.
-
-Clock_3D_V1.js
-JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
