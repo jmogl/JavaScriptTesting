@@ -327,7 +327,7 @@ function buildWalls() {
     leftShape.closePath();
     const leftGeometry = new THREE.ExtrudeGeometry(leftShape, wallExtrudeSettings);
     const leftWall = new THREE.Mesh(leftGeometry, wallMaterial);
-    leftWall.position..set(-viewWidth / 2 - wallThickness / 2, 0, wallBaseZ);
+    leftWall.position.set(-viewWidth / 2 - wallThickness / 2, 0, wallBaseZ);
     leftWall.castShadow = true;
     wallGroup.add(leftWall);
 
