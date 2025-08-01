@@ -115,7 +115,7 @@ for (let i = 0; i < 60; i++) {
 
 const fontLoader = new FontLoader();
 const fontURL = 'https://cdn.jsdelivr.net/npm/three@0.166.0/examples/fonts/helvetiker_regular.typeface.json';
-const numeralRadius = 8.5;
+const numeralRadius = 8.075; // Formerly 8.5, reduced by 5%
 
 fontLoader.load(fontURL, (font) => {
     const numeralSize = 1.5;
@@ -266,6 +266,7 @@ function animate() {
   hourHand.rotation.z   = -THREE.MathUtils.degToRad((hours / 12) * 360);
   
   const pad = (n) => n.toString().padStart(2, '0');
+  // Define the styles for the inner span, which creates the background box
   const spanStyles = `background-color: rgba(0, 0, 0, 0.5); padding: 0.1em 0.3em; border-radius: 4px;`;
 
   // Check if the elements have been created before trying to update them
