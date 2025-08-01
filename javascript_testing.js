@@ -1,3 +1,4 @@
+EEEE
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -64,7 +65,7 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 5.0);
 dirLight.castShadow = true;
-dirLight.position.set(28, 20, 28);
+dirLight.position.set(15, 20, 15);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
@@ -73,8 +74,12 @@ dirLight.shadow.camera.bottom = -15;
 dirLight.shadow.bias = -0.0001;
 scene.add(dirLight);
 
+// --- Create a master "clockUnit" group to handle tilting ---
+const clockUnit = new THREE.Group();
+scene.add(clockUnit);
+
 const watchGroup = new THREE.Group();
-scene.add(watchGroup);
+clockUnit.add(watchGroup); // Add watchGroup to the main clockUnit
 
 // --- Background Plane (with slight reflectivity) ---
 const watchMaterial = new THREE.MeshStandardMaterial({
@@ -97,7 +102,7 @@ const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
 watch.position.z = -1;
 watch.receiveShadow = true;
-scene.add(watch);
+clockUnit.add(watch); // Add the background plane to the main clockUnit
 
 // --- Metallic Materials ---
 const silverMaterial = new THREE.MeshStandardMaterial({
@@ -211,13 +216,7 @@ function updateCameraPosition() {
 }
 
 function updateBackgroundSize() {
-    if (!watch) return;
-    const distance = camera.position.z - watch.position.z;
-    const vFov = THREE.MathUtils.degToRad(camera.fov);
-    const height = 2 * Math.tan(vFov / 2) * distance;
-    const width = height * camera.aspect;
-    const safetyMargin = 1.4;
-    watch.scale.set(width * safetyMargin, height * safetyMargin, 1);
+    // This function is no longer needed as the plane is not scaled to the camera
 }
 
 let tiltX = 0, tiltY = 0;
@@ -263,11 +262,12 @@ function animate() {
   const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
   const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
 
-  // Reverted to moving the camera for a parallax effect
-  // Increased the multiplier to make the effect more pronounced
-  const shiftMultiplier = 0.5; 
-  camera.position.x = -x * shiftMultiplier;
-  camera.position.y = y * shiftMultiplier;
+  // Rotate the entire clock unit for a realistic tilt and shadow update
+  const rotY = THREE.MathUtils.degToRad(x); // Left/Right tilt (gamma) rotates around Y-axis
+  const rotX = THREE.MathUtils.degToRad(y); // Forward/Back tilt (beta) rotates around X-axis
+  clockUnit.rotation.y = rotY;
+  clockUnit.rotation.x = rotX;
+  
   camera.lookAt(0, 0, 0);
 
   const now = new Date();
@@ -306,14 +306,14 @@ function animate() {
 camera.aspect = window.innerWidth / window.innerHeight;
 camera.updateProjectionMatrix();
 updateCameraPosition();
-updateBackgroundSize();
+// updateBackgroundSize is no longer needed
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   updateCameraPosition();
-  updateBackgroundSize();
+  // updateBackgroundSize is no longer needed
 });
 
 setupTiltControls();
