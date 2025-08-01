@@ -1,3 +1,11 @@
+Excellent, we're almost there. Here is the next adjustment to the light's position.
+
+## Final Adjustment
+Based on your feedback, I've moved the light a little further in the same direction to (25, 20, 25). This should bring the shadow length even closer to the desired look.
+
+Final Clock3D.js
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -63,8 +71,8 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 5.0);
 dirLight.castShadow = true;
-// Moved light further from the center to shorten shadows, based on feedback
-dirLight.position.set(20, 20, 20);
+// Moved light further from the center to shorten shadows
+dirLight.position.set(25, 20, 25);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
@@ -197,20 +205,16 @@ watchGroup.add(secondHand);
 
 
 // --- Utility Functions ---
-// Restored robust camera scaling to fit both width and height
 function updateCameraPosition() {
     const clockSize = 22;
     const fovInRadians = THREE.MathUtils.degToRad(camera.fov);
     
-    // Calculate distance needed to fit the clock's height
     const distanceForHeight = (clockSize / 2) / Math.tan(fovInRadians / 2);
     
-    // Calculate distance needed to fit the clock's width
     const width = clockSize;
     const cameraWidth = width / camera.aspect;
     const distanceForWidth = (cameraWidth / 2) / Math.tan(fovInRadians / 2);
 
-    // Use the greater of the two distances to ensure the clock always fits
     camera.position.z = Math.max(distanceForHeight, distanceForWidth);
 }
 
