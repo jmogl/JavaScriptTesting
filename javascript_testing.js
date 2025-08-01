@@ -1,7 +1,7 @@
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
-// Jeff Miller 2025. 7/31/25
+// Jeff Miller 2025. 8/1/25
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -34,7 +34,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // --- Scene Setup ---
 const scene = new THREE.Scene();
-// Changed camera FOV from 25 to 20 to get the flattest possible perspective
 const camera = new THREE.PerspectiveCamera(20, window.innerWidth / window.innerHeight, 1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 
@@ -43,7 +42,6 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-// Increased exposure for a brighter scene
 renderer.toneMappingExposure = 1.2;
 document.body.appendChild(renderer.domElement);
 
@@ -59,7 +57,7 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
     pmremGenerator.dispose();
 });
 
-// --- Lighting (Increased Intensity) ---
+// --- Lighting ---
 const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
 scene.add(ambientLight);
 
@@ -67,12 +65,11 @@ const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
 dirLight.castShadow = true;
 dirLight.position.set(10, 20, 10);
 dirLight.shadow.mapSize.set(2048, 2048);
-// Constrain the shadow camera's frustum to the clock area for sharper shadows
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
 dirLight.shadow.camera.top = 15;
 dirLight.shadow.camera.bottom = -15;
-dirLight.shadow.bias = -0.0001; // Prevents shadow acne
+dirLight.shadow.bias = -0.0001;
 scene.add(dirLight);
 
 const watchGroup = new THREE.Group();
@@ -137,7 +134,7 @@ fontLoader.load(fontURL, (font) => {
     }
 });
 
-// --- Clock Hands ---
+// --- Clock Hands (Beveled and Lowered) ---
 const hourHandShape = new THREE.Shape();
 const hourHandLength = 4.0;
 const hourHandWidth = 0.6;
@@ -146,10 +143,18 @@ hourHandShape.moveTo(-hourHandWidth / 2, 0);
 hourHandShape.lineTo(hourHandWidth / 2, 0);
 hourHandShape.lineTo(0, hourHandLength);
 hourHandShape.closePath();
-const hourGeometry = new THREE.ExtrudeGeometry(hourHandShape, { depth: hourHandDepth, bevelEnabled: false });
+
+const hourExtrudeSettings = {
+    depth: hourHandDepth,
+    bevelEnabled: true,
+    bevelSize: 0.04,
+    bevelThickness: 0.08,
+    bevelSegments: 2
+};
+const hourGeometry = new THREE.ExtrudeGeometry(hourHandShape, hourExtrudeSettings);
 hourGeometry.translate(0, 0, -hourHandDepth / 2);
 const hourHand = new THREE.Mesh(hourGeometry, silverMaterial);
-hourHand.position.z = 1.8;
+hourHand.position.z = 1.0; // Lowered Z position
 hourHand.castShadow = true;
 watchGroup.add(hourHand);
 
@@ -161,10 +166,18 @@ minuteHandShape.moveTo(-minuteHandWidth / 2, 0);
 minuteHandShape.lineTo(minuteHandWidth / 2, 0);
 minuteHandShape.lineTo(0, minuteHandLength);
 minuteHandShape.closePath();
-const minuteGeometry = new THREE.ExtrudeGeometry(minuteHandShape, { depth: minuteHandDepth, bevelEnabled: false });
+
+const minuteExtrudeSettings = {
+    depth: minuteHandDepth,
+    bevelEnabled: true,
+    bevelSize: 0.03,
+    bevelThickness: 0.06,
+    bevelSegments: 2
+};
+const minuteGeometry = new THREE.ExtrudeGeometry(minuteHandShape, minuteExtrudeSettings);
 minuteGeometry.translate(0, 0, -minuteHandDepth / 2);
 const minuteHand = new THREE.Mesh(minuteGeometry, brightSilverMaterial);
-minuteHand.position.z = 1.9;
+minuteHand.position.z = 1.1; // Lowered Z position
 minuteHand.castShadow = true;
 watchGroup.add(minuteHand);
 
@@ -172,7 +185,7 @@ const secondGeometry = new THREE.BoxGeometry(0.1, 7.0, 0.3);
 secondGeometry.translate(0, 3.5, 0);
 const secondMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, metalness: 0.8, roughness: 0.4 });
 const secondHand = new THREE.Mesh(secondGeometry, secondMaterial);
-secondHand.position.z = 2.0;
+secondHand.position.z = 1.2; // Lowered Z position
 secondHand.castShadow = true;
 watchGroup.add(secondHand);
 
