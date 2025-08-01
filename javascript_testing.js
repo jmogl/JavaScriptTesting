@@ -276,3 +276,6 @@ window.addEventListener('resize', () => {
   updateCameraPosition();
   updateBackgroundSize();
 });
+
+setupTiltControls();
+animate();
