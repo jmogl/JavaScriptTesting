@@ -1,13 +1,3 @@
-Understood. Here are the final adjustments to the light position and the background texture.
-
-## Final Adjustments
-Light Position: To continue fine-tuning the shadows, the light has been moved a little further in the same direction to the position (30, 20, 30).
-
-Visible Background Texture: To make the background texture more prominent, I've increased the intensity of the bumpScale from 0.005 to 0.02.
-
-Final Clock3D.js
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
