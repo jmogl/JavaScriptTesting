@@ -3,32 +3,6 @@
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 7/31/25
 
-const minuteHandShape = new THREE.Shape();
-const minuteHandLength = 6.0;
-const minuteHandWidth = 0.4;
-const minuteHandDepth = 0.3;
-minuteHandShape.moveTo(-minuteHandWidth / 2, 0);
-minuteHandShape.lineTo(minuteHandWidth / 2, 0);
-minuteHandShape.lineTo(0, minuteHandLength);
-minuteHandShape.closePath();
-
-const minuteExtrudeSettings = {
-    depth: minuteHandDepth,
-    bevelEnabled: false,
-};
-const minuteGeometry = new THREE.ExtrudeGeometry(minuteHandShape, minuteExtrudeSettings);
-// Center the hand's depth on its z-position
-minuteGeometry.translate(0, 0, -minuteHandDepth / 2);
-const minuteHand = new THREE.Mesh(minuteGeometry, brightSilverMaterial);
-minuteHand.position.z = 1.9;
-minuteHand.castShadow = true;
-minuteHand.receiveShadow = true;
-watchGroup.add(minuteHand);
-Complete Updated File
-For your convenience, here is the full, updated JavaScript file.
-
-JavaScript
-
 // The import statements are now the simple, original ones.
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
