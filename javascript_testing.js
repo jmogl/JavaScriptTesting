@@ -1,3 +1,12 @@
+You are right, my apologies. It appears that threejs.org is preventing the marble texture from being loaded directly from their server. This is a common issue when linking to assets on other websites.
+
+I have found a more reliable URL for the same marble texture and updated the script. This should fix the loading error.
+
+## Code Update
+The URL for the marble texture has been updated to a reliable source.
+
+Final Clock3D.js
+JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -82,17 +91,18 @@ clockUnit.add(watchGroup);
 
 // --- Background Plane (Realistic Marble) ---
 const watchMaterial = new THREE.MeshStandardMaterial({
-  color: 0xffffff, // White color to not tint the texture
-  metalness: 0.0,  // Marble is not a metal
-  roughness: 0.1,  // Polished, glossy surface
+  color: 0xffffff,
+  metalness: 0.0,
+  roughness: 0.1,
 });
 
 const textureLoader = new THREE.TextureLoader();
-textureLoader.load('https://threejs.org/examples/textures/marble.jpg', (map) => {
+// Updated to a reliable URL for the marble texture
+textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/marble.jpg', (map) => {
     map.wrapS = THREE.RepeatWrapping;
     map.wrapT = THREE.RepeatWrapping;
-    map.repeat.set(2, 2); // Tile the texture twice in each direction
-    watchMaterial.map = map; // Apply as the main color texture
+    map.repeat.set(2, 2);
+    watchMaterial.map = map;
     watchMaterial.needsUpdate = true;
 });
 
