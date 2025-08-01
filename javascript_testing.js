@@ -1,3 +1,68 @@
+This is a persistent issue, and the marginal improvements suggest there's a fundamental conflict between the lighting environment and the material. The scene is configured for bright, reflective metallic objects, which is washing out the dark, non-metallic wood texture.
+
+Let's take a more definitive step. We will temporarily swap the material to one that ignores all lighting. This will prove if the texture itself is loading correctly and isolate the problem to the lighting.
+
+Step 1: Diagnose with MeshBasicMaterial
+Replace the watchMaterial setup with the code below. MeshBasicMaterial does not react to light, so if the texture file is loading, it will appear in its pure, flat colors.
+
+JavaScript
+
+// --- Background Plane (Darker and Textured) ---
+// --- DIAGNOSTIC STEP: Use MeshBasicMaterial to ignore all scene lighting ---
+const watchMaterial = new THREE.MeshBasicMaterial({
+  color: 0x111122, // Fallback color
+  // map will be assigned below
+});
+
+const textureLoader = new THREE.TextureLoader();
+
+// Load the main wood color texture
+textureLoader.load(
+    './textures/laminate_floor_02_diff_4k.jpg',
+    (texture) => {
+        texture.encoding = THREE.sRGBEncoding;
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.rotation = Math.PI / 2;
+        texture.center.set(0.5, 0.5);
+
+        watchMaterial.map = texture;
+        watchMaterial.color.set(0xffffff); // Set to white to not tint the texture
+        watchMaterial.needsUpdate = true;
+
+        updateBackgroundSize();
+    },
+    undefined,
+    (err) => {
+        console.error('An error happened loading the wood texture. Using fallback color.');
+    }
+);
+
+// We don't need the roughness map for MeshBasicMaterial, so it can be removed or commented out.
+/*
+textureLoader.load('https://threejs.org/examples/textures/roughness_map.jpg', (map) => {
+    map.wrapS = THREE.RepeatWrapping;
+    map.wrapT = THREE.RepeatWrapping;
+    map.repeat.set(4, 4);
+    watchMaterial.roughnessMap = map;
+    watchMaterial.needsUpdate = true;
+});
+*/
+
+const watchGeometry = new THREE.PlaneGeometry(1, 1);
+const watch = new THREE.Mesh(watchGeometry, watchMaterial);
+watch.position.z = -1;
+// A basic material does not receive shadows, so this line can be removed.
+// watch.receiveShadow = true; 
+clockUnit.add(watch);
+After making this change, the wood texture should appear clearly, but it will look flat and have no shading. If it does, this confirms the lighting is the problem.
+
+Step 2: Final Corrected Code
+Assuming the diagnostic step worked, here is the final, corrected code that uses a simplified and more appropriate lighting setup for the MeshStandardMaterial. It removes the directional light entirely and relies only on ambient light, which will not create the white glare.
+
+This should be the definitive solution.
+
+JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -43,7 +108,6 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-// --- MODIFICATION: Reset exposure to 1.0 as we are dimming lights directly ---
 renderer.toneMappingExposure = 1.0;
 document.body.appendChild(renderer.domElement);
 
@@ -60,20 +124,15 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
 });
 
 // --- Lighting ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+// --- MODIFICATION: Increased ambient light to be the primary light source ---
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
 scene.add(ambientLight);
 
-// --- MODIFICATION: Significantly reduced directional light to soften glare ---
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-dirLight.castShadow = true;
-dirLight.position.set(10, 15, 35);
-dirLight.shadow.mapSize.set(2048, 2048);
-dirLight.shadow.camera.left = -15;
-dirLight.shadow.camera.right = 15;
-dirLight.shadow.camera.top = 15;
-dirLight.shadow.camera.bottom = -15;
-dirLight.shadow.bias = -0.0001;
-scene.add(dirLight);
+// --- MODIFICATION: Directional light is removed to prevent specular glare on the wood. ---
+// const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+// dirLight.castShadow = true;
+// dirLight.position.set(10, 15, 35);
+// scene.add(dirLight);
 
 // --- Create a master "clockUnit" group to handle tilting ---
 const clockUnit = new THREE.Group();
@@ -83,11 +142,10 @@ const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
 
 // --- Background Plane (Darker and Textured) ---
-// --- MODIFICATION: Set envMapIntensity to 0 to completely remove environmental reflections ---
 const watchMaterial = new THREE.MeshStandardMaterial({
   color: 0x111122,
   metalness: 0.0,
-  // Roughness value is now controlled by the roughnessMap below
+  roughness: 0.8, // Using a static roughness value
   envMapIntensity: 0.0
 });
 
@@ -115,21 +173,11 @@ textureLoader.load(
     }
 );
 
-// --- MODIFICATION: Using the second map correctly as a roughnessMap ---
-textureLoader.load('https://threejs.org/examples/textures/roughness_map.jpg', (map) => {
-    map.wrapS = THREE.RepeatWrapping;
-    map.wrapT = THREE.RepeatWrapping;
-    map.repeat.set(4, 4);
-    // This map controls the material's roughness, not its bumpiness
-    watchMaterial.roughnessMap = map;
-    watchMaterial.needsUpdate = true;
-});
-
-
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
 watch.position.z = -1;
-watch.receiveShadow = true;
+// Shadows are not cast by the removed directional light.
+// watch.receiveShadow = true;
 clockUnit.add(watch);
 
 // --- Metallic Materials ---
@@ -155,7 +203,7 @@ for (let i = 0; i < 60; i++) {
     const marker = new THREE.Mesh(markerGeom, silverMaterial);
     marker.position.set(markerRadius * Math.sin(angle), markerRadius * Math.cos(angle), -1.0 + 0.01 + (markerDepth / 2));
     marker.rotation.z = -angle;
-    marker.castShadow = true;
+    // marker.castShadow = true; // No light to cast shadows
     watchGroup.add(marker);
 }
 
@@ -175,8 +223,7 @@ fontLoader.load(fontURL, (font) => {
         const numeral = new THREE.Mesh(numeralGeometry, silverMaterial);
         const backOfNumeral = -1.0 + 0.01 + (numeralThickness / 2);
         numeral.position.set(numeralRadius * Math.sin(angle), numeralRadius * Math.cos(angle), backOfNumeral);
-        numeral.castShadow = true;
-        numeral.receiveShadow = true;
+        // numeral.castShadow = true; // No light to cast shadows
         watchGroup.add(numeral);
     }
 });
@@ -198,7 +245,7 @@ const hourGeometry = new THREE.ExtrudeGeometry(hourHandShape, hourExtrudeSetting
 hourGeometry.translate(0, 0, -hourHandDepth / 2);
 const hourHand = new THREE.Mesh(hourGeometry, silverMaterial);
 hourHand.position.z = -0.04;
-hourHand.castShadow = true;
+// hourHand.castShadow = true; // No light to cast shadows
 watchGroup.add(hourHand);
 
 const minuteHandShape = new THREE.Shape();
@@ -217,7 +264,7 @@ const minuteGeometry = new THREE.ExtrudeGeometry(minuteHandShape, minuteExtrudeS
 minuteGeometry.translate(0, 0, -minuteHandDepth / 2);
 const minuteHand = new THREE.Mesh(minuteGeometry, brightSilverMaterial);
 minuteHand.position.z = -0.03;
-minuteHand.castShadow = true;
+// minuteHand.castShadow = true; // No light to cast shadows
 watchGroup.add(minuteHand);
 
 const secondGeometry = new THREE.BoxGeometry(0.1, 7.0, 0.3);
@@ -225,7 +272,7 @@ secondGeometry.translate(0, 3.5, 0);
 const secondMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, metalness: 0.8, roughness: 0.4 });
 const secondHand = new THREE.Mesh(secondGeometry, secondMaterial);
 secondHand.position.z = -0.02;
-secondHand.castShadow = true;
+// secondHand.castShadow = true; // No light to cast shadows
 watchGroup.add(secondHand);
 
 
