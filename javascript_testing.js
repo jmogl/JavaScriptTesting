@@ -1,3 +1,13 @@
+Of course. Here are the final adjustments to the light and the leather texture.
+
+## Final Adjustments
+Light Position: I've moved the light a little further out one last time to the position (40, 20, 40) to finalize the shadow length.
+
+Single Leather Texture: You are right, tiling the texture created an unnatural pattern. To fix this, I have changed the texture mapping mode. Instead of repeating the leather texture in a grid, the script now stretches a single, high-quality leather texture across the entire clock face. This will eliminate the "checkerboard" or "weave" pattern and create the realistic look of a solid piece of leather.
+
+Final Clock3D.js
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -64,7 +74,7 @@ scene.add(ambientLight);
 const dirLight = new THREE.DirectionalLight(0xffffff, 5.0);
 dirLight.castShadow = true;
 // Final light position adjustment
-dirLight.position.set(35, 20, 35);
+dirLight.position.set(40, 20, 40);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
@@ -92,20 +102,17 @@ const textureLoader = new THREE.TextureLoader();
 
 // Normal map for leather grain
 textureLoader.load('https://threejs.org/examples/textures/leather/Leather_008_normal.jpg', (map) => {
-    map.wrapS = THREE.RepeatWrapping;
-    map.wrapT = THREE.RepeatWrapping;
-    // Increased repeat for finer grain
-    map.repeat.set(10, 10);
+    // Use ClampToEdgeWrapping to stretch the single texture instead of repeating it
+    map.wrapS = THREE.ClampToEdgeWrapping;
+    map.wrapT = THREE.ClampToEdgeWrapping;
     watchMaterial.normalMap = map;
     watchMaterial.needsUpdate = true;
 });
 
 // Roughness map for satin sheen
 textureLoader.load('https://threejs.org/examples/textures/roughness_map.jpg', (map) => {
-    map.wrapS = THREE.RepeatWrapping;
-    map.wrapT = THREE.RepeatWrapping;
-    // Increased repeat for finer grain
-    map.repeat.set(10, 10);
+    map.wrapS = THREE.ClampToEdgeWrapping;
+    map.wrapT = THREE.ClampToEdgeWrapping;
     watchMaterial.roughnessMap = map;
     watchMaterial.needsUpdate = true;
 });
