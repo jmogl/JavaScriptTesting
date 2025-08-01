@@ -1,4 +1,4 @@
-
+rrrr
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -101,6 +101,46 @@ const watch = new THREE.Mesh(watchGeometry, watchMaterial);
 watch.position.z = -1;
 watch.receiveShadow = true;
 clockUnit.add(watch);
+
+// --- Border Wall ---
+// run this after your tick-mark loop, before creating the hands
+
+// radial thickness and wall height (tweak to taste)
+const borderThickness = 1.0;      // how “deep” the rim is, radially
+const borderHeight    = 0.5;      // how tall the rim stands off the face
+
+// compute our inner/outer radii based on the same markerRadius you already use
+const outerRadius = markerRadius + borderThickness;
+const innerRadius = markerRadius;
+
+// build a Shape with a circular hole
+const borderShape = new THREE.Shape();
+borderShape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
+const holePath = new THREE.Path();
+holePath.absarc(0, 0, innerRadius, 0, Math.PI * 2, true);
+borderShape.holes.push(holePath);
+
+// extrude that Shape along +Z
+const borderExtrudeSettings = {
+  depth: borderHeight,
+  bevelEnabled: false
+};
+const borderGeom = new THREE.ExtrudeGeometry(borderShape, borderExtrudeSettings);
+
+// center it on the clock plane (which lives at z = -1)
+borderGeom.translate(0, 0, -borderHeight / 2);
+
+const borderMesh = new THREE.Mesh(borderGeom, watchMaterial);
+borderMesh.castShadow    = true;
+borderMesh.receiveShadow = true;
+
+// place it flush on the face
+borderMesh.position.z = watch.position.z;
+
+// add it alongside the watch plane (so it tilts with clockUnit,
+// but isn’t part of any per-second or per-minute rotation)
+clockUnit.add(borderMesh);
+
 
 // --- Metallic Materials ---
 const silverMaterial = new THREE.MeshStandardMaterial({
