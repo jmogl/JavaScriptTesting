@@ -1,3 +1,10 @@
+Of course! Lowering the Z-axis position of the tick marks and numerals to close that gap is a great final touch.
+
+Here is the complete and updated code with those adjustments.
+
+Clock_3D_V1.js (Final Version)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -41,13 +48,11 @@ renderer.setClearColor(0xcccccc);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
-// Restore Tone Mapping for a nicer look now that the brightness issue is solved.
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 document.body.appendChild(renderer.domElement);
 
 // --- Lighting ---
-// Restore a balanced lighting setup
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
 scene.add(ambientLight);
 
@@ -71,7 +76,7 @@ clockUnit.add(watchGroup);
 
 // --- Background Plane (Wood) ---
 const watchMaterial = new THREE.MeshStandardMaterial({
-  color: 0xffffff, // Start with white, will be colored by texture
+  color: 0xffffff,
   metalness: 0.1,
   roughness: 0.7
 });
@@ -115,7 +120,7 @@ const secondMaterial = new THREE.MeshStandardMaterial({
 });
 
 
-// --- MODIFICATION: Environment Map is now applied selectively ---
+// Environment Map is applied selectively
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 pmremGenerator.compileEquirectangularShader();
 
@@ -123,16 +128,10 @@ const rgbeLoader = new RGBELoader();
 rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint_powerplant_2_1k.hdr', (texture) => {
     const envMap = pmremGenerator.fromEquirectangular(texture).texture;
 
-    // DO NOT apply to the whole scene.
-    // scene.environment = envMap;
-
-    // INSTEAD, apply it ONLY to the metallic materials that need reflections.
     silverMaterial.envMap = envMap;
     brightSilverMaterial.envMap = envMap;
     secondMaterial.envMap = envMap;
     
-    // The watchMaterial is NOT given the envMap, so it won't be washed out.
-
     texture.dispose();
     pmremGenerator.dispose();
 });
@@ -151,7 +150,11 @@ for (let i = 0; i < 60; i++) {
         markerGeom = new THREE.BoxGeometry(0.1, 0.5, markerDepth);
     }
     const marker = new THREE.Mesh(markerGeom, silverMaterial);
-    marker.position.set(markerRadius * Math.sin(angle), markerRadius * Math.cos(angle), -1.0 + 0.01 + (markerDepth / 2));
+    
+    // --- MODIFICATION: Lowered the Z-axis position by 0.1 ---
+    const markerZ = -1.0 + 0.01 + (markerDepth / 2) - 0.1;
+    marker.position.set(markerRadius * Math.sin(angle), markerRadius * Math.cos(angle), markerZ);
+
     marker.rotation.z = -angle;
     marker.castShadow = true;
     watchGroup.add(marker);
@@ -171,7 +174,10 @@ fontLoader.load(fontURL, (font) => {
         });
         numeralGeometry.center();
         const numeral = new THREE.Mesh(numeralGeometry, silverMaterial);
-        const backOfNumeral = -1.0 + 0.01 + (numeralThickness / 2);
+
+        // --- MODIFICATION: Lowered the Z-axis position by 0.1 ---
+        const backOfNumeral = -1.0 + 0.01 + (numeralThickness / 2) - 0.1;
+
         numeral.position.set(numeralRadius * Math.sin(angle), numeralRadius * Math.cos(angle), backOfNumeral);
         numeral.castShadow = true;
         numeral.receiveShadow = true;
