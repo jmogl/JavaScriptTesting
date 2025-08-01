@@ -63,8 +63,8 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 4.0);
 dirLight.castShadow = true;
-// Positioned light at a high, slightly off-center angle for short, soft shadows
-dirLight.position.set(2.5, 20, 2.5);
+// Positioned light almost directly overhead for the shortest possible visible shadows
+dirLight.position.set(0.1, 20, 0.1);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
