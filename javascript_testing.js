@@ -65,8 +65,6 @@ scene.add(dirLight);
 const clockUnit = new THREE.Group();
 scene.add(clockUnit);
 
-clockUnit.position.z = -1;
-
 const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
 
@@ -140,6 +138,7 @@ for (let i = 0; i < 60; i++) {
     let markerGeom;
     const markerDepth = 0.5;
 
+    // --- MODIFICATION: Settings for the new beveled tick marks ---
     const extrudeSettings = {
         depth: markerDepth,
         bevelEnabled: true,
@@ -148,6 +147,7 @@ for (let i = 0; i < 60; i++) {
         bevelSegments: 2,
     };
 
+    // --- MODIFICATION: Replaced BoxGeometry with a beveled ExtrudeGeometry ---
     if (i % 5 === 0) { // Hour mark
         const width = 0.25, height = 1.0;
         const shape = new THREE.Shape();
@@ -188,6 +188,7 @@ fontLoader.load(fontURL, (font) => {
     for (let i = 1; i <= 12; i++) {
         const angle = (i / 12) * Math.PI * 2;
         
+        // --- MODIFICATION: Added bevel settings to the TextGeometry ---
         const numeralGeometry = new TextGeometry(i.toString(), {
             font: font,
             size: numeralSize,
@@ -257,89 +258,6 @@ secondHand.castShadow = true;
 watchGroup.add(secondHand);
 
 
-// --- Border Wall Creation ---
-const wallGroup = new THREE.Group();
-clockUnit.add(wallGroup);
-
-function buildWalls() {
-    // Clear existing walls and free memory
-    wallGroup.children.forEach(child => {
-        if (child.geometry) child.geometry.dispose();
-    });
-    wallGroup.clear();
-
-    if (!watch || !camera) return;
-    const distance = camera.position.z - (watch.position.z + clockUnit.position.z);
-    const vFov = THREE.MathUtils.degToRad(camera.fov);
-    const viewHeight = 2 * Math.tan(vFov / 2) * distance;
-    const viewWidth = viewHeight * camera.aspect;
-
-    // --- MODIFICATION: Updated Wall properties ---
-    const wallHeight = 15.0; // Total extrusion depth (10 up, 5 down)
-    const wallThickness = 10.0; // Width of the wall
-    const wallBaseZ = -6.0;  // Corresponds to -5 units from the clock face plane
-
-    const wallMaterial = new THREE.MeshStandardMaterial({
-        color: 0xff0000,
-        metalness: 0.8,
-        roughness: 0.1,
-        envMap: silverMaterial.envMap 
-    });
-
-    const wallExtrudeSettings = {
-        depth: wallHeight,
-        bevelEnabled: true,
-        bevelSize: 0.05,
-        bevelThickness: 0.05,
-        bevelSegments: 2,
-    };
-
-    // --- MODIFICATION: Make Top/Bottom walls wider to cover corners ---
-    const topBottomWidth = viewWidth + 2 * wallThickness;
-
-    // Top Wall
-    const topShape = new THREE.Shape();
-    topShape.moveTo(-topBottomWidth / 2, -wallThickness / 2);
-    topShape.lineTo(topBottomWidth / 2, -wallThickness / 2);
-    topShape.lineTo(topBottomWidth / 2, wallThickness / 2);
-    topShape.lineTo(-topBottomWidth / 2, wallThickness / 2);
-    topShape.closePath();
-    const topGeometry = new THREE.ExtrudeGeometry(topShape, wallExtrudeSettings);
-    const topWall = new THREE.Mesh(topGeometry, wallMaterial);
-    // Position wall so its inner edge touches the viewport
-    topWall.position.set(0, viewHeight / 2 + wallThickness / 2, wallBaseZ);
-    topWall.castShadow = true;
-    wallGroup.add(topWall);
-
-    // Bottom Wall
-    const bottomGeometry = new THREE.ExtrudeGeometry(topShape, wallExtrudeSettings); // Can reuse shape
-    const bottomWall = new THREE.Mesh(bottomGeometry, wallMaterial);
-    bottomWall.position.set(0, -viewHeight / 2 - wallThickness / 2, wallBaseZ);
-    bottomWall.castShadow = true;
-    wallGroup.add(bottomWall);
-
-    // Left Wall
-    const leftShape = new THREE.Shape();
-    leftShape.moveTo(-wallThickness / 2, -viewHeight / 2);
-    leftShape.lineTo(wallThickness / 2, -viewHeight / 2);
-    leftShape.lineTo(wallThickness / 2, viewHeight / 2);
-    leftShape.lineTo(-wallThickness / 2, viewHeight / 2);
-    leftShape.closePath();
-    const leftGeometry = new THREE.ExtrudeGeometry(leftShape, wallExtrudeSettings);
-    const leftWall = new THREE.Mesh(leftGeometry, wallMaterial);
-    leftWall.position.set(-viewWidth / 2 - wallThickness / 2, 0, wallBaseZ);
-    leftWall.castShadow = true;
-    wallGroup.add(leftWall);
-
-    // Right Wall
-    const rightGeometry = new THREE.ExtrudeGeometry(leftShape, wallExtrudeSettings); // Can reuse shape
-    const rightWall = new THREE.Mesh(rightGeometry, wallMaterial);
-    rightWall.position.set(viewWidth / 2 + wallThickness / 2, 0, wallBaseZ);
-    rightWall.castShadow = true;
-    wallGroup.add(rightWall);
-}
-
-
 // --- Utility Functions ---
 function updateCameraPosition() {
     const clockSize = 22;
@@ -356,14 +274,14 @@ function updateCameraPosition() {
 
 function updateBackgroundSize() {
     if (!watch || !camera) return;
-    const distance = camera.position.z - (watch.position.z + clockUnit.position.z);
+    const distance = camera.position.z - watch.position.z;
     const vFov = THREE.MathUtils.degToRad(camera.fov);
     const height = 2 * Math.tan(vFov / 2) * distance;
     const width = height * camera.aspect;
-    
+
     const safetyMargin = 1.2;
     watch.scale.set(width * safetyMargin, height * safetyMargin, 1);
-    
+
     if (watch.material.map) {
         const textureScale = 25;
         watch.material.map.repeat.set(
@@ -463,7 +381,6 @@ camera.aspect = window.innerWidth / window.innerHeight;
 camera.updateProjectionMatrix();
 updateCameraPosition();
 updateBackgroundSize();
-buildWalls(); 
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -471,7 +388,6 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   updateCameraPosition();
   updateBackgroundSize();
-  buildWalls();
 });
 
 setupTiltControls();
