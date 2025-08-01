@@ -1,12 +1,3 @@
-My sincerest apologies—it seems that GitHub link was also unreliable. Sourcing stable, directly-linkable textures can be tricky.
-
-I've updated the script with a new URL from a more robust Content Delivery Network (CDN), which is designed for this purpose and should resolve the loading error permanently.
-
-## Code Update
-The URL for the marble texture has been updated to a reliable CDN link.
-
-Final Clock3D.js
-JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
