@@ -7,41 +7,44 @@ import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 
-// --- Create and Inject UI Elements from JavaScript ---
+// --- Declare UI element variables in the global scope ---
+let digitalDate, digitalClock;
 
-// This approach avoids all HTML/CSS conflicts from the main document.
+// --- Wait for the DOM to be ready, then create and inject UI elements ---
+// This is the most reliable way to ensure the elements are added correctly.
+window.addEventListener('DOMContentLoaded', () => {
+    // 1. Create container elements
+    digitalDate = document.createElement('div');
+    digitalClock = document.createElement('div');
 
-// 1. Create container elements
-const digitalDate = document.createElement('div');
-const digitalClock = document.createElement('div');
+    // 2. Style and position the date container (lower left)
+    Object.assign(digitalDate.style, {
+        position: 'absolute',
+        bottom: '20px',
+        left: '20px',
+        color: 'white',
+        fontFamily: '"Courier New", Courier, monospace',
+        fontSize: '1.75em',
+        textShadow: '0 0 8px black',
+        zIndex: '10'
+    });
 
-// 2. Style and position the date container (lower left)
-Object.assign(digitalDate.style, {
-    position: 'absolute',
-    bottom: '20px',
-    left: '20px',
-    color: 'white',
-    fontFamily: '"Courier New", Courier, monospace',
-    fontSize: '1.75em',
-    textShadow: '0 0 8px black',
-    zIndex: '10'
+    // 3. Style and position the clock container (lower right)
+    Object.assign(digitalClock.style, {
+        position: 'absolute',
+        bottom: '20px',
+        right: '20px',
+        color: 'white',
+        fontFamily: '"Courier New", Courier, monospace',
+        fontSize: '1.75em',
+        textShadow: '0 0 8px black',
+        zIndex: '10'
+    });
+
+    // 4. Add the newly created elements to the document body
+    document.body.appendChild(digitalDate);
+    document.body.appendChild(digitalClock);
 });
-
-// 3. Style and position the clock container (lower right)
-Object.assign(digitalClock.style, {
-    position: 'absolute',
-    bottom: '20px',
-    right: '20px',
-    color: 'white',
-    fontFamily: '"Courier New", Courier, monospace',
-    fontSize: '1.75em',
-    textShadow: '0 0 8px black',
-    zIndex: '10'
-});
-
-// 4. Add the newly created elements to the document body
-document.body.appendChild(digitalDate);
-document.body.appendChild(digitalClock);
 
 
 // --- Scene Setup ---
@@ -263,18 +266,22 @@ function animate() {
   hourHand.rotation.z   = -THREE.MathUtils.degToRad((hours / 12) * 360);
   
   const pad = (n) => n.toString().padStart(2, '0');
-  // Define the styles for the inner span, which creates the background box
   const spanStyles = `background-color: rgba(0, 0, 0, 0.5); padding: 0.1em 0.3em; border-radius: 4px;`;
 
-  // Update the innerHTML of our programmatically-created elements
-  const timeString = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(Math.floor(now.getSeconds()))}`;
-  digitalClock.innerHTML = `<span style="${spanStyles}">${timeString}</span>`;
+  // Check if the elements have been created before trying to update them
+  if (digitalClock) {
+      const timeString = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(Math.floor(now.getSeconds()))}`;
+      digitalClock.innerHTML = `<span style="${spanStyles}">${timeString}</span>`;
+  }
   
-  const month = pad(now.getMonth() + 1);
-  const day = pad(now.getDate());
-  const year = now.getFullYear().toString().slice(-2);
-  const dateString = `${month}/${day}/${year}`;
-  digitalDate.innerHTML = `<span style="${spanStyles}">${dateString}</span>`;
+  if (digitalDate) {
+      const month = pad(now.getMonth() + 1);
+      const day = pad(now.getDate());
+      const year = now.getFullYear().toString().slice(-2);
+      const dateString = `${month}/${day}/${year}`;
+      digitalDate.innerHTML = `<span style="${spanStyles}">${dateString}</span>`;
+  }
+
 
   const currentSecond = Math.floor(now.getSeconds());
   if (animate.lastSecond !== currentSecond) {
