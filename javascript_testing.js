@@ -13,35 +13,20 @@ let digitalDate, digitalClock;
 
 // --- Wait for the DOM to be ready, then create and inject UI elements ---
 window.addEventListener('DOMContentLoaded', () => {
-    // 1. Create container elements
     digitalDate = document.createElement('div');
     digitalClock = document.createElement('div');
 
-    // 2. Style and position the date container (lower left)
     Object.assign(digitalDate.style, {
-        position: 'absolute',
-        bottom: '20px',
-        left: '20px',
-        color: 'white',
-        fontFamily: '"Courier New", Courier, monospace',
-        fontSize: '1.75em',
-        textShadow: '0 0 8px black',
-        zIndex: '10'
+        position: 'absolute', bottom: '20px', left: '20px',
+        color: 'white', fontFamily: '"Courier New", Courier, monospace',
+        fontSize: '1.75em', textShadow: '0 0 8px black', zIndex: '10'
     });
-
-    // 3. Style and position the clock container (lower right)
     Object.assign(digitalClock.style, {
-        position: 'absolute',
-        bottom: '20px',
-        right: '20px',
-        color: 'white',
-        fontFamily: '"Courier New", Courier, monospace',
-        fontSize: '1.75em',
-        textShadow: '0 0 8px black',
-        zIndex: '10'
+        position: 'absolute', bottom: '20px', right: '20px',
+        color: 'white', fontFamily: '"Courier New", Courier, monospace',
+        fontSize: '1.75em', textShadow: '0 0 8px black', zIndex: '10'
     });
 
-    // 4. Add the newly created elements to the document body
     document.body.appendChild(digitalDate);
     document.body.appendChild(digitalClock);
 });
@@ -64,8 +49,6 @@ document.body.appendChild(renderer.domElement);
 const rgbeLoader = new RGBELoader();
 rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint_powerplant_2_1k.hdr', (texture) => {
     texture.mapping = THREE.EquirectangularReflectionMapping;
-    
-    // Use the texture for reflections, but NOT as the visible background.
     scene.environment = texture;
 });
 
@@ -82,32 +65,26 @@ scene.add(camera);
 const watchGroup = new THREE.Group();
 scene.add(watchGroup);
 
-// --- Reinstated Dark Blue Background Plane ---
-const watchMaterial = new THREE.MeshStandardMaterial({
+// --- Background Plane (Corrected Material) ---
+// Using MeshLambertMaterial to create a non-reflective surface that still receives shadows.
+const watchMaterial = new THREE.MeshLambertMaterial({
   color: 0x222244,
-  metalness: 0.1, // Slightly metallic to interact with light
-  roughness: 0.8, // Mostly rough surface
 });
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
-watch.position.z = -1; // Position it at the back
+watch.position.z = -1;
 watch.receiveShadow = true;
-scene.add(watch); // Add plane directly to the scene
+scene.add(watch);
 
-// --- Updated Metallic Materials ---
+// --- Metallic Materials ---
 const silverMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    metalness: 1.0,
-    roughness: 0.2
+    color: 0xffffff, metalness: 1.0, roughness: 0.2
 });
-
 const brightSilverMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    metalness: 1.0,
-    roughness: 0.1
+    color: 0xffffff, metalness: 1.0, roughness: 0.1
 });
 
-// --- Tick Marks (Positioned relative to the background plane) ---
+// --- Tick Marks ---
 const markerRadius = 10.0;
 for (let i = 0; i < 60; i++) {
     const angle = (i / 60) * Math.PI * 2;
@@ -119,9 +96,7 @@ for (let i = 0; i < 60; i++) {
     } else {
         markerGeom = new THREE.BoxGeometry(0.1, 0.5, markerDepth);
     }
-
     const marker = new THREE.Mesh(markerGeom, silverMaterial);
-    // Correct Z-position to be in front of the `watch` plane
     marker.position.set(markerRadius * Math.sin(angle), markerRadius * Math.cos(angle), -1.0 + 0.01 + (markerDepth / 2));
     marker.rotation.z = -angle;
     marker.castShadow = true;
@@ -135,18 +110,13 @@ const numeralRadius = 8.075;
 fontLoader.load(fontURL, (font) => {
     const numeralSize = 1.5;
     const numeralThickness = (numeralSize / 2) * 1.25;
-
     for (let i = 1; i <= 12; i++) {
         const angle = (i / 12) * Math.PI * 2;
         const numeralGeometry = new TextGeometry(i.toString(), {
-            font: font,
-            size: numeralSize,
-            depth: numeralThickness,
-            curveSegments: 12,
+            font: font, size: numeralSize, depth: numeralThickness, curveSegments: 12,
         });
         numeralGeometry.center();
         const numeral = new THREE.Mesh(numeralGeometry, silverMaterial);
-        // Correct Z-position to be in front of the `watch` plane
         const backOfNumeral = -1.0 + 0.01 + (numeralThickness / 2);
         numeral.position.set(numeralRadius * Math.sin(angle), numeralRadius * Math.cos(angle), backOfNumeral);
         numeral.castShadow = true;
@@ -157,24 +127,30 @@ fontLoader.load(fontURL, (font) => {
 
 // --- Clock Hands ---
 const hourHandShape = new THREE.Shape();
-hourHandShape.moveTo(-0.3, 0);
-hourHandShape.lineTo(0.3, 0);
-hourHandShape.lineTo(0, 4.0);
+const hourHandLength = 4.0;
+const hourHandWidth = 0.6;
+const hourHandDepth = 0.4;
+hourHandShape.moveTo(-hourHandWidth / 2, 0);
+hourHandShape.lineTo(hourHandWidth / 2, 0);
+hourHandShape.lineTo(0, hourHandLength);
 hourHandShape.closePath();
-const hourGeometry = new THREE.ExtrudeGeometry(hourHandShape, { depth: 0.4, bevelEnabled: false });
-hourGeometry.translate(0, 0, -0.2);
+const hourGeometry = new THREE.ExtrudeGeometry(hourHandShape, { depth: hourHandDepth, bevelEnabled: false });
+hourGeometry.translate(0, 0, -hourHandDepth / 2);
 const hourHand = new THREE.Mesh(hourGeometry, silverMaterial);
 hourHand.position.z = 1.8;
 hourHand.castShadow = true;
 watchGroup.add(hourHand);
 
 const minuteHandShape = new THREE.Shape();
-minuteHandShape.moveTo(-0.2, 0);
-minuteHandShape.lineTo(0.2, 0);
-minuteHandShape.lineTo(0, 6.0);
+const minuteHandLength = 6.0;
+const minuteHandWidth = 0.4;
+const minuteHandDepth = 0.3;
+minuteHandShape.moveTo(-minuteHandWidth / 2, 0);
+minuteHandShape.lineTo(minuteHandWidth / 2, 0);
+minuteHandShape.lineTo(0, minuteHandLength);
 minuteHandShape.closePath();
-const minuteGeometry = new THREE.ExtrudeGeometry(minuteHandShape, { depth: 0.3, bevelEnabled: false });
-minuteGeometry.translate(0, 0, -0.15);
+const minuteGeometry = new THREE.ExtrudeGeometry(minuteHandShape, { depth: minuteHandDepth, bevelEnabled: false });
+minuteGeometry.translate(0, 0, -minuteHandDepth / 2);
 const minuteHand = new THREE.Mesh(minuteGeometry, brightSilverMaterial);
 minuteHand.position.z = 1.9;
 minuteHand.castShadow = true;
@@ -188,22 +164,24 @@ secondHand.position.z = 2.0;
 secondHand.castShadow = true;
 watchGroup.add(secondHand);
 
+
 // --- Utility Functions ---
+
+// Corrected camera position logic to remove distortion
 function updateCameraPosition() {
-    const clockSize = 22;
+    const clockSize = 22; // The approximate height of the clock face
     const fovInRadians = THREE.MathUtils.degToRad(camera.fov);
-    const distance = (clockSize / 2) / Math.tan(fovInRadians / 2) / camera.aspect;
+    // Standard formula to fit an object's height in the camera's view
+    const distance = (clockSize / 2) / Math.tan(fovInRadians / 2);
     camera.position.z = distance;
 }
 
-// Reinstated function to keep the background plane filling the screen
 function updateBackgroundSize() {
     if (!watch) return;
     const distance = camera.position.z - watch.position.z;
     const vFov = THREE.MathUtils.degToRad(camera.fov);
     const height = 2 * Math.tan(vFov / 2) * distance;
     const width = height * camera.aspect;
-    
     const safetyMargin = 1.4;
     watch.scale.set(width * safetyMargin, height * safetyMargin, 1);
 }
@@ -217,23 +195,22 @@ function handleOrientation(event) {
 
 function setupTiltControls() {
     if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
-        const permissionButton = document.createElement('button');
-        Object.assign(permissionButton.style, {
+        const button = document.createElement('button');
+        Object.assign(button.style, {
             position: 'absolute', top: '50%', left: '50%',
             transform: 'translate(-50%, -50%)', padding: '1em 2em',
             fontSize: '1em', color: 'white', backgroundColor: 'rgba(0,0,0,0.7)',
             border: '1px solid white', borderRadius: '8px', cursor: 'pointer', zIndex: '1001'
         });
-        permissionButton.textContent = 'Enable Tilt';
-        document.body.appendChild(permissionButton);
-        permissionButton.addEventListener('click', async () => {
+        button.textContent = 'Enable Tilt';
+        document.body.appendChild(button);
+        button.addEventListener('click', async () => {
             try {
-                const response = await DeviceOrientationEvent.requestPermission();
-                if (response === 'granted') {
+                if (await DeviceOrientationEvent.requestPermission() === 'granted') {
                     window.addEventListener('deviceorientation', handleOrientation);
                 }
             } finally {
-                document.body.removeChild(permissionButton);
+                document.body.removeChild(button);
             }
         });
     } else {
@@ -270,13 +247,13 @@ function animate() {
   const spanStyles = `background-color: rgba(0, 0, 0, 0.5); padding: 0.1em 0.3em; border-radius: 4px;`;
 
   if (digitalClock) {
-      const timeString = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(Math.floor(now.getSeconds()))}`;
-      digitalClock.innerHTML = `<span style="${spanStyles}">${timeString}</span>`;
+      const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(Math.floor(now.getSeconds()))}`;
+      digitalClock.innerHTML = `<span style="${spanStyles}">${time}</span>`;
   }
   
   if (digitalDate) {
-      const dateString = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear().toString().slice(-2)}`;
-      digitalDate.innerHTML = `<span style="${spanStyles}">${dateString}</span>`;
+      const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear().toString().slice(-2)}`;
+      digitalDate.innerHTML = `<span style="${spanStyles}">${date}</span>`;
   }
 
   const currentSecond = Math.floor(now.getSeconds());
@@ -293,14 +270,14 @@ function animate() {
 camera.aspect = window.innerWidth / window.innerHeight;
 camera.updateProjectionMatrix();
 updateCameraPosition();
-updateBackgroundSize(); // Call this on initial load
+updateBackgroundSize();
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   updateCameraPosition();
-  updateBackgroundSize(); // Also call on resize
+  updateBackgroundSize();
 });
 
 setupTiltControls();
