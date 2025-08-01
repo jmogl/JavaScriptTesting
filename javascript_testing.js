@@ -1,4 +1,3 @@
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -80,37 +79,28 @@ scene.add(clockUnit);
 const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
 
-// --- Background Plane (Local Wood Texture) ---
+// --- Background Plane (Darker and Textured) ---
+const watchMaterial = new THREE.MeshStandardMaterial({
+  color: 0x111122,
+  metalness: 0.1,
+  roughness: 0.5,
+  bumpScale: 0.02
+});
+
 const textureLoader = new THREE.TextureLoader();
-textureLoader.load(
-    'textures/laminate_floor_02_diff_4k.jpg',
-    (map) => {
-        // This code runs ONLY after the texture has successfully loaded
-        map.wrapS = THREE.RepeatWrapping;
-        map.wrapT = THREE.RepeatWrapping;
-        map.repeat.set(16, 16);
-        map.anisotropy = renderer.capabilities.getMaxAnisotropy();
-        map.needsUpdate = true;
-        
-        const watchMaterial = new THREE.MeshStandardMaterial({
-          map: map, // Assign the texture map on creation
-          color: 0xffffff,
-          metalness: 0.0,
-          roughness: 0.2,
-        });
+textureLoader.load('https://threejs.org/examples/textures/roughness_map.jpg', (map) => {
+    map.wrapS = THREE.RepeatWrapping;
+    map.wrapT = THREE.RepeatWrapping;
+    map.repeat.set(4, 4);
+    watchMaterial.bumpMap = map;
+    watchMaterial.needsUpdate = true;
+});
 
-        const watchGeometry = new THREE.PlaneGeometry(50, 50);
-        const watch = new THREE.Mesh(watchGeometry, watchMaterial);
-        watch.position.z = -1;
-        watch.receiveShadow = true;
-        clockUnit.add(watch);
-    },
-    undefined,
-    (err) => {
-        console.error('Failed to load the clock face texture.');
-    }
-);
-
+const watchGeometry = new THREE.PlaneGeometry(1, 1);
+const watch = new THREE.Mesh(watchGeometry, watchMaterial);
+watch.position.z = -1;
+watch.receiveShadow = true;
+clockUnit.add(watch);
 
 // --- Metallic Materials ---
 const silverMaterial = new THREE.MeshStandardMaterial({
@@ -223,8 +213,18 @@ function updateCameraPosition() {
     camera.position.z = Math.max(distanceForHeight, distanceForWidth);
 }
 
-// No longer needed, plane is a fixed size
-// function updateBackgroundSize() {}
+// Restored this function to scale the background plane correctly
+function updateBackgroundSize() {
+    if (!watch || !camera) return;
+    const distance = camera.position.z - watch.position.z;
+    const vFov = THREE.MathUtils.degToRad(camera.fov);
+    const height = 2 * Math.tan(vFov / 2) * distance;
+    const width = height * camera.aspect;
+    
+    // Use a safety margin so the plane is always larger than the view
+    const safetyMargin = 1.2;
+    watch.scale.set(width * safetyMargin, height * safetyMargin, 1);
+}
 
 let tiltX = 0, tiltY = 0;
 
@@ -269,10 +269,12 @@ function animate() {
   const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
   const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
   
+  // Dampen the rotation to make it feel more natural
   const rotationMultiplier = 0.5;
   const rotY = THREE.MathUtils.degToRad(x) * rotationMultiplier;
   const rotX = THREE.MathUtils.degToRad(y) * rotationMultiplier;
 
+  // Rotate the entire clock unit for a realistic tilt and shadow update
   clockUnit.rotation.y = rotY;
   clockUnit.rotation.x = rotX;
   
@@ -314,14 +316,14 @@ function animate() {
 camera.aspect = window.innerWidth / window.innerHeight;
 camera.updateProjectionMatrix();
 updateCameraPosition();
-// updateBackgroundSize() is no longer needed
+updateBackgroundSize();
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   updateCameraPosition();
-  // updateBackgroundSize() is no longer needed
+  updateBackgroundSize();
 });
 
 setupTiltControls();
