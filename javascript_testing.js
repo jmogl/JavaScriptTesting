@@ -189,12 +189,12 @@ const outerRadius = markerRadius + borderThickness;
 const innerRadius = markerRadius;
 
 const borderShape = new THREE.Shape();
-borderShape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false, 256);
+borderShape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
 const holePath = new THREE.Path();
-holePath.absarc(0, 0, innerRadius, 0, Math.PI * 2, true, 256);
+holePath.absarc(0, 0, innerRadius, 0, Math.PI * 2, true);
 borderShape.holes.push(holePath);
 
-const extrudeSettings = { depth: borderHeight, bevelEnabled: false };
+const extrudeSettings = { depth: borderHeight, bevelEnabled: false, curveSegments: 256 };
 const borderGeom = new THREE.ExtrudeGeometry(borderShape, extrudeSettings);
 borderGeom.translate(0, 0, -borderHeight / 2);
 
