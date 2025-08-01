@@ -100,7 +100,10 @@ fontLoader.load(fontURL, (font) => {
     for (let i = 1; i <= 12; i++) {
         const angle = (i / 12) * Math.PI * 2;
         const numeralGeometry = new TextGeometry(i.toString(), {
-            font: font, size: numeralSize, height: numeralThickness, curveSegments: 12,
+            font: font,
+            size: numeralSize,
+            depth: numeralThickness, // Changed "height" to "depth"
+            curveSegments: 12,
         });
         numeralGeometry.center();
         const numeral = new THREE.Mesh(numeralGeometry, silverMaterial);
@@ -265,3 +268,6 @@ window.addEventListener('resize', () => {
   updateCameraPosition();
   updateBackgroundSize();
 });
+
+setupTiltControls();
+animate();
