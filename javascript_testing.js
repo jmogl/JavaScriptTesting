@@ -1,3 +1,4 @@
+RR
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -138,14 +139,38 @@ for (let i = 0; i < 60; i++) {
     let markerGeom;
     const markerDepth = 0.5;
 
-    if (i % 5 === 0) {
-        markerGeom = new THREE.BoxGeometry(0.25, 1.0, markerDepth);
-    } else {
-        markerGeom = new THREE.BoxGeometry(0.1, 0.5, markerDepth);
+    // --- MODIFICATION: Settings for the new beveled tick marks ---
+    const extrudeSettings = {
+        depth: markerDepth,
+        bevelEnabled: true,
+        bevelSize: 0.02,
+        bevelThickness: 0.02,
+        bevelSegments: 2,
+    };
+
+    // --- MODIFICATION: Replaced BoxGeometry with a beveled ExtrudeGeometry ---
+    if (i % 5 === 0) { // Hour mark
+        const width = 0.25, height = 1.0;
+        const shape = new THREE.Shape();
+        shape.moveTo(-width / 2, -height / 2);
+        shape.lineTo(width / 2, -height / 2);
+        shape.lineTo(width / 2, height / 2);
+        shape.lineTo(-width / 2, height / 2);
+        shape.closePath();
+        markerGeom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    } else { // Minute mark
+        const width = 0.1, height = 0.5;
+        const shape = new THREE.Shape();
+        shape.moveTo(-width / 2, -height / 2);
+        shape.lineTo(width / 2, -height / 2);
+        shape.lineTo(width / 2, height / 2);
+        shape.lineTo(-width / 2, height / 2);
+        shape.closePath();
+        markerGeom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     }
+    
     const marker = new THREE.Mesh(markerGeom, silverMaterial);
     
-    // --- MODIFICATION: Center of tick mark is now on the clock face plane ---
     const markerZ = -1.0;
     marker.position.set(markerRadius * Math.sin(angle), markerRadius * Math.cos(angle), markerZ);
 
@@ -163,15 +188,23 @@ fontLoader.load(fontURL, (font) => {
     const numeralThickness = (numeralSize / 2) * 1.25;
     for (let i = 1; i <= 12; i++) {
         const angle = (i / 12) * Math.PI * 2;
+        
+        // --- MODIFICATION: Added bevel settings to the TextGeometry ---
         const numeralGeometry = new TextGeometry(i.toString(), {
-            font: font, size: numeralSize, depth: numeralThickness, curveSegments: 12,
+            font: font,
+            size: numeralSize,
+            depth: numeralThickness,
+            curveSegments: 12,
+            bevelEnabled: true,
+            bevelThickness: 0.02,
+            bevelSize: 0.05,
+            bevelSegments: 2
         });
+
         numeralGeometry.center();
         const numeral = new THREE.Mesh(numeralGeometry, silverMaterial);
 
-        // --- MODIFICATION: Center of numeral is now on the clock face plane ---
         const numeralZ = -1.0;
-
         numeral.position.set(numeralRadius * Math.sin(angle), numeralRadius * Math.cos(angle), numeralZ);
         numeral.castShadow = true;
         numeral.receiveShadow = true;
