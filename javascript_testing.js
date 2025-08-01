@@ -1,4 +1,4 @@
-
+rrrrr
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -43,8 +43,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-// --- MODIFICATION: Further reduced exposure ---
-renderer.toneMappingExposure = 0.9;
+// --- MODIFICATION: Reset exposure to 1.0 as we are dimming lights directly ---
+renderer.toneMappingExposure = 1.0;
 document.body.appendChild(renderer.domElement);
 
 // --- Environment Map for Reflections ---
@@ -60,11 +60,11 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
 });
 
 // --- Lighting ---
-// --- MODIFICATION: Further reduced light intensities ---
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
+// --- MODIFICATION: Significantly reduced directional light to soften glare ---
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
 dirLight.castShadow = true;
 dirLight.position.set(10, 15, 35);
 dirLight.shadow.mapSize.set(2048, 2048);
@@ -83,17 +83,17 @@ const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
 
 // --- Background Plane (Darker and Textured) ---
-// --- MODIFICATION: Added envMapIntensity to reduce environmental reflections on the wood ---
+// --- MODIFICATION: Set envMapIntensity to 0 to completely remove environmental reflections ---
 const watchMaterial = new THREE.MeshStandardMaterial({
-  color: 0x111122, 
+  color: 0x111122,
   metalness: 0.0,
-  roughness: 0.8,
-  bumpScale: 0.02,
-  envMapIntensity: 0.2 
+  // Roughness value is now controlled by the roughnessMap below
+  envMapIntensity: 0.0
 });
 
 const textureLoader = new THREE.TextureLoader();
 
+// Load the main wood color texture
 textureLoader.load(
     './textures/laminate_floor_02_diff_4k.jpg',
     (texture) => {
@@ -115,12 +115,13 @@ textureLoader.load(
     }
 );
 
-
+// --- MODIFICATION: Using the second map correctly as a roughnessMap ---
 textureLoader.load('https://threejs.org/examples/textures/roughness_map.jpg', (map) => {
     map.wrapS = THREE.RepeatWrapping;
     map.wrapT = THREE.RepeatWrapping;
     map.repeat.set(4, 4);
-    watchMaterial.bumpMap = map;
+    // This map controls the material's roughness, not its bumpiness
+    watchMaterial.roughnessMap = map;
     watchMaterial.needsUpdate = true;
 });
 
