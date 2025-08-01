@@ -1,4 +1,3 @@
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -40,6 +39,7 @@ if (digitalClock) {
     Object.assign(digitalClock.style, textContainerStyles, {
         bottom: '20px',
         right: '20px',
+        textAlign: 'right' // Force alignment to the right
     });
 }
 
@@ -48,6 +48,7 @@ if (digitalDate) {
     Object.assign(digitalDate.style, textContainerStyles, {
         bottom: '20px',
         left: '20px',
+        textAlign: 'left' // Force alignment to the left
     });
 }
 
@@ -338,6 +339,3 @@ window.addEventListener('resize', () => {
   updateCameraPosition();
   updateBackgroundSize();
 });
-
-setupTiltControls();
-animate();
