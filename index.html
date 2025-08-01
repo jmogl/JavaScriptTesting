@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS_Testing</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars */
+        }
+        canvas {
+            display: block;
+        }
+        #digitalClock {
+            position: absolute;
+            bottom: 10%; /* Positioned above the '6' numeral */
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+            z-index: 10;
+        }
+    </style>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
+            "three/examples/jsm/loaders/FontLoader.js": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/loaders/FontLoader.js",
+            "three/examples/jsm/geometries/TextGeometry.js": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/geometries/TextGeometry.js"
+        }
+    }
+    </script>
+
+</head>
+<body>
+    <div id="digitalClock"></div>
+
+    <script type="module" src="javscript_testing.js?v=1.01"></script>
+</body>
+</html>
