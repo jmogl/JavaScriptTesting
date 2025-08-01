@@ -1,3 +1,13 @@
+The current maximum tilt angle is 15 degrees, as defined by the maxTilt variable in the script.
+
+## Code Updates
+Light Position: To fine-tune the shadows, I've moved the light a little further out in the same direction, to the position (30, 20, 30).
+
+Realistic Leather Background: I've replaced the simple bump map on the clock face with a more realistic PBR (Physically Based Rendering) leather texture. This uses a normal map for the detailed grain and a roughness map to create a realistic satin sheen. I've also adjusted the tiling of the texture to ensure the leather grain is scaled appropriately on the clock face.
+
+Final Clock3D.js
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -63,7 +73,8 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 5.0);
 dirLight.castShadow = true;
-dirLight.position.set(15, 20, 15);
+// Final light position adjustment
+dirLight.position.set(30, 20, 30);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
@@ -79,22 +90,34 @@ scene.add(clockUnit);
 const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
 
-// --- Background Plane (Darker and Textured) ---
+// --- Background Plane (Realistic Leather) ---
 const watchMaterial = new THREE.MeshStandardMaterial({
   color: 0x111122,
   metalness: 0.1,
-  roughness: 0.5,
-  bumpScale: 0.02
+  roughness: 1.0, // Roughness is now controlled by the roughnessMap
+  normalScale: new THREE.Vector2(0.3, 0.3) // Controls intensity of the leather grain
 });
 
 const textureLoader = new THREE.TextureLoader();
+
+// Normal map for leather grain
+textureLoader.load('https://threejs.org/examples/textures/leather/Leather_008_normal.jpg', (map) => {
+    map.wrapS = THREE.RepeatWrapping;
+    map.wrapT = THREE.RepeatWrapping;
+    map.repeat.set(2, 2);
+    watchMaterial.normalMap = map;
+    watchMaterial.needsUpdate = true;
+});
+
+// Roughness map for satin sheen
 textureLoader.load('https://threejs.org/examples/textures/roughness_map.jpg', (map) => {
     map.wrapS = THREE.RepeatWrapping;
     map.wrapT = THREE.RepeatWrapping;
     map.repeat.set(4, 4);
-    watchMaterial.bumpMap = map;
+    watchMaterial.roughnessMap = map;
     watchMaterial.needsUpdate = true;
 });
+
 
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
@@ -213,7 +236,6 @@ function updateCameraPosition() {
     camera.position.z = Math.max(distanceForHeight, distanceForWidth);
 }
 
-// Restored this function to scale the background plane correctly
 function updateBackgroundSize() {
     if (!watch || !camera) return;
     const distance = camera.position.z - watch.position.z;
@@ -221,7 +243,6 @@ function updateBackgroundSize() {
     const height = 2 * Math.tan(vFov / 2) * distance;
     const width = height * camera.aspect;
     
-    // Use a safety margin so the plane is always larger than the view
     const safetyMargin = 1.2;
     watch.scale.set(width * safetyMargin, height * safetyMargin, 1);
 }
@@ -269,12 +290,10 @@ function animate() {
   const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
   const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
   
-  // Dampen the rotation to make it feel more natural
   const rotationMultiplier = 0.5;
   const rotY = THREE.MathUtils.degToRad(x) * rotationMultiplier;
   const rotX = THREE.MathUtils.degToRad(y) * rotationMultiplier;
 
-  // Rotate the entire clock unit for a realistic tilt and shadow update
   clockUnit.rotation.y = rotY;
   clockUnit.rotation.x = rotX;
   
