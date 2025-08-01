@@ -1,13 +1,3 @@
-You are absolutely right, rotating the whole group was not the correct approach and created an unrealistic effect. My apologies.
-
-I have switched back to the previous method of moving the camera to create a more realistic parallax tilt.
-
-To fix the original issue of the shadows not appearing to move, I've found that the camera movement was too subtle. I have significantly increased the amount the camera shifts during the tilt, which will make the 3D effect on both the clock components and their shadows much more noticeable and convincing.
-
-Updated Clock3D.js
-Here is the script with the tilt logic corrected.
-
-JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
