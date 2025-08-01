@@ -1,3 +1,11 @@
+Of course. The bump map, which was causing the checkerboard pattern, has been removed in this latest version of the code.
+
+This simplifies the clock face material to its essentials, which should help resolve the white texture issue. The watchMaterial will now only use the wood grain texture for its color and a simple roughness value, without any extra bump or roughness maps.
+
+Here is the complete, updated code for Clock_3D_V1.js.
+
+Clock_3D_V1.js (Final Version)
+JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -42,11 +50,14 @@ renderer.setClearColor(0xcccccc);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+
+// Tone Mapping is REMOVED to prevent it from washing out the texture.
+// renderer.toneMapping = THREE.ACESFilmicToneMapping;
+// renderer.toneMappingExposure = 1.0;
+
 document.body.appendChild(renderer.domElement);
 
-// --- Environment Map for Reflections ---
+// --- Environment Map for Reflections (for metallic parts) ---
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 pmremGenerator.compileEquirectangularShader();
 
@@ -59,15 +70,11 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
 });
 
 // --- Lighting ---
-// --- MODIFICATION: Increased ambient light to be the primary light source ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+// Using only a gentle ambient light.
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
 scene.add(ambientLight);
 
-// --- MODIFICATION: Directional light is removed to prevent specular glare on the wood. ---
-// const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-// dirLight.castShadow = true;
-// dirLight.position.set(10, 15, 35);
-// scene.add(dirLight);
+// Directional light is removed to prevent glare.
 
 // --- Create a master "clockUnit" group to handle tilting ---
 const clockUnit = new THREE.Group();
@@ -77,11 +84,12 @@ const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
 
 // --- Background Plane (Darker and Textured) ---
+// Using the simplest possible PBR setup for the wood.
 const watchMaterial = new THREE.MeshStandardMaterial({
   color: 0x111122,
   metalness: 0.0,
-  roughness: 0.8, // Using a static roughness value
-  envMapIntensity: 0.0
+  roughness: 0.9, // High roughness to prevent glare
+  envMapIntensity: 0.0 // No environmental reflections
 });
 
 const textureLoader = new THREE.TextureLoader();
@@ -108,14 +116,14 @@ textureLoader.load(
     }
 );
 
+// --- MODIFICATION: The bump/roughness map loader that caused the checker pattern has been removed. ---
+
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
 watch.position.z = -1;
-// Shadows are not cast by the removed directional light.
-// watch.receiveShadow = true;
 clockUnit.add(watch);
 
-// --- Metallic Materials ---
+// --- Metallic Materials (Unaffected by the wood material changes) ---
 const silverMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff, metalness: 1.0, roughness: 0.0
 });
@@ -138,7 +146,6 @@ for (let i = 0; i < 60; i++) {
     const marker = new THREE.Mesh(markerGeom, silverMaterial);
     marker.position.set(markerRadius * Math.sin(angle), markerRadius * Math.cos(angle), -1.0 + 0.01 + (markerDepth / 2));
     marker.rotation.z = -angle;
-    // marker.castShadow = true; // No light to cast shadows
     watchGroup.add(marker);
 }
 
@@ -158,7 +165,6 @@ fontLoader.load(fontURL, (font) => {
         const numeral = new THREE.Mesh(numeralGeometry, silverMaterial);
         const backOfNumeral = -1.0 + 0.01 + (numeralThickness / 2);
         numeral.position.set(numeralRadius * Math.sin(angle), numeralRadius * Math.cos(angle), backOfNumeral);
-        // numeral.castShadow = true; // No light to cast shadows
         watchGroup.add(numeral);
     }
 });
@@ -180,7 +186,6 @@ const hourGeometry = new THREE.ExtrudeGeometry(hourHandShape, hourExtrudeSetting
 hourGeometry.translate(0, 0, -hourHandDepth / 2);
 const hourHand = new THREE.Mesh(hourGeometry, silverMaterial);
 hourHand.position.z = -0.04;
-// hourHand.castShadow = true; // No light to cast shadows
 watchGroup.add(hourHand);
 
 const minuteHandShape = new THREE.Shape();
@@ -199,7 +204,6 @@ const minuteGeometry = new THREE.ExtrudeGeometry(minuteHandShape, minuteExtrudeS
 minuteGeometry.translate(0, 0, -minuteHandDepth / 2);
 const minuteHand = new THREE.Mesh(minuteGeometry, brightSilverMaterial);
 minuteHand.position.z = -0.03;
-// minuteHand.castShadow = true; // No light to cast shadows
 watchGroup.add(minuteHand);
 
 const secondGeometry = new THREE.BoxGeometry(0.1, 7.0, 0.3);
@@ -207,7 +211,6 @@ secondGeometry.translate(0, 3.5, 0);
 const secondMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, metalness: 0.8, roughness: 0.4 });
 const secondHand = new THREE.Mesh(secondGeometry, secondMaterial);
 secondHand.position.z = -0.02;
-// secondHand.castShadow = true; // No light to cast shadows
 watchGroup.add(secondHand);
 
 
