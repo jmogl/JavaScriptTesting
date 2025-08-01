@@ -323,3 +323,6 @@ window.addEventListener('resize', () => {
   updateCameraPosition();
   // updateBackgroundSize() is no longer needed
 });
+
+setupTiltControls();
+animate();
