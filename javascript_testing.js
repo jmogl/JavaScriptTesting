@@ -1,11 +1,3 @@
-Excellent, we're almost there. Here is the next adjustment to the light's position.
-
-## Final Adjustment
-Based on your feedback, I've moved the light a little further in the same direction to (25, 20, 25). This should bring the shadow length even closer to the desired look.
-
-Final Clock3D.js
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
