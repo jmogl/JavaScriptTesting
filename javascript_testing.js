@@ -1,7 +1,3 @@
-Of course. Here is the complete code listing for Clock_3D_V1.js with all the modifications to correctly display the wood texture.
-
-Clock_3D_V1.js
-JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
