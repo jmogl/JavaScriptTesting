@@ -34,8 +34,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // --- Scene Setup ---
 const scene = new THREE.Scene();
-// Changed camera FOV from 45 to 35 to reduce perspective distortion
-const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 1, 1000);
+// Changed camera FOV from 35 to 25 to further reduce perspective distortion
+const camera = new THREE.PerspectiveCamera(25, window.innerWidth / window.innerHeight, 1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 
 renderer.setClearColor(0xcccccc);
@@ -47,21 +47,30 @@ renderer.toneMappingExposure = 1.0;
 document.body.appendChild(renderer.domElement);
 
 // --- Environment Map for Reflections ---
+// Using PMREMGenerator for higher quality reflections
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+pmremGenerator.compileEquirectangularShader();
+
 const rgbeLoader = new RGBELoader();
 rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint_powerplant_2_1k.hdr', (texture) => {
-    texture.mapping = THREE.EquirectangularReflectionMapping;
-    scene.environment = texture;
+    const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+    scene.environment = envMap;
+    texture.dispose();
+    pmremGenerator.dispose();
 });
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
 scene.add(ambientLight);
 
+// --- Directional Light (for shadows) ---
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
 dirLight.castShadow = true;
-dirLight.position.set(20, 10, 20);
+dirLight.position.set(10, 20, 10); // Positioned to cast shadows from the top-right
 dirLight.shadow.mapSize.set(2048, 2048);
-camera.add(dirLight);
-scene.add(camera);
+// Added camera to the light to see where shadows are cast from
+// const cameraHelper = new THREE.CameraHelper(dirLight.shadow.camera);
+// scene.add(cameraHelper);
+scene.add(dirLight); // Add light directly to the scene, not the camera
 
 const watchGroup = new THREE.Group();
 scene.add(watchGroup);
@@ -76,12 +85,12 @@ watch.position.z = -1;
 watch.receiveShadow = true;
 scene.add(watch);
 
-// --- Metallic Materials (Updated for mirror reflections) ---
+// --- Metallic Materials ---
 const silverMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff, metalness: 1.0, roughness: 0.0 // Roughness 0.0 for a perfect mirror
+    color: 0xffffff, metalness: 1.0, roughness: 0.0
 });
 const brightSilverMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff, metalness: 1.0, roughness: 0.0 // Roughness 0.0 for a perfect mirror
+    color: 0xffffff, metalness: 1.0, roughness: 0.0
 });
 
 // --- Tick Marks ---
