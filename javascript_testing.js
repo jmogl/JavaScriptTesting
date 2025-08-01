@@ -6,12 +6,12 @@
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 
 // --- Declare UI element variables in the global scope ---
 let digitalDate, digitalClock;
 
 // --- Wait for the DOM to be ready, then create and inject UI elements ---
-// This is the most reliable way to ensure the elements are added correctly.
 window.addEventListener('DOMContentLoaded', () => {
     // 1. Create container elements
     digitalDate = document.createElement('div');
@@ -56,7 +56,21 @@ renderer.setClearColor(0xcccccc);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
+// Configure renderer for better color output
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+
 document.body.appendChild(renderer.domElement);
+
+// --- Environment Map and Reflections ---
+const rgbeLoader = new RGBELoader();
+rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint_powerplant_2_1k.hdr', (texture) => {
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    
+    // Set the scene's background and environment for reflections
+    scene.background = texture;
+    scene.environment = texture;
+});
 
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -78,20 +92,22 @@ scene.add(camera);
 const watchGroup = new THREE.Group();
 scene.add(watchGroup);
 
-const watchMaterial = new THREE.MeshStandardMaterial({
-  color: 0x222244,
-  metalness: 0.6,
-  roughness: 0.3,
+// The old background plane is no longer needed, as scene.background handles it.
+
+// --- Updated Metallic Materials ---
+const silverMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffffff, // White color reflects the environment accurately
+    metalness: 1.0,  // Fully metallic
+    roughness: 0.2   // Slightly rough for a satin-like finish
 });
-const watchGeometry = new THREE.PlaneGeometry(1, 1);
-const watch = new THREE.Mesh(watchGeometry, watchMaterial);
-watch.position.z = -1;
-watch.receiveShadow = true;
-scene.add(watch);
 
-const silverMaterial = new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 1.0, roughness: 0.4 });
-const brightSilverMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1.0, roughness: 0.4 });
+const brightSilverMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    metalness: 1.0,
+    roughness: 0.1 // Smoother for a more polished, chrome-like look
+});
 
+// --- Tick Marks ---
 const markerRadius = 10.0;
 for (let i = 0; i < 60; i++) {
     const angle = (i / 60) * Math.PI * 2;
@@ -107,7 +123,7 @@ for (let i = 0; i < 60; i++) {
     const marker = new THREE.Mesh(markerGeom, silverMaterial);
     marker.position.x = markerRadius * Math.sin(angle);
     marker.position.y = markerRadius * Math.cos(angle);
-    marker.position.z = -1.0 + 0.01 + (markerDepth / 2);
+    marker.position.z = 0.01 + (markerDepth / 2); // Position above the background
     marker.rotation.z = -angle;
     marker.castShadow = true;
     watchGroup.add(marker);
@@ -115,7 +131,7 @@ for (let i = 0; i < 60; i++) {
 
 const fontLoader = new FontLoader();
 const fontURL = 'https://cdn.jsdelivr.net/npm/three@0.166.0/examples/fonts/helvetiker_regular.typeface.json';
-const numeralRadius = 8.075; // Formerly 8.5, reduced by 5%
+const numeralRadius = 8.075; 
 
 fontLoader.load(fontURL, (font) => {
     const numeralSize = 1.5;
@@ -131,7 +147,7 @@ fontLoader.load(fontURL, (font) => {
         });
         numeralGeometry.center();
         const numeral = new THREE.Mesh(numeralGeometry, silverMaterial);
-        const backOfNumeral = -1.0 + 0.01 + (numeralThickness / 2);
+        const backOfNumeral = 0.01 + (numeralThickness / 2);
         numeral.position.set(numeralRadius * Math.sin(angle), numeralRadius * Math.cos(angle), backOfNumeral);
         numeral.castShadow = true;
         numeral.receiveShadow = true;
@@ -139,6 +155,7 @@ fontLoader.load(fontURL, (font) => {
     }
 });
 
+// --- Hour Hand ---
 const hourHandShape = new THREE.Shape();
 const hourHandLength = 4.0;
 const hourHandWidth = 0.6;
@@ -157,6 +174,7 @@ hourHand.castShadow = true;
 hourHand.receiveShadow = true;
 watchGroup.add(hourHand);
 
+// --- Minute Hand ---
 const minuteHandShape = new THREE.Shape();
 const minuteHandLength = 6.0;
 const minuteHandWidth = 0.4;
@@ -175,10 +193,16 @@ minuteHand.castShadow = true;
 minuteHand.receiveShadow = true;
 watchGroup.add(minuteHand);
 
+// --- Second Hand ---
 const secondHeight = 7;
 const secondGeometry = new THREE.BoxGeometry(0.1, secondHeight, 0.3);
 secondGeometry.translate(0, secondHeight / 2, 0);
-const secondMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+// Updated metallic red material
+const secondMaterial = new THREE.MeshStandardMaterial({
+    color: 0xff0000,
+    metalness: 0.8,
+    roughness: 0.4
+});
 const secondHand = new THREE.Mesh(secondGeometry, secondMaterial);
 secondHand.position.z = 2.0;
 secondHand.castShadow = true;
@@ -193,16 +217,8 @@ function updateCameraPosition() {
     camera.position.z = Math.max(distanceForHeight, distanceForWidth);
 }
 
-function updateBackgroundSize() {
-    if (!watch) return;
-    const distance = camera.position.z - watch.position.z;
-    const vFov = THREE.MathUtils.degToRad(camera.fov);
-    const height = 2 * Math.tan(vFov / 2) * distance;
-    const width = height * camera.aspect;
-    
-    const safetyMargin = 1.4;
-    watch.scale.set(width * safetyMargin, height * safetyMargin, 1);
-}
+// This function is no longer needed as the background is part of the scene environment.
+// function updateBackgroundSize() {}
 
 let tiltX = 0, tiltY = 0;
 
@@ -266,10 +282,8 @@ function animate() {
   hourHand.rotation.z   = -THREE.MathUtils.degToRad((hours / 12) * 360);
   
   const pad = (n) => n.toString().padStart(2, '0');
-  // Define the styles for the inner span, which creates the background box
   const spanStyles = `background-color: rgba(0, 0, 0, 0.5); padding: 0.1em 0.3em; border-radius: 4px;`;
 
-  // Check if the elements have been created before trying to update them
   if (digitalClock) {
       const timeString = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(Math.floor(now.getSeconds()))}`;
       digitalClock.innerHTML = `<span style="${spanStyles}">${timeString}</span>`;
@@ -282,7 +296,6 @@ function animate() {
       const dateString = `${month}/${day}/${year}`;
       digitalDate.innerHTML = `<span style="${spanStyles}">${dateString}</span>`;
   }
-
 
   const currentSecond = Math.floor(now.getSeconds());
   if (animate.lastSecond !== currentSecond) {
@@ -298,14 +311,12 @@ function animate() {
 camera.aspect = window.innerWidth / window.innerHeight;
 camera.updateProjectionMatrix();
 updateCameraPosition();
-updateBackgroundSize();
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   updateCameraPosition();
-  updateBackgroundSize();
 });
 
 setupTiltControls();
