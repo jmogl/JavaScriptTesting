@@ -1,3 +1,14 @@
+You are absolutely right, rotating the whole group was not the correct approach and created an unrealistic effect. My apologies.
+
+I have switched back to the previous method of moving the camera to create a more realistic parallax tilt.
+
+To fix the original issue of the shadows not appearing to move, I've found that the camera movement was too subtle. I have significantly increased the amount the camera shifts during the tilt, which will make the 3D effect on both the clock components and their shadows much more noticeable and convincing.
+
+Updated Clock3D.js
+Here is the script with the tilt logic corrected.
+
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -63,7 +74,6 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 5.0);
 dirLight.castShadow = true;
-// Final light position adjustment
 dirLight.position.set(28, 20, 28);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
@@ -263,14 +273,11 @@ function animate() {
   const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
   const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
 
-  // --- NEW: Rotate the clock group instead of moving the camera for the tilt effect ---
-  // This ensures shadows move realistically with the clock components.
-  const rotY = THREE.MathUtils.degToRad(x); // Left/Right tilt (gamma) rotates around Y-axis
-  const rotX = THREE.MathUtils.degToRad(y); // Forward/Back tilt (beta) rotates around X-axis
-  watchGroup.rotation.y = rotY;
-  watchGroup.rotation.x = rotX;
-  
-  // Keep the camera centered
+  // Reverted to moving the camera for a parallax effect
+  // Increased the multiplier to make the effect more pronounced
+  const shiftMultiplier = 0.5; 
+  camera.position.x = -x * shiftMultiplier;
+  camera.position.y = y * shiftMultiplier;
   camera.lookAt(0, 0, 0);
 
   const now = new Date();
