@@ -56,22 +56,18 @@ renderer.setClearColor(0xcccccc);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
-// Configure renderer for better color output
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
-
 document.body.appendChild(renderer.domElement);
 
-// --- Environment Map and Reflections ---
+// --- Environment Map for Reflections ONLY ---
 const rgbeLoader = new RGBELoader();
 rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint_powerplant_2_1k.hdr', (texture) => {
     texture.mapping = THREE.EquirectangularReflectionMapping;
     
-    // Set the scene's background and environment for reflections
-    scene.background = texture;
+    // Use the texture for reflections, but NOT as the visible background.
     scene.environment = texture;
 });
-
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
 scene.add(ambientLight);
@@ -80,34 +76,38 @@ const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
 dirLight.castShadow = true;
 dirLight.position.set(20, 10, 20);
 dirLight.shadow.mapSize.set(2048, 2048);
-dirLight.shadow.camera.left = -15;
-dirLight.shadow.camera.right = 15;
-dirLight.shadow.camera.top = 15;
-dirLight.shadow.camera.bottom = -15;
-dirLight.shadow.bias = -0.0001;
-
 camera.add(dirLight);
 scene.add(camera);
 
 const watchGroup = new THREE.Group();
 scene.add(watchGroup);
 
-// The old background plane is no longer needed, as scene.background handles it.
+// --- Reinstated Dark Blue Background Plane ---
+const watchMaterial = new THREE.MeshStandardMaterial({
+  color: 0x222244,
+  metalness: 0.1, // Slightly metallic to interact with light
+  roughness: 0.8, // Mostly rough surface
+});
+const watchGeometry = new THREE.PlaneGeometry(1, 1);
+const watch = new THREE.Mesh(watchGeometry, watchMaterial);
+watch.position.z = -1; // Position it at the back
+watch.receiveShadow = true;
+scene.add(watch); // Add plane directly to the scene
 
 // --- Updated Metallic Materials ---
 const silverMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff, // White color reflects the environment accurately
-    metalness: 1.0,  // Fully metallic
-    roughness: 0.2   // Slightly rough for a satin-like finish
+    color: 0xffffff,
+    metalness: 1.0,
+    roughness: 0.2
 });
 
 const brightSilverMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     metalness: 1.0,
-    roughness: 0.1 // Smoother for a more polished, chrome-like look
+    roughness: 0.1
 });
 
-// --- Tick Marks ---
+// --- Tick Marks (Positioned relative to the background plane) ---
 const markerRadius = 10.0;
 for (let i = 0; i < 60; i++) {
     const angle = (i / 60) * Math.PI * 2;
@@ -121,9 +121,8 @@ for (let i = 0; i < 60; i++) {
     }
 
     const marker = new THREE.Mesh(markerGeom, silverMaterial);
-    marker.position.x = markerRadius * Math.sin(angle);
-    marker.position.y = markerRadius * Math.cos(angle);
-    marker.position.z = 0.01 + (markerDepth / 2); // Position above the background
+    // Correct Z-position to be in front of the `watch` plane
+    marker.position.set(markerRadius * Math.sin(angle), markerRadius * Math.cos(angle), -1.0 + 0.01 + (markerDepth / 2));
     marker.rotation.z = -angle;
     marker.castShadow = true;
     watchGroup.add(marker);
@@ -147,7 +146,8 @@ fontLoader.load(fontURL, (font) => {
         });
         numeralGeometry.center();
         const numeral = new THREE.Mesh(numeralGeometry, silverMaterial);
-        const backOfNumeral = 0.01 + (numeralThickness / 2);
+        // Correct Z-position to be in front of the `watch` plane
+        const backOfNumeral = -1.0 + 0.01 + (numeralThickness / 2);
         numeral.position.set(numeralRadius * Math.sin(angle), numeralRadius * Math.cos(angle), backOfNumeral);
         numeral.castShadow = true;
         numeral.receiveShadow = true;
@@ -155,70 +155,58 @@ fontLoader.load(fontURL, (font) => {
     }
 });
 
-// --- Hour Hand ---
+// --- Clock Hands ---
 const hourHandShape = new THREE.Shape();
-const hourHandLength = 4.0;
-const hourHandWidth = 0.6;
-const hourHandDepth = 0.4;
-hourHandShape.moveTo(-hourHandWidth / 2, 0);
-hourHandShape.lineTo(hourHandWidth / 2, 0);
-hourHandShape.lineTo(0, hourHandLength);
+hourHandShape.moveTo(-0.3, 0);
+hourHandShape.lineTo(0.3, 0);
+hourHandShape.lineTo(0, 4.0);
 hourHandShape.closePath();
-
-const extrudeSettings = { depth: hourHandDepth, bevelEnabled: false };
-const hourGeometry = new THREE.ExtrudeGeometry(hourHandShape, extrudeSettings);
-hourGeometry.translate(0, 0, -hourHandDepth / 2);
+const hourGeometry = new THREE.ExtrudeGeometry(hourHandShape, { depth: 0.4, bevelEnabled: false });
+hourGeometry.translate(0, 0, -0.2);
 const hourHand = new THREE.Mesh(hourGeometry, silverMaterial);
 hourHand.position.z = 1.8;
 hourHand.castShadow = true;
-hourHand.receiveShadow = true;
 watchGroup.add(hourHand);
 
-// --- Minute Hand ---
 const minuteHandShape = new THREE.Shape();
-const minuteHandLength = 6.0;
-const minuteHandWidth = 0.4;
-const minuteHandDepth = 0.3;
-minuteHandShape.moveTo(-minuteHandWidth / 2, 0);
-minuteHandShape.lineTo(minuteHandWidth / 2, 0);
-minuteHandShape.lineTo(0, minuteHandLength);
+minuteHandShape.moveTo(-0.2, 0);
+minuteHandShape.lineTo(0.2, 0);
+minuteHandShape.lineTo(0, 6.0);
 minuteHandShape.closePath();
-
-const minuteExtrudeSettings = { depth: minuteHandDepth, bevelEnabled: false };
-const minuteGeometry = new THREE.ExtrudeGeometry(minuteHandShape, minuteExtrudeSettings);
-minuteGeometry.translate(0, 0, -minuteHandDepth / 2);
+const minuteGeometry = new THREE.ExtrudeGeometry(minuteHandShape, { depth: 0.3, bevelEnabled: false });
+minuteGeometry.translate(0, 0, -0.15);
 const minuteHand = new THREE.Mesh(minuteGeometry, brightSilverMaterial);
 minuteHand.position.z = 1.9;
 minuteHand.castShadow = true;
-minuteHand.receiveShadow = true;
 watchGroup.add(minuteHand);
 
-// --- Second Hand ---
-const secondHeight = 7;
-const secondGeometry = new THREE.BoxGeometry(0.1, secondHeight, 0.3);
-secondGeometry.translate(0, secondHeight / 2, 0);
-// Updated metallic red material
-const secondMaterial = new THREE.MeshStandardMaterial({
-    color: 0xff0000,
-    metalness: 0.8,
-    roughness: 0.4
-});
+const secondGeometry = new THREE.BoxGeometry(0.1, 7.0, 0.3);
+secondGeometry.translate(0, 3.5, 0);
+const secondMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, metalness: 0.8, roughness: 0.4 });
 const secondHand = new THREE.Mesh(secondGeometry, secondMaterial);
 secondHand.position.z = 2.0;
 secondHand.castShadow = true;
-secondHand.receiveShadow = true;
 watchGroup.add(secondHand);
 
+// --- Utility Functions ---
 function updateCameraPosition() {
     const clockSize = 22;
     const fovInRadians = THREE.MathUtils.degToRad(camera.fov);
-    const distanceForHeight = (clockSize / 2) / Math.tan(fovInRadians / 2);
-    const distanceForWidth = distanceForHeight / camera.aspect;
-    camera.position.z = Math.max(distanceForHeight, distanceForWidth);
+    const distance = (clockSize / 2) / Math.tan(fovInRadians / 2) / camera.aspect;
+    camera.position.z = distance;
 }
 
-// This function is no longer needed as the background is part of the scene environment.
-// function updateBackgroundSize() {}
+// Reinstated function to keep the background plane filling the screen
+function updateBackgroundSize() {
+    if (!watch) return;
+    const distance = camera.position.z - watch.position.z;
+    const vFov = THREE.MathUtils.degToRad(camera.fov);
+    const height = 2 * Math.tan(vFov / 2) * distance;
+    const width = height * camera.aspect;
+    
+    const safetyMargin = 1.4;
+    watch.scale.set(width * safetyMargin, height * safetyMargin, 1);
+}
 
 let tiltX = 0, tiltY = 0;
 
@@ -228,27 +216,23 @@ function handleOrientation(event) {
 }
 
 function setupTiltControls() {
-    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
         const permissionButton = document.createElement('button');
         Object.assign(permissionButton.style, {
             position: 'absolute', top: '50%', left: '50%',
             transform: 'translate(-50%, -50%)', padding: '1em 2em',
             fontSize: '1em', color: 'white', backgroundColor: 'rgba(0,0,0,0.7)',
-            border: '1px solid white', borderRadius: '8px',
-            cursor: 'pointer', zIndex: '1001'
+            border: '1px solid white', borderRadius: '8px', cursor: 'pointer', zIndex: '1001'
         });
         permissionButton.textContent = 'Enable Tilt';
         document.body.appendChild(permissionButton);
-
         permissionButton.addEventListener('click', async () => {
             try {
                 const response = await DeviceOrientationEvent.requestPermission();
                 if (response === 'granted') {
                     window.addEventListener('deviceorientation', handleOrientation);
                 }
-                document.body.removeChild(permissionButton);
-            } catch (error) {
-                console.error("Error requesting orientation permission:", error);
+            } finally {
                 document.body.removeChild(permissionButton);
             }
         });
@@ -260,6 +244,7 @@ function setupTiltControls() {
 const tickSound = new Audio('https://cdn.jsdelivr.net/gh/freebiesupply/sounds/tick.mp3');
 tickSound.volume = 0.2;
 
+// --- Animation Loop ---
 function animate() {
   requestAnimationFrame(animate);
 
@@ -290,10 +275,7 @@ function animate() {
   }
   
   if (digitalDate) {
-      const month = pad(now.getMonth() + 1);
-      const day = pad(now.getDate());
-      const year = now.getFullYear().toString().slice(-2);
-      const dateString = `${month}/${day}/${year}`;
+      const dateString = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear().toString().slice(-2)}`;
       digitalDate.innerHTML = `<span style="${spanStyles}">${dateString}</span>`;
   }
 
@@ -307,16 +289,18 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-// Initial setup calls
+// --- Initial Setup Calls ---
 camera.aspect = window.innerWidth / window.innerHeight;
 camera.updateProjectionMatrix();
 updateCameraPosition();
+updateBackgroundSize(); // Call this on initial load
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   updateCameraPosition();
+  updateBackgroundSize(); // Also call on resize
 });
 
 setupTiltControls();
