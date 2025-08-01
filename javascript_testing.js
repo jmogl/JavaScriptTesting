@@ -1,12 +1,3 @@
-It seems your network environment is blocking all external image links. Loading the texture from a local file is the best and most reliable solution.
-
-## Code Update
-I've updated the script to load your local wood texture from the path textures/laminate_floor_02_diff_4k.jpg. I've also kept the material properties set for a polished, glossy finish suitable for a laminate floor.
-
-Important: For the local texture to load correctly, you must run your project from a local web server. Simply opening the index.html file directly in the browser will cause a security error. If you are using Visual Studio Code, the "Live Server" extension is an excellent tool for this.
-
-Final Clock3D.js
-JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
