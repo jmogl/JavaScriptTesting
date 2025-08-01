@@ -75,10 +75,18 @@ const brightSilverMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, m
 // Increased radius to place tick marks outside the numerals.
 const markerRadius = 10.0;
 for (let i = 0; i < 60; i++) {
-    if (i % 5 === 0) continue;
     const angle = (i / 60) * Math.PI * 2;
+    let markerGeom;
     const markerDepth = 0.5;
-    const markerGeom = new THREE.BoxGeometry(0.1, 0.5, markerDepth);
+
+    if (i % 5 === 0) {
+        // Create a larger, thicker marker for the hours.
+        markerGeom = new THREE.BoxGeometry(0.25, 1.0, markerDepth);
+    } else {
+        // Use the original, smaller marker for the minutes.
+        markerGeom = new THREE.BoxGeometry(0.1, 0.5, markerDepth);
+    }
+
     const marker = new THREE.Mesh(markerGeom, silverMaterial);
     marker.position.x = markerRadius * Math.sin(angle);
     marker.position.y = markerRadius * Math.cos(angle);
@@ -268,6 +276,3 @@ window.addEventListener('resize', () => {
   updateCameraPosition();
   updateBackgroundSize();
 });
-
-setupTiltControls();
-animate();
