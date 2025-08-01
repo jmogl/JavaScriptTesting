@@ -24,7 +24,8 @@ if (digitalClock) {
     // The container DIV is now only for positioning and font styles.
     Object.assign(digitalClock.style, {
         position: 'absolute',
-        top: '70%',
+        // Increased from 70% to move the clock below the '6' numeral.
+        top: '92%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
         textAlign: 'center', // This will center the inner span
