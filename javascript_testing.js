@@ -20,40 +20,43 @@ document.body.appendChild(renderer.domElement);
 
 // --- Get and style the UI elements ---
 
-// Get the DOM elements
+// Get the DOM elements from the new HTML structure
+const uiContainer = document.getElementById('ui-container');
 const digitalClock = document.getElementById('digitalClock');
 const digitalDate = document.getElementById('digitalDate');
 
-// Style and position the digital date in the lower left
-if (digitalDate) {
-    Object.assign(digitalDate.style, {
+// Style the main container using Flexbox for robust positioning
+if (uiContainer) {
+    Object.assign(uiContainer.style, {
         position: 'absolute',
         bottom: '20px',
         left: '20px',
-        color: 'white',
-        fontFamily: '"Courier New", Courier, monospace',
-        fontSize: '1.75em',
-        textShadow: '0 0 8px black',
-        zIndex: '10'
+        right: '20px',
+        zIndex: '10',
+        display: 'flex',
+        justifyContent: 'space-between', // Pushes children to opposite ends
+        pointerEvents: 'none' // Allows clicking through the container
     });
 }
 
-// Style and position the digital clock in the lower right
+// Define the shared visual style for both date and time
+const textStyles = {
+    color: 'white',
+    fontFamily: '"Courier New", Courier, monospace',
+    fontSize: '1.75em',
+    textShadow: '0 0 8px black',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    padding: '0.1em 0.3em',
+    borderRadius: '4px',
+    pointerEvents: 'auto' // Re-enable pointer events for the text itself if needed
+};
+
+// Apply the shared styles to both elements to ensure they match
+if (digitalDate) {
+    Object.assign(digitalDate.style, textStyles);
+}
 if (digitalClock) {
-    Object.assign(digitalClock.style, {
-        position: 'absolute',
-        bottom: '20px',
-        // By setting left: 0 and right: 20px, we define a container
-        // that spans the screen, allowing textAlign to work reliably.
-        left: '0',
-        right: '20px',
-        textAlign: 'right', // Force alignment of content to the right
-        color: 'white',
-        fontFamily: '"Courier New", Courier, monospace',
-        fontSize: '1.75em',
-        textShadow: '0 0 8px black',
-        zIndex: '10'
-    });
+    Object.assign(digitalClock.style, textStyles);
 }
 
 
@@ -301,12 +304,11 @@ function animate() {
   hourHand.rotation.z   = -THREE.MathUtils.degToRad((hours / 12) * 360);
   
   const pad = (n) => n.toString().padStart(2, '0');
-  const spanStyles = `style="background-color: rgba(0, 0, 0, 0.5); padding: 0.1em 0.3em; border-radius: 4px;"`;
 
   // Update digital clock text
   if (digitalClock) {
     const timeString = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(Math.floor(now.getSeconds()))}`;
-    digitalClock.innerHTML = `<span ${spanStyles}>${timeString}</span>`;
+    digitalClock.textContent = timeString;
   }
   
   // Update digital date text
@@ -315,7 +317,7 @@ function animate() {
       const day = pad(now.getDate());
       const year = now.getFullYear().toString().slice(-2); // Get last two digits
       const dateString = `${month}/${day}/${year}`;
-      digitalDate.innerHTML = `<span ${spanStyles}>${dateString}</span>`;
+      digitalDate.textContent = dateString;
   }
 
   const currentSecond = Math.floor(now.getSeconds());
