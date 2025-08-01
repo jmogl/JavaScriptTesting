@@ -1,11 +1,4 @@
-Of course. The bump map, which was causing the checkerboard pattern, has been removed in this latest version of the code.
-
-This simplifies the clock face material to its essentials, which should help resolve the white texture issue. The watchMaterial will now only use the wood grain texture for its color and a simple roughness value, without any extra bump or roughness maps.
-
-Here is the complete, updated code for Clock_3D_V1.js.
-
-Clock_3D_V1.js (Final Version)
-JavaScript
+eeee
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -49,12 +42,8 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setClearColor(0xcccccc);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
-renderer.shadowMap.enabled = true;
 
-// Tone Mapping is REMOVED to prevent it from washing out the texture.
-// renderer.toneMapping = THREE.ACESFilmicToneMapping;
-// renderer.toneMappingExposure = 1.0;
-
+// Tone Mapping remains removed to ensure a direct render.
 document.body.appendChild(renderer.domElement);
 
 // --- Environment Map for Reflections (for metallic parts) ---
@@ -70,11 +59,15 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
 });
 
 // --- Lighting ---
-// Using only a gentle ambient light.
-const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+// --- MODIFICATION: Using an extremely dim ambient light. ---
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.25);
 scene.add(ambientLight);
 
-// Directional light is removed to prevent glare.
+// --- MODIFICATION: Re-introducing a faint directional light to give some shape. ---
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.1);
+dirLight.position.set(10, 15, 35);
+scene.add(dirLight);
+
 
 // --- Create a master "clockUnit" group to handle tilting ---
 const clockUnit = new THREE.Group();
@@ -84,12 +77,11 @@ const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
 
 // --- Background Plane (Darker and Textured) ---
-// Using the simplest possible PBR setup for the wood.
 const watchMaterial = new THREE.MeshStandardMaterial({
   color: 0x111122,
   metalness: 0.0,
-  roughness: 0.9, // High roughness to prevent glare
-  envMapIntensity: 0.0 // No environmental reflections
+  roughness: 0.9,
+  envMapIntensity: 0.0
 });
 
 const textureLoader = new THREE.TextureLoader();
@@ -115,8 +107,6 @@ textureLoader.load(
         console.error('An error happened loading the wood texture. Using fallback color.');
     }
 );
-
-// --- MODIFICATION: The bump/roughness map loader that caused the checker pattern has been removed. ---
 
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
