@@ -1,12 +1,3 @@
-Of course. Here are the final adjustments to the light and the leather texture.
-
-## Final Adjustments
-Light Position: I've moved the light a little further out one last time to the position (40, 20, 40) to finalize the shadow length.
-
-Single Leather Texture: You are right, tiling the texture created an unnatural pattern. To fix this, I have changed the texture mapping mode. Instead of repeating the leather texture in a grid, the script now stretches a single, high-quality leather texture across the entire clock face. This will eliminate the "checkerboard" or "weave" pattern and create the realistic look of a solid piece of leather.
-
-Final Clock3D.js
-JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
