@@ -63,8 +63,8 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 4.0);
 dirLight.castShadow = true;
-// Positioned light directly overhead for the shortest possible shadows
-dirLight.position.set(0, 20, 0);
+// Positioned light at a high, slightly off-center angle for short, soft shadows
+dirLight.position.set(2.5, 20, 2.5);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
@@ -76,9 +76,11 @@ scene.add(dirLight);
 const watchGroup = new THREE.Group();
 scene.add(watchGroup);
 
-// --- Background Plane ---
-const watchMaterial = new THREE.MeshLambertMaterial({
+// --- Background Plane (with slight reflectivity) ---
+const watchMaterial = new THREE.MeshStandardMaterial({
   color: 0x222244,
+  metalness: 0.1,
+  roughness: 0.5
 });
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
