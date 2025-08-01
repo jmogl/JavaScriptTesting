@@ -1,3 +1,4 @@
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -63,8 +64,8 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 5.0);
 dirLight.castShadow = true;
-// Positioned light at a classic 3/4 angle for visible, short shadows
-dirLight.position.set(10, 20, 10);
+// Moved light closer to the center for shorter shadows
+dirLight.position.set(5, 20, 5);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
