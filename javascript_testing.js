@@ -42,7 +42,6 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-// Increased exposure for a brighter scene
 renderer.toneMappingExposure = 1.4;
 document.body.appendChild(renderer.domElement);
 
@@ -58,14 +57,14 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
     pmremGenerator.dispose();
 });
 
-// --- Lighting (Increased Intensity) ---
+// --- Lighting ---
 const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
 scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 4.0);
 dirLight.castShadow = true;
-// Moved light closer and higher to shorten shadows
-dirLight.position.set(2, 8, 2);
+// Positioned light directly overhead for the shortest possible shadows
+dirLight.position.set(0, 20, 0);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
