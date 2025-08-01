@@ -1,3 +1,4 @@
+errrr
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -99,8 +100,9 @@ for (let i = 0; i < 60; i++) {
 const fontLoader = new FontLoader();
 const fontURL = 'https://cdn.jsdelivr.net/npm/three@0.166.0/examples/fonts/helvetiker_regular.typeface.json';
 
+// This is the radius used for positioning the clock numerals.
+const numeralRadius = 8.5;
 fontLoader.load(fontURL, (font) => {
-    const numeralRadius = 8.5;
     const numeralSize = 1.5;
     const numeralThickness = (numeralSize / 2) * 1.25;
 
@@ -236,7 +238,8 @@ function setupTiltControls() {
                 }
                 // Remove the button after the user has responded.
                 document.body.removeChild(permissionButton);
-            } catch (error) {
+            } catch (error)
+{
                 console.error("Error requesting orientation permission:", error);
                 document.body.removeChild(permissionButton);
             }
@@ -257,8 +260,9 @@ tickSound.volume = 0.2;
 function updateDigitalClockPosition() {
     if (!digitalClock) return;
 
-    // Position the anchor halfway between the clock center (y=0) and the '6' numeral (y=-8.5)
-    const targetPosition3D = new THREE.Vector3(0, -4.25, 0);
+    // Position the anchor halfway between the clock center (y=0) and the '6' numeral (y=-8.5).
+    // The numeralRadius is 8.5, so the new y-coordinate is -4.25.
+    const targetPosition3D = new THREE.Vector3(0, -numeralRadius / 2, 0);
 
     // Project the 3D point to Normalized Device Coordinates (NDC).
     const projectedPosition = targetPosition3D.clone().project(camera);
@@ -306,8 +310,8 @@ function animate() {
     digitalClock.innerHTML = `<span style="background-color: rgba(0, 0, 0, 0.5); padding: 0.1em 0.3em; border-radius: 4px;">${timeString}</span>`;
   }
   
-  // The digital clock's position is no longer updated in the animation loop.
-  // This makes it stationary and unaffected by the camera's tilt-based movement.
+  // The digital clock's position is intentionally not updated here to keep it
+  // stationary relative to the window, regardless of the camera's tilt-based movement.
 
   const currentSecond = Math.floor(now.getSeconds());
   if (animate.lastSecond !== currentSecond) {
