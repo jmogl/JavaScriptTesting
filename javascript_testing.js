@@ -1,3 +1,5 @@
+eeee
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -58,12 +60,13 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
 });
 
 // --- Lighting ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 5.0);
+const dirLight = new THREE.DirectionalLight(0xffffff, 3.5); // Slightly reduced intensity for new background
 dirLight.castShadow = true;
-dirLight.position.set(28, 20, 28);
+// Positioned light at a 5-degree angle from vertical for very short, visible shadows
+dirLight.position.set(1.25, 20, 1.25);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
@@ -72,48 +75,32 @@ dirLight.shadow.camera.bottom = -15;
 dirLight.shadow.bias = -0.0001;
 scene.add(dirLight);
 
-// --- Create a master "clockUnit" group to handle tilting ---
-const clockUnit = new THREE.Group();
-scene.add(clockUnit);
-
 const watchGroup = new THREE.Group();
-clockUnit.add(watchGroup);
+scene.add(watchGroup);
 
-// --- Background Plane (Local Wood Texture) ---
+// --- Background Plane (Darker and Textured) ---
 const watchMaterial = new THREE.MeshStandardMaterial({
-  color: 0xffffff,
-  metalness: 0.0,
-  roughness: 0.2,
+  color: 0x111122, // Darker blue
+  metalness: 0.1,
+  roughness: 0.5,
+  bumpScale: 0.005 // Controls intensity of the texture
 });
 
+// Add bump map texture for a rough surface feel
 const textureLoader = new THREE.TextureLoader();
-textureLoader.load(
-    // URL of the texture
-    'textures/laminate_floor_02_diff_4k.jpg', 
-    
-    // onLoad callback
-    (map) => {
-        map.wrapS = THREE.RepeatWrapping;
-        map.wrapT = THREE.RepeatWrapping;
-        map.repeat.set(16, 16);
-        watchMaterial.map = map;
-        watchMaterial.needsUpdate = true;
-    },
-    
-    // onProgress callback (undefined)
-    undefined,
-
-    // onError callback
-    (err) => {
-        console.error('Failed to load the clock face texture. Make sure the file exists at "textures/laminate_floor_02_diff_4k.jpg" and you are running a local server.');
-    }
-);
+textureLoader.load('https://threejs.org/examples/textures/roughness_map.jpg', (map) => {
+    map.wrapS = THREE.RepeatWrapping;
+    map.wrapT = THREE.RepeatWrapping;
+    map.repeat.set(4, 4);
+    watchMaterial.bumpMap = map;
+    watchMaterial.needsUpdate = true;
+});
 
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
 watch.position.z = -1;
 watch.receiveShadow = true;
-clockUnit.add(watch);
+scene.add(watch);
 
 // --- Metallic Materials ---
 const silverMaterial = new THREE.MeshStandardMaterial({
@@ -216,24 +203,17 @@ watchGroup.add(secondHand);
 function updateCameraPosition() {
     const clockSize = 22;
     const fovInRadians = THREE.MathUtils.degToRad(camera.fov);
-    
-    const distanceForHeight = (clockSize / 2) / Math.tan(fovInRadians / 2);
-    
-    const width = clockSize;
-    const cameraWidth = width / camera.aspect;
-    const distanceForWidth = (cameraWidth / 2) / Math.tan(fovInRadians / 2);
-
-    camera.position.z = Math.max(distanceForHeight, distanceForWidth);
+    const distance = (clockSize / 2) / Math.tan(fovInRadians / 2);
+    camera.position.z = distance;
 }
 
 function updateBackgroundSize() {
-    if (!watch || !camera) return;
+    if (!watch) return;
     const distance = camera.position.z - watch.position.z;
     const vFov = THREE.MathUtils.degToRad(camera.fov);
     const height = 2 * Math.tan(vFov / 2) * distance;
     const width = height * camera.aspect;
-    
-    const safetyMargin = 1.2;
+    const safetyMargin = 1.4;
     watch.scale.set(width * safetyMargin, height * safetyMargin, 1);
 }
 
@@ -279,14 +259,10 @@ function animate() {
   const maxTilt = 15;
   const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
   const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
-  
-  const rotationMultiplier = 0.5;
-  const rotY = THREE.MathUtils.degToRad(x) * rotationMultiplier;
-  const rotX = THREE.MathUtils.degToRad(y) * rotationMultiplier;
 
-  clockUnit.rotation.y = rotY;
-  clockUnit.rotation.x = rotX;
-  
+  const shiftMultiplier = 0.2;
+  camera.position.x = -x * shiftMultiplier;
+  camera.position.y = y * shiftMultiplier;
   camera.lookAt(0, 0, 0);
 
   const now = new Date();
