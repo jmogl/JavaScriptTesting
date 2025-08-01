@@ -179,6 +179,7 @@ for (let i = 0; i < 60; i++) {
 }
 
 // --- Border Wall ---
+const borderMaterial = new THREE.MeshStandardMaterial({ color: 0x00008B });
 // Build a fixed wooden bezel that stays with the face but still casts shadows
 
 const borderThickness = 1.0; // radial thickness of rim
@@ -188,16 +189,16 @@ const outerRadius = markerRadius + borderThickness;
 const innerRadius = markerRadius;
 
 const borderShape = new THREE.Shape();
-borderShape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
+borderShape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false, 64);
 const holePath = new THREE.Path();
-holePath.absarc(0, 0, innerRadius, 0, Math.PI * 2, true);
+holePath.absarc(0, 0, innerRadius, 0, Math.PI * 2, true, 64);
 borderShape.holes.push(holePath);
 
 const extrudeSettings = { depth: borderHeight, bevelEnabled: false };
 const borderGeom = new THREE.ExtrudeGeometry(borderShape, extrudeSettings);
 borderGeom.translate(0, 0, -borderHeight / 2);
 
-const borderMesh = new THREE.Mesh(borderGeom, watchMaterial);
+const borderMesh = new THREE.Mesh(borderGeom, borderMaterial);
 borderMesh.castShadow = true;
 borderMesh.receiveShadow = true;
 borderMesh.position.z = watch.position.z;
@@ -419,4 +420,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
