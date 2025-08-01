@@ -63,8 +63,8 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
 dirLight.castShadow = true;
-// Raised light to a much higher angle (Y=50) for very short shadows
-dirLight.position.set(5, 50, 5);
+// Adjusted light position to a balanced angle
+dirLight.position.set(10, 20, 10);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
@@ -151,7 +151,7 @@ const hourExtrudeSettings = {
 const hourGeometry = new THREE.ExtrudeGeometry(hourHandShape, hourExtrudeSettings);
 hourGeometry.translate(0, 0, -hourHandDepth / 2);
 const hourHand = new THREE.Mesh(hourGeometry, silverMaterial);
-hourHand.position.z = 0.9;
+hourHand.position.z = 0.02; // Set to user-specified height
 hourHand.castShadow = true;
 watchGroup.add(hourHand);
 
@@ -170,7 +170,7 @@ const minuteExtrudeSettings = {
 const minuteGeometry = new THREE.ExtrudeGeometry(minuteHandShape, minuteExtrudeSettings);
 minuteGeometry.translate(0, 0, -minuteHandDepth / 2);
 const minuteHand = new THREE.Mesh(minuteGeometry, brightSilverMaterial);
-minuteHand.position.z = 1.0;
+minuteHand.position.z = 0.03; // Set to user-specified height
 minuteHand.castShadow = true;
 watchGroup.add(minuteHand);
 
@@ -178,7 +178,7 @@ const secondGeometry = new THREE.BoxGeometry(0.1, 7.0, 0.3);
 secondGeometry.translate(0, 3.5, 0);
 const secondMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, metalness: 0.8, roughness: 0.4 });
 const secondHand = new THREE.Mesh(secondGeometry, secondMaterial);
-secondHand.position.z = 1.1;
+secondHand.position.z = 0.04; // Set to user-specified height
 secondHand.castShadow = true;
 watchGroup.add(secondHand);
 
