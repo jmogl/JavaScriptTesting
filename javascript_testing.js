@@ -1,4 +1,3 @@
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -65,7 +64,6 @@ scene.add(dirLight);
 const clockUnit = new THREE.Group();
 scene.add(clockUnit);
 
-// --- MODIFICATION: Lower the entire clock assembly ---
 clockUnit.position.z = -1;
 
 const watchGroup = new THREE.Group();
@@ -258,7 +256,7 @@ secondHand.castShadow = true;
 watchGroup.add(secondHand);
 
 
-// --- MODIFICATION: Border Wall Creation ---
+// --- Border Wall Creation ---
 const wallGroup = new THREE.Group();
 scene.add(wallGroup);
 
@@ -266,11 +264,9 @@ function buildWalls() {
     // Clear existing walls and free memory
     wallGroup.children.forEach(child => {
         if (child.geometry) child.geometry.dispose();
-        // Material is shared, so we don't dispose it here
     });
     wallGroup.clear();
 
-    // Get the viewport dimensions at the distance of the clock face
     if (!watch || !camera) return;
     const distance = camera.position.z - (watch.position.z + clockUnit.position.z);
     const vFov = THREE.MathUtils.degToRad(camera.fov);
@@ -278,15 +274,16 @@ function buildWalls() {
     const viewWidth = viewHeight * camera.aspect;
 
     // Wall properties
-    const wallHeight = 1.0; // Extrusion depth along Z-axis
+    const wallHeight = 1.0; 
     const wallThickness = 0.4;
-    const wallBaseZ = -2.0; // New base Z for the clock face and walls
+    // --- MODIFICATION: Lowered the wall base by 0.1 ---
+    const wallBaseZ = -2.1; 
 
     const wallMaterial = new THREE.MeshStandardMaterial({
         color: 0xff0000,
         metalness: 0.8,
         roughness: 0.1,
-        envMap: silverMaterial.envMap // Reuse the envmap for reflections
+        envMap: silverMaterial.envMap 
     });
 
     const wallExtrudeSettings = {
@@ -367,7 +364,6 @@ function updateCameraPosition() {
 
 function updateBackgroundSize() {
     if (!watch || !camera) return;
-    // Account for the lowered clockUnit position when calculating distance
     const distance = camera.position.z - (watch.position.z + clockUnit.position.z);
     const vFov = THREE.MathUtils.degToRad(camera.fov);
     const height = 2 * Math.tan(vFov / 2) * distance;
@@ -475,7 +471,7 @@ camera.aspect = window.innerWidth / window.innerHeight;
 camera.updateProjectionMatrix();
 updateCameraPosition();
 updateBackgroundSize();
-buildWalls(); // Initial wall build
+buildWalls(); 
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -483,7 +479,7 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   updateCameraPosition();
   updateBackgroundSize();
-  buildWalls(); // Rebuild walls on resize
+  buildWalls();
 });
 
 setupTiltControls();
