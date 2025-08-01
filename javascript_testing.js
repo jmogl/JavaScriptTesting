@@ -1,3 +1,4 @@
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -61,10 +62,10 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
 const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 4.0);
+const dirLight = new THREE.DirectionalLight(0xffffff, 3.5); // Slightly reduced intensity for new background
 dirLight.castShadow = true;
-// Positioned light almost directly overhead for the shortest possible visible shadows
-dirLight.position.set(0.1, 20, 0.1);
+// Positioned light at a 5-degree angle from vertical for very short, visible shadows
+dirLight.position.set(1.25, 20, 1.25);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
@@ -76,12 +77,24 @@ scene.add(dirLight);
 const watchGroup = new THREE.Group();
 scene.add(watchGroup);
 
-// --- Background Plane (with slight reflectivity) ---
+// --- Background Plane (Darker and Textured) ---
 const watchMaterial = new THREE.MeshStandardMaterial({
-  color: 0x222244,
+  color: 0x111122, // Darker blue
   metalness: 0.1,
-  roughness: 0.5
+  roughness: 0.5,
+  bumpScale: 0.005 // Controls intensity of the texture
 });
+
+// Add bump map texture for a rough surface feel
+const textureLoader = new THREE.TextureLoader();
+textureLoader.load('https://threejs.org/examples/textures/roughness_map.jpg', (map) => {
+    map.wrapS = THREE.RepeatWrapping;
+    map.wrapT = THREE.RepeatWrapping;
+    map.repeat.set(4, 4);
+    watchMaterial.bumpMap = map;
+    watchMaterial.needsUpdate = true;
+});
+
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
 watch.position.z = -1;
