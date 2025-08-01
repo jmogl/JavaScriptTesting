@@ -1,13 +1,3 @@
-The current maximum tilt angle is 15 degrees, as defined by the maxTilt variable in the script.
-
-## Code Updates
-Light Position: To fine-tune the shadows, I've moved the light a little further out in the same direction, to the position (30, 20, 30).
-
-Realistic Leather Background: I've replaced the simple bump map on the clock face with a more realistic PBR (Physically Based Rendering) leather texture. This uses a normal map for the detailed grain and a roughness map to create a realistic satin sheen. I've also adjusted the tiling of the texture to ensure the leather grain is scaled appropriately on the clock face.
-
-Final Clock3D.js
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
