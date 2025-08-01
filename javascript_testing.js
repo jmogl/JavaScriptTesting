@@ -42,7 +42,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.2;
+// Increased exposure for a brighter scene
+renderer.toneMappingExposure = 1.3;
 document.body.appendChild(renderer.domElement);
 
 // --- Environment Map for Reflections ---
@@ -57,14 +58,14 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
     pmremGenerator.dispose();
 });
 
-// --- Lighting ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+// --- Lighting (Increased Intensity) ---
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+const dirLight = new THREE.DirectionalLight(0xffffff, 3.0);
 dirLight.castShadow = true;
-// Adjusted light position to a balanced angle
-dirLight.position.set(10, 20, 10);
+// Moved light closer to the center to shorten shadows
+dirLight.position.set(5, 20, 5);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
@@ -151,7 +152,7 @@ const hourExtrudeSettings = {
 const hourGeometry = new THREE.ExtrudeGeometry(hourHandShape, hourExtrudeSettings);
 hourGeometry.translate(0, 0, -hourHandDepth / 2);
 const hourHand = new THREE.Mesh(hourGeometry, silverMaterial);
-hourHand.position.z = 0.02; // Set to user-specified height
+hourHand.position.z = -0.04; // Set to user-specified height
 hourHand.castShadow = true;
 watchGroup.add(hourHand);
 
@@ -170,7 +171,7 @@ const minuteExtrudeSettings = {
 const minuteGeometry = new THREE.ExtrudeGeometry(minuteHandShape, minuteExtrudeSettings);
 minuteGeometry.translate(0, 0, -minuteHandDepth / 2);
 const minuteHand = new THREE.Mesh(minuteGeometry, brightSilverMaterial);
-minuteHand.position.z = 0.03; // Set to user-specified height
+minuteHand.position.z = -0.03; // Set to user-specified height
 minuteHand.castShadow = true;
 watchGroup.add(minuteHand);
 
@@ -178,7 +179,7 @@ const secondGeometry = new THREE.BoxGeometry(0.1, 7.0, 0.3);
 secondGeometry.translate(0, 3.5, 0);
 const secondMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, metalness: 0.8, roughness: 0.4 });
 const secondHand = new THREE.Mesh(secondGeometry, secondMaterial);
-secondHand.position.z = 0.04; // Set to user-specified height
+secondHand.position.z = -0.02; // Set to user-specified height
 secondHand.castShadow = true;
 watchGroup.add(secondHand);
 
