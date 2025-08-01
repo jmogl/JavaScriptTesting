@@ -3,6 +3,32 @@
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 7/31/25
 
+const minuteHandShape = new THREE.Shape();
+const minuteHandLength = 6.0;
+const minuteHandWidth = 0.4;
+const minuteHandDepth = 0.3;
+minuteHandShape.moveTo(-minuteHandWidth / 2, 0);
+minuteHandShape.lineTo(minuteHandWidth / 2, 0);
+minuteHandShape.lineTo(0, minuteHandLength);
+minuteHandShape.closePath();
+
+const minuteExtrudeSettings = {
+    depth: minuteHandDepth,
+    bevelEnabled: false,
+};
+const minuteGeometry = new THREE.ExtrudeGeometry(minuteHandShape, minuteExtrudeSettings);
+// Center the hand's depth on its z-position
+minuteGeometry.translate(0, 0, -minuteHandDepth / 2);
+const minuteHand = new THREE.Mesh(minuteGeometry, brightSilverMaterial);
+minuteHand.position.z = 1.9;
+minuteHand.castShadow = true;
+minuteHand.receiveShadow = true;
+watchGroup.add(minuteHand);
+Complete Updated File
+For your convenience, here is the full, updated JavaScript file.
+
+JavaScript
+
 // The import statements are now the simple, original ones.
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -124,28 +150,53 @@ fontLoader.load(fontURL, (font) => {
     }
 });
 
-const hourHeight = 4;
-// Use a ConeGeometry with 4 segments to create a pyramid shape for the hour hand.
-const hourGeometry = new THREE.ConeGeometry(0.3, hourHeight, 4);
-// Rotate the pyramid so a flat side faces up at the 12 o'clock position.
-hourGeometry.rotateZ(Math.PI / 4);
-// Move the pivot point to the base of the hand.
-hourGeometry.translate(0, hourHeight / 2, 0);
+// --- Hour Hand ---
+const hourHandShape = new THREE.Shape();
+const hourHandLength = 4.0;
+const hourHandWidth = 0.6;
+const hourHandDepth = 0.4;
+hourHandShape.moveTo(-hourHandWidth / 2, 0);
+hourHandShape.lineTo(hourHandWidth / 2, 0);
+hourHandShape.lineTo(0, hourHandLength);
+hourHandShape.closePath();
+
+const extrudeSettings = {
+    depth: hourHandDepth,
+    bevelEnabled: false,
+};
+const hourGeometry = new THREE.ExtrudeGeometry(hourHandShape, extrudeSettings);
+// Center the hand's depth on its z-position
+hourGeometry.translate(0, 0, -hourHandDepth / 2);
 const hourHand = new THREE.Mesh(hourGeometry, silverMaterial);
 hourHand.position.z = 1.8;
 hourHand.castShadow = true;
 hourHand.receiveShadow = true;
 watchGroup.add(hourHand);
 
-const minuteHeight = 6;
-const minuteGeometry = new THREE.BoxGeometry(0.3, minuteHeight, 0.4);
-minuteGeometry.translate(0, minuteHeight / 2, 0);
+// --- Minute Hand ---
+const minuteHandShape = new THREE.Shape();
+const minuteHandLength = 6.0;
+const minuteHandWidth = 0.4;
+const minuteHandDepth = 0.3;
+minuteHandShape.moveTo(-minuteHandWidth / 2, 0);
+minuteHandShape.lineTo(minuteHandWidth / 2, 0);
+minuteHandShape.lineTo(0, minuteHandLength);
+minuteHandShape.closePath();
+
+const minuteExtrudeSettings = {
+    depth: minuteHandDepth,
+    bevelEnabled: false,
+};
+const minuteGeometry = new THREE.ExtrudeGeometry(minuteHandShape, minuteExtrudeSettings);
+// Center the hand's depth on its z-position
+minuteGeometry.translate(0, 0, -minuteHandDepth / 2);
 const minuteHand = new THREE.Mesh(minuteGeometry, brightSilverMaterial);
 minuteHand.position.z = 1.9;
 minuteHand.castShadow = true;
 minuteHand.receiveShadow = true;
 watchGroup.add(minuteHand);
 
+// --- Second Hand ---
 const secondHeight = 7;
 const secondGeometry = new THREE.BoxGeometry(0.1, secondHeight, 0.3);
 secondGeometry.translate(0, secondHeight / 2, 0);
