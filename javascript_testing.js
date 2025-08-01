@@ -1,3 +1,4 @@
+RRRR
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -41,32 +42,27 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setClearColor(0xcccccc);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
-
-// Tone Mapping remains removed to ensure a direct render.
+renderer.shadowMap.enabled = true;
+// Restore Tone Mapping for a nicer look now that the brightness issue is solved.
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
 document.body.appendChild(renderer.domElement);
 
-// --- Environment Map for Reflections (for metallic parts) ---
-const pmremGenerator = new THREE.PMREMGenerator(renderer);
-pmremGenerator.compileEquirectangularShader();
-
-const rgbeLoader = new RGBELoader();
-rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint_powerplant_2_1k.hdr', (texture) => {
-    const envMap = pmremGenerator.fromEquirectangular(texture).texture;
-    scene.environment = envMap;
-    texture.dispose();
-    pmremGenerator.dispose();
-});
-
 // --- Lighting ---
-// --- MODIFICATION: Using an extremely dim ambient light. ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.25);
+// Restore a balanced lighting setup
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
 scene.add(ambientLight);
 
-// --- MODIFICATION: Re-introducing a faint directional light to give some shape. ---
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.1);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+dirLight.castShadow = true;
 dirLight.position.set(10, 15, 35);
+dirLight.shadow.mapSize.set(2048, 2048);
+dirLight.shadow.camera.left = -15;
+dirLight.shadow.camera.right = 15;
+dirLight.shadow.camera.top = 15;
+dirLight.shadow.camera.bottom = -15;
+dirLight.shadow.bias = -0.0001;
 scene.add(dirLight);
-
 
 // --- Create a master "clockUnit" group to handle tilting ---
 const clockUnit = new THREE.Group();
@@ -75,17 +71,15 @@ scene.add(clockUnit);
 const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
 
-// --- Background Plane (Darker and Textured) ---
+// --- Background Plane (Wood) ---
 const watchMaterial = new THREE.MeshStandardMaterial({
-  color: 0x111122,
-  metalness: 0.0,
-  roughness: 0.9,
-  envMapIntensity: 0.0
+  color: 0xffffff, // Start with white, will be colored by texture
+  metalness: 0.1,
+  roughness: 0.7
 });
 
 const textureLoader = new THREE.TextureLoader();
 
-// Load the main wood color texture
 textureLoader.load(
     './textures/laminate_floor_02_diff_4k.jpg',
     (texture) => {
@@ -94,31 +88,57 @@ textureLoader.load(
         texture.wrapT = THREE.RepeatWrapping;
         texture.rotation = Math.PI / 2;
         texture.center.set(0.5, 0.5);
-
         watchMaterial.map = texture;
-        watchMaterial.color.set(0xffffff);
         watchMaterial.needsUpdate = true;
-
         updateBackgroundSize();
     },
     undefined,
     (err) => {
         console.error('An error happened loading the wood texture. Using fallback color.');
+        watchMaterial.color.set(0x111122);
     }
 );
 
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
 watch.position.z = -1;
+watch.receiveShadow = true;
 clockUnit.add(watch);
 
-// --- Metallic Materials (Unaffected by the wood material changes) ---
+// --- Metallic Materials ---
 const silverMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff, metalness: 1.0, roughness: 0.0
+    color: 0xffffff, metalness: 1.0, roughness: 0.1
 });
 const brightSilverMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff, metalness: 1.0, roughness: 0.0
+    color: 0xffffff, metalness: 1.0, roughness: 0.1
 });
+const secondMaterial = new THREE.MeshStandardMaterial({
+    color: 0xff0000, metalness: 0.5, roughness: 0.4
+});
+
+
+// --- MODIFICATION: Environment Map is now applied selectively ---
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+pmremGenerator.compileEquirectangularShader();
+
+const rgbeLoader = new RGBELoader();
+rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint_powerplant_2_1k.hdr', (texture) => {
+    const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+
+    // DO NOT apply to the whole scene.
+    // scene.environment = envMap;
+
+    // INSTEAD, apply it ONLY to the metallic materials that need reflections.
+    silverMaterial.envMap = envMap;
+    brightSilverMaterial.envMap = envMap;
+    secondMaterial.envMap = envMap;
+    
+    // The watchMaterial is NOT given the envMap, so it won't be washed out.
+
+    texture.dispose();
+    pmremGenerator.dispose();
+});
+
 
 // --- Tick Marks ---
 const markerRadius = 10.0;
@@ -135,6 +155,7 @@ for (let i = 0; i < 60; i++) {
     const marker = new THREE.Mesh(markerGeom, silverMaterial);
     marker.position.set(markerRadius * Math.sin(angle), markerRadius * Math.cos(angle), -1.0 + 0.01 + (markerDepth / 2));
     marker.rotation.z = -angle;
+    marker.castShadow = true;
     watchGroup.add(marker);
 }
 
@@ -154,6 +175,8 @@ fontLoader.load(fontURL, (font) => {
         const numeral = new THREE.Mesh(numeralGeometry, silverMaterial);
         const backOfNumeral = -1.0 + 0.01 + (numeralThickness / 2);
         numeral.position.set(numeralRadius * Math.sin(angle), numeralRadius * Math.cos(angle), backOfNumeral);
+        numeral.castShadow = true;
+        numeral.receiveShadow = true;
         watchGroup.add(numeral);
     }
 });
@@ -175,6 +198,7 @@ const hourGeometry = new THREE.ExtrudeGeometry(hourHandShape, hourExtrudeSetting
 hourGeometry.translate(0, 0, -hourHandDepth / 2);
 const hourHand = new THREE.Mesh(hourGeometry, silverMaterial);
 hourHand.position.z = -0.04;
+hourHand.castShadow = true;
 watchGroup.add(hourHand);
 
 const minuteHandShape = new THREE.Shape();
@@ -193,13 +217,14 @@ const minuteGeometry = new THREE.ExtrudeGeometry(minuteHandShape, minuteExtrudeS
 minuteGeometry.translate(0, 0, -minuteHandDepth / 2);
 const minuteHand = new THREE.Mesh(minuteGeometry, brightSilverMaterial);
 minuteHand.position.z = -0.03;
+minuteHand.castShadow = true;
 watchGroup.add(minuteHand);
 
 const secondGeometry = new THREE.BoxGeometry(0.1, 7.0, 0.3);
 secondGeometry.translate(0, 3.5, 0);
-const secondMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, metalness: 0.8, roughness: 0.4 });
 const secondHand = new THREE.Mesh(secondGeometry, secondMaterial);
 secondHand.position.z = -0.02;
+secondHand.castShadow = true;
 watchGroup.add(secondHand);
 
 
