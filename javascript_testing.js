@@ -1,9 +1,3 @@
-Of course! Lowering the Z-axis position of the tick marks and numerals to close that gap is a great final touch.
-
-Here is the complete and updated code with those adjustments.
-
-Clock_3D_V1.js (Final Version)
-JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
