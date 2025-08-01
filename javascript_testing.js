@@ -257,8 +257,8 @@ tickSound.volume = 0.2;
 function updateDigitalClockPosition() {
     if (!digitalClock) return;
 
-    // This 3D point is an anchor just above the '6' numeral (which is at y=-8.5).
-    const targetPosition3D = new THREE.Vector3(0, -7.5, 0);
+    // Position the anchor halfway between the clock center (y=0) and the '6' numeral (y=-8.5)
+    const targetPosition3D = new THREE.Vector3(0, -4.25, 0);
 
     // Project the 3D point to Normalized Device Coordinates (NDC).
     const projectedPosition = targetPosition3D.clone().project(camera);
@@ -275,7 +275,7 @@ function updateDigitalClockPosition() {
 function animate() {
   requestAnimationFrame(animate);
 
-  const maxTilt = 20;
+  const maxTilt = 15;
   const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
   const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
 
