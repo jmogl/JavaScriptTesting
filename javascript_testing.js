@@ -34,7 +34,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // --- Scene Setup ---
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
+// Changed camera FOV from 45 to 35 to reduce perspective distortion
+const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 
 renderer.setClearColor(0xcccccc);
@@ -45,7 +46,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 document.body.appendChild(renderer.domElement);
 
-// --- Environment Map for Reflections ONLY ---
+// --- Environment Map for Reflections ---
 const rgbeLoader = new RGBELoader();
 rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint_powerplant_2_1k.hdr', (texture) => {
     texture.mapping = THREE.EquirectangularReflectionMapping;
@@ -65,8 +66,7 @@ scene.add(camera);
 const watchGroup = new THREE.Group();
 scene.add(watchGroup);
 
-// --- Background Plane (Corrected Material) ---
-// Using MeshLambertMaterial to create a non-reflective surface that still receives shadows.
+// --- Background Plane ---
 const watchMaterial = new THREE.MeshLambertMaterial({
   color: 0x222244,
 });
@@ -76,12 +76,12 @@ watch.position.z = -1;
 watch.receiveShadow = true;
 scene.add(watch);
 
-// --- Metallic Materials ---
+// --- Metallic Materials (Updated for mirror reflections) ---
 const silverMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff, metalness: 1.0, roughness: 0.2
+    color: 0xffffff, metalness: 1.0, roughness: 0.0 // Roughness 0.0 for a perfect mirror
 });
 const brightSilverMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff, metalness: 1.0, roughness: 0.1
+    color: 0xffffff, metalness: 1.0, roughness: 0.0 // Roughness 0.0 for a perfect mirror
 });
 
 // --- Tick Marks ---
@@ -166,12 +166,9 @@ watchGroup.add(secondHand);
 
 
 // --- Utility Functions ---
-
-// Corrected camera position logic to remove distortion
 function updateCameraPosition() {
-    const clockSize = 22; // The approximate height of the clock face
+    const clockSize = 22;
     const fovInRadians = THREE.MathUtils.degToRad(camera.fov);
-    // Standard formula to fit an object's height in the camera's view
     const distance = (clockSize / 2) / Math.tan(fovInRadians / 2);
     camera.position.z = distance;
 }
