@@ -1,3 +1,4 @@
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -24,31 +25,28 @@ document.body.appendChild(renderer.domElement);
 const digitalClock = document.getElementById('digitalClock');
 const digitalDate = document.getElementById('digitalDate');
 
-// Define common styles for both text elements
-const textStyles = {
+// Define common font styles for the parent DIV containers
+const textContainerStyles = {
     position: 'absolute',
     color: 'white',
     fontSize: '1.75em',
     fontFamily: '"Courier New", Courier, monospace',
     textShadow: '0 0 8px black',
-    zIndex: '10', // Ensure it's above the canvas
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    padding: '0.1em 0.3em',
-    borderRadius: '4px'
+    zIndex: '10' // Ensure it's above the canvas
 };
 
-// Style and position the digital clock in the upper right
+// Style and position the digital clock in the lower right
 if (digitalClock) {
-    Object.assign(digitalClock.style, textStyles, {
-        top: '20px',
+    Object.assign(digitalClock.style, textContainerStyles, {
+        bottom: '20px',
         right: '20px',
     });
 }
 
-// Style and position the digital date in the upper left
+// Style and position the digital date in the lower left
 if (digitalDate) {
-    Object.assign(digitalDate.style, textStyles, {
-        top: '20px',
+    Object.assign(digitalDate.style, textContainerStyles, {
+        bottom: '20px',
         left: '20px',
     });
 }
@@ -271,8 +269,6 @@ function setupTiltControls() {
 const tickSound = new Audio('https://cdn.jsdelivr.net/gh/freebiesupply/sounds/tick.mp3');
 tickSound.volume = 0.2;
 
-// The function to project the 3D position is no longer needed.
-
 function animate() {
   requestAnimationFrame(animate);
 
@@ -300,11 +296,12 @@ function animate() {
   hourHand.rotation.z   = -THREE.MathUtils.degToRad((hours / 12) * 360);
   
   const pad = (n) => n.toString().padStart(2, '0');
+  const spanStyles = `style="background-color: rgba(0, 0, 0, 0.5); padding: 0.1em 0.3em; border-radius: 4px;"`;
 
   // Update digital clock text
   if (digitalClock) {
     const timeString = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(Math.floor(now.getSeconds()))}`;
-    digitalClock.textContent = timeString;
+    digitalClock.innerHTML = `<span ${spanStyles}>${timeString}</span>`;
   }
   
   // Update digital date text
@@ -313,7 +310,7 @@ function animate() {
       const day = pad(now.getDate());
       const year = now.getFullYear().toString().slice(-2); // Get last two digits
       const dateString = `${month}/${day}/${year}`;
-      digitalDate.textContent = dateString;
+      digitalDate.innerHTML = `<span ${spanStyles}>${dateString}</span>`;
   }
 
   const currentSecond = Math.floor(now.getSeconds());
@@ -332,7 +329,6 @@ camera.updateProjectionMatrix();
 renderer.setSize(window.innerWidth, window.innerHeight);
 updateCameraPosition();
 updateBackgroundSize();
-// The call to updateDigitalClockPosition() is no longer needed here.
 
 
 window.addEventListener('resize', () => {
@@ -341,7 +337,6 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   updateCameraPosition();
   updateBackgroundSize();
-  // The call to updateDigitalClockPosition() is no longer needed here.
 });
 
 setupTiltControls();
