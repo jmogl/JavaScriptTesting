@@ -319,10 +319,12 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-// Initial setup calls
+// Initial setup calls to ensure correct sizing and positioning on load
+camera.aspect = window.innerWidth / window.innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(window.innerWidth, window.innerHeight);
 updateCameraPosition();
 updateBackgroundSize();
-// Initial call to position the clock before the first animation frame.
 updateDigitalClockPosition();
 
 
