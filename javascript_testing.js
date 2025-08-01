@@ -1,3 +1,11 @@
+It seems the lighting and environment are still too intense, causing the texture to be washed out. The most effective way to solve this is to specifically reduce the influence of the bright environment map on the wood material itself, without dimming the reflections on the shiny metallic parts.
+
+This can be done by setting the envMapIntensity property on the watchMaterial. Let's also further decrease the global light sources and exposure.
+
+Here is the revised full code listing with these more aggressive adjustments.
+
+Clock_3D_V1.js (Corrected)
+JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -43,8 +51,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-// Reduced exposure to prevent washing out the texture
-renderer.toneMappingExposure = 1.0;
+// --- MODIFICATION: Further reduced exposure ---
+renderer.toneMappingExposure = 0.9;
 document.body.appendChild(renderer.domElement);
 
 // --- Environment Map for Reflections ---
@@ -60,11 +68,11 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
 });
 
 // --- Lighting ---
-// Reduced ambient light to make texture colors pop more
-const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+// --- MODIFICATION: Further reduced light intensities ---
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 5.0);
+const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
 dirLight.castShadow = true;
 dirLight.position.set(10, 15, 35);
 dirLight.shadow.mapSize.set(2048, 2048);
@@ -83,22 +91,21 @@ const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
 
 // --- Background Plane (Darker and Textured) ---
-// Made material non-metallic and rougher for a wood look
+// --- MODIFICATION: Added envMapIntensity to reduce environmental reflections on the wood ---
 const watchMaterial = new THREE.MeshStandardMaterial({
-  color: 0x111122, // Fallback color if texture fails
+  color: 0x111122, 
   metalness: 0.0,
   roughness: 0.8,
-  bumpScale: 0.02
+  bumpScale: 0.02,
+  envMapIntensity: 0.2 
 });
 
 const textureLoader = new THREE.TextureLoader();
 
 textureLoader.load(
-    './textures/laminate_floor_02_diff_4k.jpg', // Path to your texture
+    './textures/laminate_floor_02_diff_4k.jpg',
     (texture) => {
-        // Set correct color encoding for the texture
         texture.encoding = THREE.sRGBEncoding;
-
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
         texture.rotation = Math.PI / 2;
@@ -108,12 +115,10 @@ textureLoader.load(
         watchMaterial.color.set(0xffffff);
         watchMaterial.needsUpdate = true;
 
-        // Update the texture repeat scaling after texture is loaded
         updateBackgroundSize();
     },
-    undefined, // No onProgress callback needed
+    undefined,
     (err) => {
-        // This function is called on error
         console.error('An error happened loading the wood texture. Using fallback color.');
     }
 );
@@ -255,10 +260,7 @@ function updateBackgroundSize() {
     const safetyMargin = 1.2;
     watch.scale.set(width * safetyMargin, height * safetyMargin, 1);
 
-    // If the material has a texture map, update its repeat property
     if (watch.material.map) {
-        // This value controls the texture pattern size.
-        // Smaller number = larger pattern.
         const textureScale = 25;
         watch.material.map.repeat.set(
             watch.scale.x / textureScale,
