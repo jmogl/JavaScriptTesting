@@ -1,13 +1,3 @@
-My apologies. The fact that there are no errors, yet the texture is still invisible, points to a subtle but critical issue with how the material is being created and updated while the texture loads in the background.
-
-To fix this definitively, I have restructured the code to create the clock face plane after the texture image has been successfully downloaded. This guarantees that the material has the texture applied to it from the very first moment it appears in the scene.
-
-I have also reverted the light to the (15, 20, 15) position, which seemed to be the closest to the shadow length you wanted.
-
-Updated Clock3D.js
-This version contains the restructured texture loading logic.
-
-JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
