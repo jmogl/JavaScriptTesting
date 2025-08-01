@@ -1,3 +1,14 @@
+You are correct, that last change introduced several new problems. My apologies. The approach of rotating the entire clock unit was correct for the shadows, but I made a mistake by removing the code that scales the clock face.
+
+I have made the following corrections to fix the scaling, the exaggerated rotation, and the missing shadows.
+
+## Final Adjustments
+Clock Face Scaling: The clock face appeared as a small square because the function that scales it to fill the screen was mistakenly removed. I have restored it. This will also fix the missing shadows, as they now have a correctly-sized surface to be cast upon.
+
+Realistic Rotation: To fix the unrealistic rotation, I've added a multiplier to make the clock's tilt less sensitive. It will now tilt at half the angle of your device, which should feel much more natural and controllable.
+
+Final Clock3D.js
+JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -78,9 +89,9 @@ const clockUnit = new THREE.Group();
 scene.add(clockUnit);
 
 const watchGroup = new THREE.Group();
-clockUnit.add(watchGroup); // Add watchGroup to the main clockUnit
+clockUnit.add(watchGroup);
 
-// --- Background Plane (with slight reflectivity) ---
+// --- Background Plane (Darker and Textured) ---
 const watchMaterial = new THREE.MeshStandardMaterial({
   color: 0x111122,
   metalness: 0.1,
@@ -101,7 +112,7 @@ const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
 watch.position.z = -1;
 watch.receiveShadow = true;
-clockUnit.add(watch); // Add the background plane to the main clockUnit
+clockUnit.add(watch);
 
 // --- Metallic Materials ---
 const silverMaterial = new THREE.MeshStandardMaterial({
@@ -214,8 +225,17 @@ function updateCameraPosition() {
     camera.position.z = Math.max(distanceForHeight, distanceForWidth);
 }
 
+// Restored this function to scale the background plane correctly
 function updateBackgroundSize() {
-    // This function is no longer needed as the plane is not scaled to the camera
+    if (!watch || !camera) return;
+    const distance = camera.position.z - watch.position.z;
+    const vFov = THREE.MathUtils.degToRad(camera.fov);
+    const height = 2 * Math.tan(vFov / 2) * distance;
+    const width = height * camera.aspect;
+    
+    // Use a safety margin so the plane is always larger than the view
+    const safetyMargin = 1.2;
+    watch.scale.set(width * safetyMargin, height * safetyMargin, 1);
 }
 
 let tiltX = 0, tiltY = 0;
@@ -260,10 +280,13 @@ function animate() {
   const maxTilt = 15;
   const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
   const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
+  
+  // Dampen the rotation to make it feel more natural
+  const rotationMultiplier = 0.5;
+  const rotY = THREE.MathUtils.degToRad(x) * rotationMultiplier;
+  const rotX = THREE.MathUtils.degToRad(y) * rotationMultiplier;
 
   // Rotate the entire clock unit for a realistic tilt and shadow update
-  const rotY = THREE.MathUtils.degToRad(x); // Left/Right tilt (gamma) rotates around Y-axis
-  const rotX = THREE.MathUtils.degToRad(y); // Forward/Back tilt (beta) rotates around X-axis
   clockUnit.rotation.y = rotY;
   clockUnit.rotation.x = rotX;
   
@@ -305,14 +328,14 @@ function animate() {
 camera.aspect = window.innerWidth / window.innerHeight;
 camera.updateProjectionMatrix();
 updateCameraPosition();
-// updateBackgroundSize is no longer needed
+updateBackgroundSize();
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   updateCameraPosition();
-  // updateBackgroundSize is no longer needed
+  updateBackgroundSize();
 });
 
 setupTiltControls();
