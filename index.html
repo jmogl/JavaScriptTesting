@@ -3,43 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JS_Testing</title>
+    <title>3D JavaScript Clock</title>
     <style>
         body {
+            /* Remove default margin and hide scrollbars */
             margin: 0;
-            overflow: hidden; /* Prevent scrollbars */
+            overflow: hidden;
+            /* Set a background color that matches the scene's clear color */
+            background-color: #cccccc;
         }
         canvas {
+            /* Ensure the canvas is treated as a block element */
             display: block;
         }
-        #digitalClock {
-            position: absolute;
-            bottom: 10%; /* Positioned above the '6' numeral */
-            left: 50%;
-            transform: translateX(-50%);
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: white;
-            text-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
-            z-index: 10;
-        }
     </style>
-
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
-            "three/examples/jsm/loaders/FontLoader.js": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/loaders/FontLoader.js",
-            "three/examples/jsm/geometries/TextGeometry.js": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/geometries/TextGeometry.js"
-        }
-    }
-    </script>
-
 </head>
 <body>
-    <div id="digitalClock"></div>
-    <div id="digitalDate"></div>
+
+    <div id="ui-container">
+      <span id="digitalDate"></span>
+      <span id="digitalClock"></span>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.166.0/build/three.module.js",
+                "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.166.0/examples/jsm/"
+            }
+        }
+    </script>
+
     <script type="module" src="javascript_testing.js?v=1.01"></script>
+
 </body>
 </html>
