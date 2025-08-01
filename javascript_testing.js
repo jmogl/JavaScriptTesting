@@ -1,3 +1,9 @@
+Of course. To make the numerals and tick marks touch the clock face, their Z-axis positions will be lowered to match the clock face's position at -1.0.
+
+Here is the final, updated code with those adjustments.
+
+Clock_3D_V1.js
+JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -145,8 +151,8 @@ for (let i = 0; i < 60; i++) {
     }
     const marker = new THREE.Mesh(markerGeom, silverMaterial);
     
-    // --- MODIFICATION: Lowered the Z-axis position by 0.1 ---
-    const markerZ = -1.0 + 0.01 + (markerDepth / 2) - 0.1;
+    // --- MODIFICATION: Center of tick mark is now on the clock face plane ---
+    const markerZ = -1.0;
     marker.position.set(markerRadius * Math.sin(angle), markerRadius * Math.cos(angle), markerZ);
 
     marker.rotation.z = -angle;
@@ -169,10 +175,10 @@ fontLoader.load(fontURL, (font) => {
         numeralGeometry.center();
         const numeral = new THREE.Mesh(numeralGeometry, silverMaterial);
 
-        // --- MODIFICATION: Lowered the Z-axis position by 0.1 ---
-        const backOfNumeral = -1.0 + 0.01 + (numeralThickness / 2) - 0.1;
+        // --- MODIFICATION: Center of numeral is now on the clock face plane ---
+        const numeralZ = -1.0;
 
-        numeral.position.set(numeralRadius * Math.sin(angle), numeralRadius * Math.cos(angle), backOfNumeral);
+        numeral.position.set(numeralRadius * Math.sin(angle), numeralRadius * Math.cos(angle), numeralZ);
         numeral.castShadow = true;
         numeral.receiveShadow = true;
         watchGroup.add(numeral);
