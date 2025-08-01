@@ -1,3 +1,5 @@
+EEEE
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -81,13 +83,40 @@ clockUnit.add(watchGroup);
 
 // --- Background Plane (Darker and Textured) ---
 const watchMaterial = new THREE.MeshStandardMaterial({
-  color: 0x111122,
+  color: 0x111122, // Fallback color if texture fails
   metalness: 0.1,
   roughness: 0.5,
   bumpScale: 0.02
 });
 
 const textureLoader = new THREE.TextureLoader();
+
+// --- MODIFICATION START: Load wood texture for the clock face ---
+textureLoader.load(
+    './textures/laminate_floor_02_diff_4k.jpg', // Path to your texture
+    (texture) => {
+        // On successful load, apply the texture
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.rotation = Math.PI / 2; // Rotate texture 90 degrees
+        texture.center.set(0.5, 0.5);   // Ensure rotation happens around the center
+
+        watchMaterial.map = texture;
+        watchMaterial.color.set(0xffffff); // Set to white to not tint the texture
+        watchMaterial.needsUpdate = true;
+        
+        // Update the texture repeat scaling after texture is loaded
+        updateBackgroundSize();
+    },
+    undefined, // No onProgress callback needed
+    (err) => {
+        // This function is called on error
+        console.error('An error happened loading the wood texture. Using fallback color.');
+    }
+);
+// --- MODIFICATION END ---
+
+
 textureLoader.load('https://threejs.org/examples/textures/roughness_map.jpg', (map) => {
     map.wrapS = THREE.RepeatWrapping;
     map.wrapT = THREE.RepeatWrapping;
@@ -95,6 +124,7 @@ textureLoader.load('https://threejs.org/examples/textures/roughness_map.jpg', (m
     watchMaterial.bumpMap = map;
     watchMaterial.needsUpdate = true;
 });
+
 
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
@@ -213,7 +243,7 @@ function updateCameraPosition() {
     camera.position.z = Math.max(distanceForHeight, distanceForWidth);
 }
 
-// Restored this function to scale the background plane correctly
+// --- MODIFICATION START: Update background and texture repeat scaling ---
 function updateBackgroundSize() {
     if (!watch || !camera) return;
     const distance = camera.position.z - watch.position.z;
@@ -221,10 +251,22 @@ function updateBackgroundSize() {
     const height = 2 * Math.tan(vFov / 2) * distance;
     const width = height * camera.aspect;
     
-    // Use a safety margin so the plane is always larger than the view
     const safetyMargin = 1.2;
     watch.scale.set(width * safetyMargin, height * safetyMargin, 1);
+
+    // If the material has a texture map, update its repeat property
+    if (watch.material.map) {
+        // This value controls the texture pattern size.
+        // Smaller number = larger pattern.
+        const textureScale = 25; 
+        watch.material.map.repeat.set(
+            watch.scale.x / textureScale,
+            watch.scale.y / textureScale
+        );
+    }
 }
+// --- MODIFICATION END ---
+
 
 let tiltX = 0, tiltY = 0;
 
@@ -269,12 +311,10 @@ function animate() {
   const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
   const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
   
-  // Dampen the rotation to make it feel more natural
   const rotationMultiplier = 0.5;
   const rotY = THREE.MathUtils.degToRad(x) * rotationMultiplier;
   const rotX = THREE.MathUtils.degToRad(y) * rotationMultiplier;
 
-  // Rotate the entire clock unit for a realistic tilt and shadow update
   clockUnit.rotation.y = rotY;
   clockUnit.rotation.x = rotX;
   
