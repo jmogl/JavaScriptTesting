@@ -1,4 +1,5 @@
 
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -59,13 +60,13 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
 });
 
 // --- Lighting ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+const ambientLight = new THREE.AmbientLight(0xffffff, 2.0); // Increased intensity
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 3.5); // Slightly reduced intensity for new background
+const dirLight = new THREE.DirectionalLight(0xffffff, 5.0); // Increased intensity
 dirLight.castShadow = true;
-// Positioned light at a 5-degree angle from vertical for very short, visible shadows
-dirLight.position.set(1.25, 20, 1.25);
+// Set to an extremely high, almost perfectly centered position
+dirLight.position.set(0.01, 50, 0.01);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
@@ -77,15 +78,14 @@ scene.add(dirLight);
 const watchGroup = new THREE.Group();
 scene.add(watchGroup);
 
-// --- Background Plane (Darker and Textured) ---
+// --- Background Plane (with slight reflectivity) ---
 const watchMaterial = new THREE.MeshStandardMaterial({
-  color: 0x111122, // Darker blue
+  color: 0x111122,
   metalness: 0.1,
   roughness: 0.5,
-  bumpScale: 0.005 // Controls intensity of the texture
+  bumpScale: 0.005
 });
 
-// Add bump map texture for a rough surface feel
 const textureLoader = new THREE.TextureLoader();
 textureLoader.load('https://threejs.org/examples/textures/roughness_map.jpg', (map) => {
     map.wrapS = THREE.RepeatWrapping;
