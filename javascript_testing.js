@@ -306,8 +306,8 @@ function animate() {
     digitalClock.innerHTML = `<span style="background-color: rgba(0, 0, 0, 0.5); padding: 0.1em 0.3em; border-radius: 4px;">${timeString}</span>`;
   }
   
-  // Update the digital clock's position on every frame to account for camera tilt.
-  updateDigitalClockPosition();
+  // The digital clock's position is no longer updated in the animation loop.
+  // This makes it stationary and unaffected by the camera's tilt-based movement.
 
   const currentSecond = Math.floor(now.getSeconds());
   if (animate.lastSecond !== currentSecond) {
