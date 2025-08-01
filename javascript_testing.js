@@ -1,3 +1,7 @@
+Of course. Here is the complete code listing for Clock_3D_V1.js with all the modifications to correctly display the wood texture.
+
+Clock_3D_V1.js
+JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -43,7 +47,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.4;
+// Reduced exposure to prevent washing out the texture
+renderer.toneMappingExposure = 1.0;
 document.body.appendChild(renderer.domElement);
 
 // --- Environment Map for Reflections ---
@@ -59,7 +64,8 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
 });
 
 // --- Lighting ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
+// Reduced ambient light to make texture colors pop more
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
 scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 5.0);
@@ -81,29 +87,31 @@ const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
 
 // --- Background Plane (Darker and Textured) ---
+// Made material non-metallic and rougher for a wood look
 const watchMaterial = new THREE.MeshStandardMaterial({
   color: 0x111122, // Fallback color if texture fails
-  metalness: 0.1,
-  roughness: 0.5,
+  metalness: 0.0,
+  roughness: 0.8,
   bumpScale: 0.02
 });
 
 const textureLoader = new THREE.TextureLoader();
 
-// --- MODIFICATION START: Load wood texture for the clock face ---
 textureLoader.load(
     './textures/laminate_floor_02_diff_4k.jpg', // Path to your texture
     (texture) => {
-        // On successful load, apply the texture
+        // Set correct color encoding for the texture
+        texture.encoding = THREE.sRGBEncoding;
+
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
-        texture.rotation = Math.PI / 2; // Rotate texture 90 degrees
-        texture.center.set(0.5, 0.5);   // Ensure rotation happens around the center
+        texture.rotation = Math.PI / 2;
+        texture.center.set(0.5, 0.5);
 
         watchMaterial.map = texture;
-        watchMaterial.color.set(0xffffff); // Set to white to not tint the texture
+        watchMaterial.color.set(0xffffff);
         watchMaterial.needsUpdate = true;
-        
+
         // Update the texture repeat scaling after texture is loaded
         updateBackgroundSize();
     },
@@ -113,7 +121,6 @@ textureLoader.load(
         console.error('An error happened loading the wood texture. Using fallback color.');
     }
 );
-// --- MODIFICATION END ---
 
 
 textureLoader.load('https://threejs.org/examples/textures/roughness_map.jpg', (map) => {
@@ -160,7 +167,7 @@ for (let i = 0; i < 60; i++) {
 
 const fontLoader = new FontLoader();
 const fontURL = 'https://cdn.jsdelivr.net/npm/three@0.166.0/examples/fonts/helvetiker_regular.typeface.json';
-const numeralRadius = 8.075; 
+const numeralRadius = 8.075;
 
 fontLoader.load(fontURL, (font) => {
     const numeralSize = 1.5;
@@ -232,9 +239,9 @@ watchGroup.add(secondHand);
 function updateCameraPosition() {
     const clockSize = 22;
     const fovInRadians = THREE.MathUtils.degToRad(camera.fov);
-    
+
     const distanceForHeight = (clockSize / 2) / Math.tan(fovInRadians / 2);
-    
+
     const width = clockSize;
     const cameraWidth = width / camera.aspect;
     const distanceForWidth = (cameraWidth / 2) / Math.tan(fovInRadians / 2);
@@ -242,14 +249,13 @@ function updateCameraPosition() {
     camera.position.z = Math.max(distanceForHeight, distanceForWidth);
 }
 
-// --- MODIFICATION START: Update background and texture repeat scaling ---
 function updateBackgroundSize() {
     if (!watch || !camera) return;
     const distance = camera.position.z - watch.position.z;
     const vFov = THREE.MathUtils.degToRad(camera.fov);
     const height = 2 * Math.tan(vFov / 2) * distance;
     const width = height * camera.aspect;
-    
+
     const safetyMargin = 1.2;
     watch.scale.set(width * safetyMargin, height * safetyMargin, 1);
 
@@ -257,14 +263,13 @@ function updateBackgroundSize() {
     if (watch.material.map) {
         // This value controls the texture pattern size.
         // Smaller number = larger pattern.
-        const textureScale = 25; 
+        const textureScale = 25;
         watch.material.map.repeat.set(
             watch.scale.x / textureScale,
             watch.scale.y / textureScale
         );
     }
 }
-// --- MODIFICATION END ---
 
 
 let tiltX = 0, tiltY = 0;
@@ -309,14 +314,14 @@ function animate() {
   const maxTilt = 15;
   const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
   const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
-  
+
   const rotationMultiplier = 0.5;
   const rotY = THREE.MathUtils.degToRad(x) * rotationMultiplier;
   const rotX = THREE.MathUtils.degToRad(y) * rotationMultiplier;
 
   clockUnit.rotation.y = rotY;
   clockUnit.rotation.x = rotX;
-  
+
   camera.lookAt(0, 0, 0);
 
   const now = new Date();
@@ -327,7 +332,7 @@ function animate() {
   secondHand.rotation.z = -THREE.MathUtils.degToRad((seconds / 60) * 360);
   minuteHand.rotation.z = -THREE.MathUtils.degToRad((minutes / 60) * 360);
   hourHand.rotation.z   = -THREE.MathUtils.degToRad((hours / 12) * 360);
-  
+
   const pad = (n) => n.toString().padStart(2, '0');
   const spanStyles = `background-color: rgba(0, 0, 0, 0.5); padding: 0.1em 0.3em; border-radius: 4px;`;
 
@@ -335,7 +340,7 @@ function animate() {
       const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(Math.floor(now.getSeconds()))}`;
       digitalClock.innerHTML = `<span style="${spanStyles}">${time}</span>`;
   }
-  
+
   if (digitalDate) {
       const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear().toString().slice(-2)}`;
       digitalDate.innerHTML = `<span style="${spanStyles}">${date}</span>`;
