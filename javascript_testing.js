@@ -211,6 +211,32 @@ for (let i = 0; i < 60; i++) {
     watchGroup.add(marker);
 }
 
+// --- Border Wall ---
+// Dark blue fixed bezel ring (smooth curve)
+const borderThickness = 1.0;
+const borderHeight    = 0.5;
+const outerRadius     = markerRadius + borderThickness;
+const innerRadius     = markerRadius;
+
+const borderShape = new THREE.Shape();
+borderShape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
+const holePath = new THREE.Path();
+holePath.absarc(0, 0, innerRadius, 0, Math.PI * 2, true);
+borderShape.holes.push(holePath);
+
+const extrudeSettings = { depth: borderHeight, bevelEnabled: false, curveSegments: 256 };
+const borderGeom = new THREE.ExtrudeGeometry(borderShape, extrudeSettings);
+borderGeom.translate(0, 0, -borderHeight / 2);
+
+const borderMaterial = new THREE.MeshStandardMaterial({ color: 0x000040 });
+const borderMesh = new THREE.Mesh(borderGeom, borderMaterial);
+borderMesh.castShadow = true;
+borderMesh.receiveShadow = true;
+borderMesh.position.z = watch.position.z;
+
+clockUnit.add(borderMesh);
+
+
 const fontLoader = new FontLoader();
 const fontURL = 'https://cdn.jsdelivr.net/npm/three@0.166.0/examples/fonts/helvetiker_regular.typeface.json';
 const numeralRadius = 8.075;
