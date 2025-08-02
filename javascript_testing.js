@@ -264,7 +264,7 @@ const hourExtrudeSettings = {
 const hourGeometry = new THREE.ExtrudeGeometry(hourHandShape, hourExtrudeSettings);
 hourGeometry.translate(0, 0, -hourHandDepth / 2);
 const hourHand = new THREE.Mesh(hourGeometry, silverMaterial);
-hourHand.position.z = -0.04;
+hourHand.position.z = 0.46; // raised by +0.5 from -0.04
 hourHand.castShadow = true;
 watchGroup.add(hourHand);
 
@@ -283,14 +283,14 @@ const minuteExtrudeSettings = {
 const minuteGeometry = new THREE.ExtrudeGeometry(minuteHandShape, minuteExtrudeSettings);
 minuteGeometry.translate(0, 0, -minuteHandDepth / 2);
 const minuteHand = new THREE.Mesh(minuteGeometry, brightSilverMaterial);
-minuteHand.position.z = -0.03;
+minuteHand.position.z = 0.47; // raised by +0.5 from -0.03
 minuteHand.castShadow = true;
 watchGroup.add(minuteHand);
 
 const secondGeometry = new THREE.BoxGeometry(0.1, 7.0, 0.3);
 secondGeometry.translate(0, 3.5, 0);
 const secondHand = new THREE.Mesh(secondGeometry, secondMaterial);
-secondHand.position.z = -0.02;
+secondHand.position.z = 0.48; // raised by +0.5 from -0.02
 secondHand.castShadow = true;
 watchGroup.add(secondHand);
 
@@ -378,7 +378,7 @@ mtlLoader.load(
       'textures/ETA6497-1_OBJ_TEST.obj',
       (object) => {
         clockModel = object;
-        clockModel.position.set(0, 0, -1);
+        clockModel.position.set(0, 0, -0.5); // raised by +0.5 from -1
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
         clockModel.traverse(child => {
