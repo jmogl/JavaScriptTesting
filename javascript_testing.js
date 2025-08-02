@@ -8,9 +8,17 @@ import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 
 // --- Declare UI element variables in the global scope ---
 let digitalDate, digitalClock;
+
+// --- 3D Model Variables ---
+let clockModel;
+let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
+let modelScale     = 1.0;
+
 
 // --- Wait for the DOM to be ready, then create and inject UI elements ---
 window.addEventListener('DOMContentLoaded', () => {
@@ -178,34 +186,6 @@ for (let i = 0; i < 60; i++) {
     watchGroup.add(marker);
 }
 
-// --- Border Wall ---
-const borderMaterial = new THREE.MeshStandardMaterial({ color: 0x000040 });
-// Build a fixed wooden bezel that stays with the face but still casts shadows
-
-const borderThickness = 1.0; // radial thickness of rim
-const borderHeight    = 0.5; // height off the clock face
-
-const outerRadius = markerRadius + borderThickness;
-const innerRadius = markerRadius;
-
-const borderShape = new THREE.Shape();
-borderShape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
-const holePath = new THREE.Path();
-holePath.absarc(0, 0, innerRadius, 0, Math.PI * 2, true);
-borderShape.holes.push(holePath);
-
-const extrudeSettings = { depth: borderHeight, bevelEnabled: false, curveSegments: 256 };
-const borderGeom = new THREE.ExtrudeGeometry(borderShape, extrudeSettings);
-borderGeom.translate(0, 0, -borderHeight / 2);
-
-const borderMesh = new THREE.Mesh(borderGeom, borderMaterial);
-borderMesh.castShadow = true;
-borderMesh.receiveShadow = true;
-borderMesh.position.z = watch.position.z;
-
-clockUnit.add(borderMesh);
-
-
 const fontLoader = new FontLoader();
 const fontURL = 'https://cdn.jsdelivr.net/npm/three@0.166.0/examples/fonts/helvetiker_regular.typeface.json';
 const numeralRadius = 8.075;
@@ -355,6 +335,46 @@ function setupTiltControls() {
 const tickSound = new Audio('https://cdn.jsdelivr.net/gh/freebiesupply/sounds/tick.mp3');
 tickSound.volume = 0.2;
 
+
+// ─── Load the ETA6497 model ───
+const mtlLoader = new MTLLoader();
+mtlLoader.setCrossOrigin(''); // if needed
+mtlLoader.load(
+  'textures/ETA6497-1_OBJ_TEST.mtl',
+  (materials) => {
+    materials.preload();
+    const objLoader = new OBJLoader();
+    objLoader.setMaterials(materials);
+    objLoader.load(
+      'textures/ETA6497-1_OBJ_TEST.obj',
+      (object) => {
+        clockModel = object;
+        clockModel.position.set(0, 0, 0);
+        clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
+        clockModel.scale.set(modelScale, modelScale, modelScale);
+        clockModel.traverse(child => {
+          if (child.isMesh) {
+            child.castShadow    = true;
+            child.receiveShadow = true;
+          }
+        });
+        clockUnit.add(clockModel);
+      },
+      undefined,
+      (err) => {
+        console.error('Failed to load OBJ:', err);
+        alert('Error: Could not load ETA6497-1_OBJ_TEST.obj');
+      }
+    );
+  },
+  undefined,
+  (err) => {
+    console.error('Failed to load MTL:', err);
+    alert('Error: Could not load ETA6497-1_OBJ_TEST.mtl');
+  }
+);
+
+// --- End Model Loader ---
 // --- Animation Loop ---
 function animate() {
   requestAnimationFrame(animate);
