@@ -1,12 +1,3 @@
-Thank you for the clarification. My apologies for the repeated errors in identifying the object names.
-
-I have updated the script with the exact, correct names you provided: PalletForkBody, PalleteForkJewel, and PalleteForkJewel2.
-
-With these names, the script will now correctly identify all three components of the pallet fork assembly, create a single pivot point at their collective center, and animate them together as one unit. This should fully resolve the animation issue.
-
-Clock_3D_V2.js (Corrected)
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -671,3 +662,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
