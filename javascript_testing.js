@@ -1,10 +1,3 @@
-Of course. The animation for the three new wheels has been added, and the rotation of the Seconds Wheel has been updated.
-
-Each of the new components now rotates about its own local center, using the same "pivot point" method as the other animated parts. The rotation rates and directions are noted in the comments.
-
-Clock_3D_V2.js (with new animations)
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -595,3 +588,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
