@@ -1,3 +1,5 @@
+XXXX
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -408,7 +410,6 @@ mtlLoader.load(
                 child.material.opacity = 0.5;
             }
             
-            // --- MODIFICATION: Added HairSpringBody to the pivot creation logic ---
             const partsToPivot = [
                 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
                 'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalleteForkBody', 'HairSpringBody'
@@ -553,15 +554,16 @@ function animate() {
   
   if (balanceWheel) {
     const time = now.getTime() / 1000;
-    const frequency = 2; 
+    // --- MODIFICATION: Updated balance wheel frequency to 3Hz ---
+    const frequency = 3; 
     const sineValue = Math.sin(time * Math.PI * 2 * frequency);
 
     const amplitude = Math.PI / 2;
     balanceWheel.rotation.z = amplitude * sineValue;
 
     if (hairSpring) {
-        // --- MODIFICATION: Apply scaling animation to the hairSpring pivot ---
-        const currentScale = 1.0 + 0.3 * Math.abs(sineValue);
+        // --- MODIFICATION: Updated hair spring scale to be 0.7x - 1.3x ---
+        const currentScale = 0.7 + 0.6 * Math.abs(sineValue);
         hairSpring.scale.set(currentScale, currentScale, 1);
     }
   }
@@ -606,4 +608,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
