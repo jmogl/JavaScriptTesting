@@ -1,4 +1,4 @@
-
+rrrr
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -106,7 +106,7 @@ textureLoader.load(
 
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
-watch.position.z = -3; // independent Z for wood wall // lowered wood wall to -3 for proper layering // lowered wood wall to -2 for proper layering // reset wood plane z
+watch.position.z = -4; // independent Z for wood wall, below others by >=0.5 // independent Z for wood wall // lowered wood wall to -3 for proper layering // lowered wood wall to -2 for proper layering // reset wood plane z
 watch.receiveShadow = true;
 clockUnit.add(watch);
 
@@ -164,7 +164,7 @@ const borderMaterial = new THREE.MeshStandardMaterial({ color: 0x000040 });
 const borderMesh = new THREE.Mesh(borderGeom, borderMaterial);
 borderMesh.castShadow = true;
 borderMesh.receiveShadow = true;
-borderMesh.position.z = -3; // independent Z for border // reset to reference watch.position.z // use original wall z
+borderMesh.position.z = -4; // independent Z for border ring // independent Z for border // reset to reference watch.position.z // use original wall z
 
 clockUnit.add(borderMesh);
 // Rename wood background plane for clarity
@@ -185,7 +185,7 @@ faceMesh.name = 'clock_face';
 faceMesh.receiveShadow = true;
 faceMesh.castShadow = false;
 // Slightly above the wood plane so markers can protrude
-faceMesh.position.z = -2.9; // independent Z for white face // face just above wall // face slightly above wood // reset to reference watch.position.z // adjusted to use original wall z // raised from +0.01 to +0.1
+faceMesh.position.z = -3.4; // independent Z for white face // independent Z for white face // face just above wall // face slightly above wood // reset to reference watch.position.z // adjusted to use original wall z // raised from +0.01 to +0.1
 clockUnit.add(faceMesh);
 
 
@@ -226,7 +226,7 @@ for (let i = 0; i < 60; i++) {
     
     const marker = new THREE.Mesh(markerGeom, silverMaterial);
     
-    const markerZ = -2.89; // independent Z for tick marks // markers above face // marker slightly above face
+    const markerZ = -3.35; // independent Z for tick marks // independent Z for tick marks // markers above face // marker slightly above face
     marker.position.set(markerRadius * Math.sin(angle), markerRadius * Math.cos(angle), markerZ);
 
     marker.rotation.z = -angle;
@@ -261,7 +261,7 @@ fontLoader.load(fontURL, (font) => {
         numeralGeometry.center();
         const numeral = new THREE.Mesh(numeralGeometry, silverMaterial);
 
-        const numeralZ = -2.88; // independent Z for numerals // numerals above face // numeral slightly above face
+        const numeralZ = -3.34; // independent Z for numerals // independent Z for numerals // numerals above face // numeral slightly above face
         numeral.position.set(numeralRadius * Math.sin(angle), numeralRadius * Math.cos(angle), numeralZ);
         numeral.castShadow = true;
         numeral.receiveShadow = true;
@@ -399,7 +399,7 @@ mtlLoader.load(
       'textures/ETA6497-1_OBJ_TEST.obj',
       (object) => {
         clockModel = object;
-        clockModel.position.set(0, 0, -3.90); // lowered OBJ model by -1.5 // lowered OBJ model by -1 // lowered OBJ model by -0.5 // lowered by 0.1 // lowered by 0.3 // raised by +0.5 from -1
+        clockModel.position.set(0, 0, -3.0); // independent Z for OBJ model // lowered OBJ model by -1.5 // lowered OBJ model by -1 // lowered OBJ model by -0.5 // lowered by 0.1 // lowered by 0.3 // raised by +0.5 from -1
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
         clockModel.traverse(child => {
@@ -438,7 +438,7 @@ mtlLoader.load(
         const newFace = new THREE.Mesh(faceGeom, faceMat);
         newFace.name          = 'clock_face';
         newFace.receiveShadow = true;
-        newFace.position.z = -2.9; // independent Z for hole face // fixed to reference watch.position.z // adjusted to use original wall z
+        newFace.position.z = -3.4; // independent Z for hole face // independent Z for hole face // fixed to reference watch.position.z // adjusted to use original wall z
         clockUnit.add(newFace);
 
       },
@@ -522,4 +522,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
