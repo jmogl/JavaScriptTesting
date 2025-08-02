@@ -1,3 +1,12 @@
+You are correct. The previous tilt method was not right—attaching the light to the camera flattened the scene and removed the dynamic shadows.
+
+I've implemented a new solution that should achieve the exact effect you're looking for. The light is now fixed in the world, while the camera moves based on the device's tilt.
+
+This creates the desired sense of depth. As you tilt your device, your viewpoint will shift, allowing you to "look around" the stationary clock. Because the light source is fixed, you will see the shadows and reflections on the clock's surfaces change realistically, matching your description.
+
+Clock_3D_V2.js (Corrected)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -61,19 +70,15 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
 dirLight.castShadow = true;
+// --- MODIFICATION: Light is now stationary in the scene to create dynamic shadows ---
+dirLight.position.set(10, 15, 36);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
 dirLight.shadow.camera.top = 15;
 dirLight.shadow.camera.bottom = -15;
 dirLight.shadow.bias = -0.0001;
-
-// --- MODIFICATION: Attach light to the camera for a "headlamp" effect ---
-camera.add(dirLight);
-camera.add(dirLight.target);
-dirLight.position.set(5, 10, 20);
-dirLight.target.position.set(0, 0, 0);
-scene.add(camera);
+scene.add(dirLight);
 
 
 // --- Create a master "clockUnit" group ---
@@ -510,7 +515,7 @@ mtlLoader.load(
 function animate() {
   requestAnimationFrame(animate);
 
-  // --- MODIFICATION: New tilt logic to move the camera, not the clock ---
+  // --- MODIFICATION: The clock is stationary, only the camera moves with tilt ---
   const cameraMoveScale = 4;
   const clampedTiltX = THREE.MathUtils.clamp(tiltX, -45, 45);
   const clampedTiltY = THREE.MathUtils.clamp(tiltY, -45, 45);
@@ -521,7 +526,6 @@ function animate() {
   camera.position.x += (targetCameraX - camera.position.x) * 0.05;
   camera.position.y += (targetCameraY - camera.position.y) * 0.05;
   
-  // The camera always looks at the center of the clock unit
   camera.lookAt(clockUnit.position);
 
   const now = new Date();
@@ -600,7 +604,6 @@ function animate() {
 camera.aspect = window.innerWidth / window.innerHeight;
 camera.updateProjectionMatrix();
 updateCameraPosition();
-// Set initial camera X and Y to 0 for the new tilt effect
 camera.position.x = 0;
 camera.position.y = 0;
 updateBackgroundSize();
@@ -617,4 +620,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
