@@ -1,10 +1,3 @@
-The animation for the watch movement parts is not working because the object names in the 3D model file are slightly different from the ones used in the script.
-
-To fix this, I've updated the script with the exact body names from your .obj file. This will allow the animate function to find the correct components and apply the rotation logic.
-
-Clock_3D_V2.js (Corrected)
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -552,3 +545,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
