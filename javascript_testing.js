@@ -1,3 +1,5 @@
+tttt
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -61,15 +63,19 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
 dirLight.castShadow = true;
-// --- MODIFICATION: Light is stationary in the scene for correct shadow casting ---
-dirLight.position.set(10, 15, 36);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
 dirLight.shadow.camera.top = 15;
 dirLight.shadow.camera.bottom = -15;
 dirLight.shadow.bias = -0.0001;
-scene.add(dirLight);
+
+// Attach light to the camera for a "headlamp" effect
+camera.add(dirLight);
+camera.add(dirLight.target);
+dirLight.position.set(5, 10, 20);
+dirLight.target.position.set(0, 0, 0);
+scene.add(camera);
 
 
 // --- Create a master "clockUnit" group ---
@@ -126,9 +132,10 @@ const brightSilverMaterial = new THREE.MeshStandardMaterial({
 const secondMaterial = new THREE.MeshStandardMaterial({
     color: 0xff0000, metalness: 0.5, roughness: 0.4
 });
+// --- MODIFICATION: Updated material to be a bright, reflective copper ---
 const brassMaterial = new THREE.MeshStandardMaterial({
-    color: 0xB8860B,
-    metalness: 0.9,
+    color: 0xED9149,
+    metalness: 0.8,
     roughness: 0.2
 });
 
@@ -144,7 +151,8 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
     silverMaterial.envMap = envMap;
     brightSilverMaterial.envMap = envMap;
     secondMaterial.envMap = envMap;
-    brassMaterial.envMap = envMap;
+    // --- MODIFICATION: The brass material no longer uses the environment map ---
+    // brassMaterial.envMap = envMap;
     
     texture.dispose();
     pmremGenerator.dispose();
@@ -413,20 +421,19 @@ mtlLoader.load(
 
         clockModel.traverse(child => {
           if (child.isMesh) {
+            child.castShadow = true;
             child.receiveShadow = true;
             
+            // Apply brass material to the wheels
             if (wheelNames.includes(child.name)) {
                 child.material = brassMaterial;
             }
 
-            // --- MODIFICATION: Disable shadow casting for transparent parts ---
             if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
                 child.material = child.material.clone();
                 child.material.transparent = true;
                 child.material.opacity = 0.5;
-                child.castShadow = false; // Light will now pass through this object
-            } else {
-                child.castShadow = true;
+                child.castShadow = false;
             }
             
             const partsToPivot = [
@@ -524,7 +531,6 @@ mtlLoader.load(
 function animate() {
   requestAnimationFrame(animate);
 
-  // --- MODIFICATION: Reverted to rotating the clock unit for realistic tilt and shadows ---
   const maxTilt = 15;
   const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
   const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
@@ -533,7 +539,6 @@ function animate() {
   const rotY = THREE.MathUtils.degToRad(x) * rotationMultiplier;
   const rotX = THREE.MathUtils.degToRad(y) * rotationMultiplier;
 
-  // Apply rotation to the entire clock assembly
   clockUnit.rotation.y = rotY;
   clockUnit.rotation.x = rotX;
   
@@ -627,4 +632,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
