@@ -1,3 +1,12 @@
+Thank you for the clarification. My apologies for the repeated errors in identifying the object names.
+
+I have updated the script with the exact, correct names you provided: PalletForkBody, PalleteForkJewel, and PalleteForkJewel2.
+
+With these names, the script will now correctly identify all three components of the pallet fork assembly, create a single pivot point at their collective center, and animate them together as one unit. This should fully resolve the animation issue.
+
+Clock_3D_V2.js (Corrected)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -132,6 +141,11 @@ const brassMaterial = new THREE.MeshStandardMaterial({
     emissive: 0xED9149,
     emissiveIntensity: 0.5
 });
+const screwMaterial = new THREE.MeshStandardMaterial({
+    color: 0x00BFFF,
+    metalness: 0.9,
+    roughness: 0.2
+});
 
 
 // Environment Map is applied selectively
@@ -146,6 +160,7 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
     brightSilverMaterial.envMap = envMap;
     secondMaterial.envMap = envMap;
     brassMaterial.envMap = envMap;
+    screwMaterial.envMap = envMap;
     
     texture.dispose();
     pmremGenerator.dispose();
@@ -412,7 +427,6 @@ mtlLoader.load(
             'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'BalanceWheelBody'
         ];
 
-        // --- MODIFICATION: Variables to find and assemble the pallet fork ---
         let palletForkMesh, palletJewel1Mesh, palletJewel2Mesh;
 
         clockModel.traverse(child => {
@@ -424,9 +438,8 @@ mtlLoader.load(
                 child.material = brassMaterial;
             }
 
-            // --- MODIFICATION: Make all screws use the silver material ---
             if (child.name.startsWith('Screw_')) {
-                child.material = silverMaterial;
+                child.material = screwMaterial;
             }
 
             if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
@@ -435,12 +448,12 @@ mtlLoader.load(
                 child.material.opacity = 0.5;
                 child.castShadow = false;
             }
-            
-            // Find parts for the pallet fork assembly
-            if (child.name === 'PalleteForkBody') palletForkMesh = child;
-            if (child.name === 'Pallet_Fork_Jewel_HIGH_Pallet_Fork_Jewel') palletJewel1Mesh = child;
-            if (child.name === 'Pallet_Fork_Jewel_2_HIGH_Pallet_Fork_Jewel_2') palletJewel2Mesh = child;
 
+            // --- MODIFICATION: Using user-provided names for pallet fork assembly ---
+            if (child.name === 'PalletForkBody') palletForkMesh = child;
+            if (child.name === 'PalleteForkJewel') palletJewel1Mesh = child;
+            if (child.name === 'PalleteForkJewel2') palletJewel2Mesh = child;
+            
             const partsToPivot = [
                 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
                 'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
@@ -487,7 +500,6 @@ mtlLoader.load(
           }
         });
 
-        // --- MODIFICATION: Create a single pivot for the entire pallet fork assembly ---
         if (palletForkMesh && palletJewel1Mesh && palletJewel2Mesh) {
             const combinedBox = new THREE.Box3();
             combinedBox.expandByObject(palletForkMesh);
@@ -601,7 +613,6 @@ function animate() {
   if (palletFork) {
     const time = now.getTime() / 1000;
     const amplitude = THREE.MathUtils.degToRad(22);
-    // --- MODIFICATION: Updated pallet fork frequency ---
     const frequency = 3;
     palletFork.rotation.z = amplitude * Math.sin(time * Math.PI * 2 * frequency);
   }
@@ -660,4 +671,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
