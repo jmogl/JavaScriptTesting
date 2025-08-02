@@ -1,3 +1,6 @@
+Clock_3D_V2.js (Corrected)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -441,7 +444,7 @@ mtlLoader.load(
             }
 
             // --- MODIFICATION: Using user-provided names for pallet fork assembly ---
-            if (child.name === 'PalletForkBody') palletForkMesh = child;
+            if (child.name === 'PalleteForkBody') palletForkMesh = child;
             if (child.name === 'PalleteForkJewel') palletJewel1Mesh = child;
             if (child.name === 'PalleteForkJewel2') palletJewel2Mesh = child;
             
@@ -662,4 +665,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
