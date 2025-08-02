@@ -1,10 +1,3 @@
-Of course. The previous code was incomplete. Here is the final, working script with detailed comments added to the new section.
-
-These comments explain each step of creating the "pivot points," which are invisible objects placed at the center of each wheel. By rotating these pivots, the wheels now spin correctly around their own centers instead of orbiting the center of the entire mechanism.
-
-Clock_3D_V2.js (with comments)
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -575,3 +568,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
