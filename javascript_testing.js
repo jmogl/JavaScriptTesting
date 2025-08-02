@@ -1,4 +1,4 @@
-
+rrr
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -400,7 +400,7 @@ mtlLoader.load(
       'textures/ETA6497-1_OBJ_TEST.obj',
       (object) => {
         clockModel = object;
-        clockModel.position.set(0, 0, -0.5); // raised by +0.5 from -1
+        clockModel.position.set(0, 0, -0.8); // lowered by 0.3 // raised by +0.5 from -1
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
         clockModel.traverse(child => {
@@ -421,7 +421,7 @@ mtlLoader.load(
         const bbox = new THREE.Box3().setFromObject(clockModel);
         const size = bbox.getSize(new THREE.Vector3());
         const modelDiameter = Math.max(size.x, size.y);
-        const holeRadius = 7; // updated inner radius for 14-unit diameter // fixed inner radius for 13-unit diameter
+        const holeRadius = 6.25; // reduced inner radius to 6.25 // updated inner radius for 14-unit diameter // fixed inner radius for 13-unit diameter
         // Rebuild face shape with inner hole
         const outerRadius = markerRadius + borderThickness / 2;
         const segments    = 64;
@@ -523,4 +523,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
