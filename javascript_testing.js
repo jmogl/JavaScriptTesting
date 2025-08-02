@@ -1,10 +1,3 @@
-My apologies for the repeated errors with the object names. I have corrected the hairspring's name to HairSpringBody as you specified.
-
-The script now uses this correct name to find the hairspring, create its central pivot point, and apply the scaling animation. Everything should now function as intended.
-
-Clock_3D_V2.js (Corrected)
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -621,3 +614,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
