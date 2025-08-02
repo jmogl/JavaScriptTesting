@@ -1,14 +1,3 @@
-Yes, your observations are correct. Here are the final adjustments to address the material appearance and the hairspring animation.
-
-Emissive Wheels: To make the brass and balance wheels look brighter from all angles, an emissive (glowing) property has been added to their material. This makes them emit their own light, giving them a vibrant copper look, while still allowing them to react to reflections from the main light source.
-
-Hairspring Animation: The "spinning" look was an optical illusion caused by the previous scaling logic. The animation has been updated to a new formula that creates a single, fluid pulse for each swing of the balance wheel. The spring will now smoothly scale from 0.6x at one end of the oscillation to 1.3x at the other, which will look more like a realistic "breathing" motion.
-
-This should be the final, complete version of the project.
-
-Clock_3D_V2.js (Final)
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -637,3 +626,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
