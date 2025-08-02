@@ -1,3 +1,10 @@
+Based on your feedback and analysis of the older file, the unrealistic tilt effect has been corrected.
+
+The issue was that the background wall was stationary while the clock components tilted, creating a disconnect. The fix was to place the background wall back inside the main clockUnit group. Now, the entire assembly—including the background, bezel, clock face, and all components—tilts together as a single, solid object, restoring the realistic sense of 3D depth.
+
+Clock_3D_V2.js (Corrected Tilt)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -110,7 +117,8 @@ const wallGeometry = new THREE.PlaneGeometry(1, 1);
 const wall = new THREE.Mesh(wallGeometry, wallMaterial);
 wall.position.z = -4; 
 wall.receiveShadow = true;
-scene.add(wall);
+// --- MODIFICATION: Add the wall to the clockUnit to ensure it tilts with the other parts ---
+clockUnit.add(wall);
 
 
 // --- Metallic Materials ---
@@ -413,8 +421,7 @@ mtlLoader.load(
                 child.material.transparent = true;
                 child.material.opacity = 0.5;
             }
-            
-            // --- MODIFICATION: Using the corrected name for the Pallet Fork ---
+        
             const partsToPivot = [
                 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
                 'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalleteForkBody'
@@ -600,4 +607,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
