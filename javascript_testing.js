@@ -109,6 +109,31 @@ const watch = new THREE.Mesh(watchGeometry, watchMaterial);
 watch.position.z = -1;
 watch.receiveShadow = true;
 clockUnit.add(watch);
+// --- Border Wall ---
+// Dark blue fixed bezel ring (smooth curve)
+const borderThickness = 1.0;
+const borderHeight    = 0.5;
+const outerRadius     = markerRadius + borderThickness;
+const innerRadius     = markerRadius;
+
+const borderShape = new THREE.Shape();
+borderShape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
+const holePath = new THREE.Path();
+holePath.absarc(0, 0, innerRadius, 0, Math.PI * 2, true);
+borderShape.holes.push(holePath);
+
+const extrudeSettings = { depth: borderHeight, bevelEnabled: false, curveSegments: 256 };
+const borderGeom = new THREE.ExtrudeGeometry(borderShape, extrudeSettings);
+borderGeom.translate(0, 0, -borderHeight / 2);
+
+const borderMaterial = new THREE.MeshStandardMaterial({ color: 0x000040 });
+const borderMesh = new THREE.Mesh(borderGeom, borderMaterial);
+borderMesh.castShadow = true;
+borderMesh.receiveShadow = true;
+borderMesh.position.z = watch.position.z;
+
+clockUnit.add(borderMesh);
+
 
 // --- Metallic Materials ---
 const silverMaterial = new THREE.MeshStandardMaterial({
@@ -349,7 +374,7 @@ mtlLoader.load(
       'textures/ETA6497-1_OBJ_TEST.obj',
       (object) => {
         clockModel = object;
-        clockModel.position.set(0, 0, 0);
+        clockModel.position.set(0, 0, -5);
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
         clockModel.traverse(child => {
