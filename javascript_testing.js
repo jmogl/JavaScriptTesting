@@ -1,4 +1,4 @@
-
+rewrew
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -60,7 +60,7 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
 dirLight.castShadow = true;
-dirLight.position.set(10, 15, 35);
+dirLight.position.set(10, 15, 36); // raised light by +1 on z-axis;
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
@@ -72,6 +72,7 @@ scene.add(dirLight);
 // --- Create a master "clockUnit" group to handle tilting ---
 const clockUnit = new THREE.Group();
 scene.add(clockUnit);
+clockUnit.position.z = 1; // raised all clock elements +1 on z-axis
 
 const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
@@ -522,4 +523,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
