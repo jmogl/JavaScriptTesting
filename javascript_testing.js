@@ -167,6 +167,27 @@ borderMesh.receiveShadow = true;
 borderMesh.position.z = watch.position.z;
 
 clockUnit.add(borderMesh);
+// Rename wood background plane for clarity
+watch.name = 'wall_face';
+
+// --- Creamy White Clock Face ---
+// radius from center to middle of border ring
+const faceRadius = markerRadius + borderThickness / 2;
+const faceSegments = 64;
+const faceGeometry = new THREE.CircleGeometry(faceRadius, faceSegments);
+const faceMaterial = new THREE.MeshStandardMaterial({
+  color: 0xFFFDD0,
+  metalness: 0.1,
+  roughness: 0.9
+});
+const faceMesh = new THREE.Mesh(faceGeometry, faceMaterial);
+faceMesh.name = 'clock_face';
+faceMesh.receiveShadow = true;
+faceMesh.castShadow = false;
+// Slightly above the wood plane so markers can protrude
+faceMesh.position.z = watch.position.z + 0.01;
+clockUnit.add(faceMesh);
+
 
 for (let i = 0; i < 60; i++) {
     const angle = (i / 60) * Math.PI * 2;
