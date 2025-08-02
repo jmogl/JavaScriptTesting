@@ -1,4 +1,4 @@
-
+rrr
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -420,7 +420,7 @@ mtlLoader.load(
         const bbox = new THREE.Box3().setFromObject(clockModel);
         const size = bbox.getSize(new THREE.Vector3());
         const modelDiameter = Math.max(size.x, size.y);
-        const holeRadius = 6.5; // fixed inner radius for 13-unit diameter
+        const holeRadius = 7; // updated inner radius for 14-unit diameter // fixed inner radius for 13-unit diameter
         // Rebuild face shape with inner hole
         const outerRadius = markerRadius + borderThickness / 2;
         const segments    = 64;
