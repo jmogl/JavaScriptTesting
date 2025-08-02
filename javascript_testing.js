@@ -1,3 +1,10 @@
+Of course. A transparency option has been added, and the TrainWheelBridgeBody is now set to 50% transparency.
+
+To achieve this, the script now checks the name of each part as the 3D model is loaded. If the part is the TrainWheelBridgeBody, its material is cloned and modified to be transparent. All other parts of the model will remain fully opaque by default.
+
+Clock_3D_V2.js (with transparency)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -17,7 +24,6 @@ let digitalDate, digitalClock;
 let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
 let modelScale = 3.5;
-// --- MODIFICATION: Added variables for new animated parts ---
 let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel;
 
 
@@ -402,8 +408,15 @@ mtlLoader.load(
           if (child.isMesh) {
             child.castShadow = true;
             child.receiveShadow = true;
+            
+            // --- MODIFICATION: Set transparency for a specific part ---
+            if (child.name === 'TrainWheelBridgeBody') {
+                // Clone the material to ensure transparency only affects this object
+                child.material = child.material.clone();
+                child.material.transparent = true;
+                child.material.opacity = 0.5;
+            }
         
-            // --- MODIFICATION: Added new wheels to the pivot creation logic ---
             const partsToPivot = [
                 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
                 'EscapeWheel', 'CenterWheelBody', 'ThirdWheel'
@@ -515,36 +528,28 @@ function animate() {
   minuteHand.rotation.z = -THREE.MathUtils.degToRad((minutes / 60) * 360);
   hourHand.rotation.z   = -THREE.MathUtils.degToRad((hours / 12) * 360);
   
-  // --- MODIFICATION: Added/updated animations for all wheels ---
   if (secondWheel) {
-    // Seconds Wheel: Counter-clockwise, 1 rotation per minute
     secondWheel.rotation.z = (seconds / 60) * Math.PI * 2;
   }
   if (minuteWheel) {
-    // Minute Wheel: 1 rotation per hour
     minuteWheel.rotation.z = -(minutes / 60) * Math.PI * 2;
   }
   if (hourWheel) {
-    // Hour Wheel: 1 rotation per 12 hours
     hourWheel.rotation.z = -(hours / 12) * Math.PI * 2;
   }
   if (balanceWheel) {
-    // Balance Wheel: Oscillates 180 degrees, 2 times per second
     const time = now.getTime() / 1000;
     const amplitude = Math.PI / 2;
     const frequency = 2; 
     balanceWheel.rotation.z = amplitude * Math.sin(time * Math.PI * 2 * frequency);
   }
   if (escapeWheel) {
-    // Escape Wheel: Clockwise, 1 rotation per 5 seconds
     escapeWheel.rotation.z = -((seconds % 5) / 5) * Math.PI * 2;
   }
   if (centerWheel) {
-    // Center Wheel: Counter-clockwise, 1 rotation per hour
     centerWheel.rotation.z = (minutes / 60) * Math.PI * 2;
   }
   if (thirdWheel) {
-    // Third Wheel: Clockwise, 1 rotation per 7.5 minutes
     thirdWheel.rotation.z = -((minutes % 7.5) / 7.5) * Math.PI * 2;
   }
 
@@ -588,4 +593,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
