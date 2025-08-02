@@ -1,3 +1,5 @@
+rwer
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -68,7 +70,7 @@ dirLight.shadow.camera.top = 15;
 dirLight.shadow.camera.bottom = -15;
 dirLight.shadow.bias = -0.0001;
 
-// Attach light to the camera for a "headlamp" effect
+// --- MODIFICATION: Attach light to the camera for a "headlamp" effect ---
 camera.add(dirLight);
 camera.add(dirLight.target);
 dirLight.position.set(5, 10, 20);
@@ -415,7 +417,6 @@ mtlLoader.load(
                 child.material.opacity = 0.5;
             }
             
-            // --- MODIFICATION: Using the corrected name for the Hair Spring ---
             const partsToPivot = [
                 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
                 'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalleteForkBody', 'HairSpringBody'
@@ -511,15 +512,18 @@ mtlLoader.load(
 function animate() {
   requestAnimationFrame(animate);
 
+  // --- MODIFICATION: New tilt logic to move the camera, not the clock ---
   const cameraMoveScale = 4;
   const clampedTiltX = THREE.MathUtils.clamp(tiltX, -45, 45);
   const clampedTiltY = THREE.MathUtils.clamp(tiltY, -45, 45);
   const targetCameraX = THREE.MathUtils.degToRad(clampedTiltX) * cameraMoveScale * -1;
   const targetCameraY = THREE.MathUtils.degToRad(clampedTiltY) * cameraMoveScale;
   
+  // Smoothly interpolate camera position for a fluid feel
   camera.position.x += (targetCameraX - camera.position.x) * 0.05;
   camera.position.y += (targetCameraY - camera.position.y) * 0.05;
   
+  // The camera always looks at the center of the clock unit
   camera.lookAt(clockUnit.position);
 
   const now = new Date();
@@ -598,6 +602,7 @@ function animate() {
 camera.aspect = window.innerWidth / window.innerHeight;
 camera.updateProjectionMatrix();
 updateCameraPosition();
+// Set initial camera X and Y to 0 for the new tilt effect
 camera.position.x = 0;
 camera.position.y = 0;
 updateBackgroundSize();
@@ -614,4 +619,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
