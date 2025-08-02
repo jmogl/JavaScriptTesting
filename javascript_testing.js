@@ -1,25 +1,3 @@
-It appears the animation is still failing because the script isn't finding the 3D model parts under the names we're using. The names in the .obj file can be interpreted differently by the loader, so the most reliable way to fix this is to log the actual names the script sees at runtime.
-
-I've added a single line of code to help us debug this. Please follow the steps below.
-
-How to Find the Correct Names
-Replace your current code with the code provided below.
-
-Open your project in the browser.
-
-Open the developer console (usually by pressing F12).
-
-In the console, you will see a list of all the object names found inside the 3D model.
-
-Look through that list to find the correct names for the hour, minute, seconds, and balance wheels. They will likely be very similar to the names we've tried already.
-
-Once you have the correct names, the animation will work by replacing the names in the switch statement.
-
-Debugging Code
-A console.log(child.name); has been added to the OBJLoader section to print the names of all model parts.
-
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -565,3 +543,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
