@@ -1,3 +1,10 @@
+Based on your request, I've implemented a completely new tilt rotation system and added the speed multiplier for the balance wheel.
+
+Instead of rotating the clock itself, the camera now moves around the scene as you tilt your device. This creates a realistic 3D effect, making it feel like you are looking through a window at a physical object inside. The shadows will shift realistically as the camera's perspective changes relative to the fixed light source in the virtual world.
+
+Clock_3D_V2.js (Corrected)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -18,6 +25,8 @@ let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
 let modelScale = 3.5;
 let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring;
+// --- MODIFICATION: Added speed multiplier for the balance wheel ---
+const balanceWheelSpeedMultiplier = 0.5;
 
 
 // --- Wait for the DOM to be ready, then create and inject UI elements ---
@@ -60,7 +69,9 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
 dirLight.castShadow = true;
-dirLight.position.set(10, 15, 36);
+// --- MODIFICATION: Base light position for new tilt effect ---
+const baseLightPosition = new THREE.Vector3(10, 15, 36);
+dirLight.position.copy(baseLightPosition);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
@@ -69,7 +80,7 @@ dirLight.shadow.camera.bottom = -15;
 dirLight.shadow.bias = -0.0001;
 scene.add(dirLight);
 
-// --- Create a master "clockUnit" group to handle tilting ---
+// --- Create a master "clockUnit" group ---
 const clockUnit = new THREE.Group();
 scene.add(clockUnit);
 
@@ -110,7 +121,8 @@ const wallGeometry = new THREE.PlaneGeometry(1, 1);
 const wall = new THREE.Mesh(wallGeometry, wallMaterial);
 wall.position.z = -4; 
 wall.receiveShadow = true;
-scene.add(wall);
+// The wall is now a child of the main clock unit so it doesn't clip when camera moves
+clockUnit.add(wall);
 
 
 // --- Metallic Materials ---
@@ -408,9 +420,13 @@ mtlLoader.load(
                 child.material.opacity = 0.5;
             }
             
+            if (child.name === 'HairSpringBody') {
+                hairSpring = child;
+            }
+        
             const partsToPivot = [
                 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
-                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalleteForkBody', 'HairSpringBody'
+                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalleteForkBody'
             ];
 
             if (partsToPivot.includes(child.name)) {
@@ -448,9 +464,6 @@ mtlLoader.load(
                   break;
                 case 'PalleteForkBody':
                   palletFork = pivot;
-                  break;
-                case 'HairSpringBody':
-                  hairSpring = pivot;
                   break;
               }
             }
@@ -503,18 +516,33 @@ mtlLoader.load(
 function animate() {
   requestAnimationFrame(animate);
 
-  const maxTilt = 15;
-  const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
-  const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
+  // --- MODIFICATION: New tilt logic starts here ---
+  // The clock itself no longer rotates. Instead, the camera and light move.
+  
+  // 1. Move the camera based on tilt, creating a "looking around" effect.
+  const cameraMoveScale = 3; // Controls how far the camera moves
+  // Clamp tilt values to a reasonable range for smooth control
+  const clampedTiltX = THREE.MathUtils.clamp(tiltX, -45, 45);
+  const clampedTiltY = THREE.MathUtils.clamp(tiltY, -45, 45);
+  // Calculate target positions
+  const targetCameraX = THREE.MathUtils.degToRad(clampedTiltX) * cameraMoveScale;
+  const targetCameraY = THREE.MathUtils.degToRad(clampedTiltY) * cameraMoveScale;
+  // Smoothly interpolate camera position for a fluid feel
+  camera.position.x += (targetCameraX - camera.position.x) * 0.05;
+  camera.position.y += (targetCameraY - camera.position.y) * 0.05;
+  
+  // 2. Move the light source to create dynamic shadows.
+  const lightMoveScale = 5; // Controls how far the light moves
+  const normalizedX = clampedTiltX / 45; // Range -1 to 1
+  const normalizedY = clampedTiltY / 45; // Range -1 to 1
+  dirLight.position.x = baseLightPosition.x + normalizedX * lightMoveScale;
+  dirLight.position.y = baseLightPosition.y - normalizedY * lightMoveScale;
 
-  const rotationMultiplier = 0.5;
-  const rotY = THREE.MathUtils.degToRad(x) * rotationMultiplier;
-  const rotX = THREE.MathUtils.degToRad(y) * rotationMultiplier;
-
-  clockUnit.rotation.y = rotY;
-  clockUnit.rotation.x = rotX;
-
+  // The camera always looks at the center of the scene.
   camera.lookAt(0, 0, 0);
+
+  // --- End of new tilt logic ---
+
 
   const now = new Date();
   const seconds = now.getSeconds() + now.getMilliseconds() / 1000;
@@ -552,15 +580,13 @@ function animate() {
   
   if (balanceWheel) {
     const time = now.getTime() / 1000;
-    // --- MODIFICATION: Updated balance wheel frequency to 3Hz ---
-    const frequency = 3; 
+    const frequency = 3 * balanceWheelSpeedMultiplier; 
     const sineValue = Math.sin(time * Math.PI * 2 * frequency);
 
     const amplitude = Math.PI / 2;
     balanceWheel.rotation.z = amplitude * sineValue;
 
     if (hairSpring) {
-        // --- MODIFICATION: Updated hair spring scale to be 0.7x - 1.3x ---
         const currentScale = 0.7 + 0.6 * Math.abs(sineValue);
         hairSpring.scale.set(currentScale, currentScale, 1);
     }
@@ -594,6 +620,9 @@ function animate() {
 camera.aspect = window.innerWidth / window.innerHeight;
 camera.updateProjectionMatrix();
 updateCameraPosition();
+// Set initial camera X and Y to 0 for the new tilt effect
+camera.position.x = 0;
+camera.position.y = 0;
 updateBackgroundSize();
 
 window.addEventListener('resize', () => {
@@ -601,9 +630,10 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   updateCameraPosition();
+  camera.position.x = 0;
+  camera.position.y = 0;
   updateBackgroundSize();
 });
 
 setupTiltControls();
 animate();
-
