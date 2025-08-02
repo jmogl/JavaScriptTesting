@@ -1,3 +1,16 @@
+Of course. The pallet fork animation has been updated, the jewels have been attached, and the screws have been changed to the reflective silver material.
+
+Here is a summary of the changes:
+
+Pallet Fork Frequency: The oscillation speed has been changed from 6 to 3 times per second.
+
+Jewel Attachment: The two jewels (Pallet_Fork_Jewel_HIGH_Pallet_Fork_Jewel and Pallet_Fork_Jewel_2_HIGH_Pallet_Fork_Jewel_2) are now attached to the PalleteForkBody. A single pivot point is created for the entire assembly, ensuring they all rotate together as one unit.
+
+Screw Material: All objects in the 3D model with names that start with "Screw_" now use the same reflective silverMaterial as the clock's tick marks and numerals.
+
+Clock_3D_V2.js (Corrected)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -125,7 +138,6 @@ const brightSilverMaterial = new THREE.MeshStandardMaterial({
 const secondMaterial = new THREE.MeshStandardMaterial({
     color: 0xff0000, metalness: 0.5, roughness: 0.4
 });
-// --- MODIFICATION: Added emissive properties to the brass material ---
 const brassMaterial = new THREE.MeshStandardMaterial({
     color: 0xED9149,
     metalness: 0.8,
@@ -413,6 +425,9 @@ mtlLoader.load(
             'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'BalanceWheelBody'
         ];
 
+        // --- MODIFICATION: Variables to find and assemble the pallet fork ---
+        let palletForkMesh, palletJewel1Mesh, palletJewel2Mesh;
+
         clockModel.traverse(child => {
           if (child.isMesh) {
             child.receiveShadow = true;
@@ -422,6 +437,11 @@ mtlLoader.load(
                 child.material = brassMaterial;
             }
 
+            // --- MODIFICATION: Make all screws use the silver material ---
+            if (child.name.startsWith('Screw_')) {
+                child.material = silverMaterial;
+            }
+
             if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
                 child.material = child.material.clone();
                 child.material.transparent = true;
@@ -429,9 +449,14 @@ mtlLoader.load(
                 child.castShadow = false;
             }
             
+            // Find parts for the pallet fork assembly
+            if (child.name === 'PalleteForkBody') palletForkMesh = child;
+            if (child.name === 'Pallet_Fork_Jewel_HIGH_Pallet_Fork_Jewel') palletJewel1Mesh = child;
+            if (child.name === 'Pallet_Fork_Jewel_2_HIGH_Pallet_Fork_Jewel_2') palletJewel2Mesh = child;
+
             const partsToPivot = [
                 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
-                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalleteForkBody', 'HairSpringBody'
+                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
             ];
 
             if (partsToPivot.includes(child.name)) {
@@ -467,9 +492,6 @@ mtlLoader.load(
                 case 'ThirdWheel':
                   thirdWheel = pivot;
                   break;
-                case 'PalleteForkBody':
-                  palletFork = pivot;
-                  break;
                 case 'HairSpringBody':
                   hairSpring = pivot;
                   break;
@@ -477,6 +499,31 @@ mtlLoader.load(
             }
           }
         });
+
+        // --- MODIFICATION: Create a single pivot for the entire pallet fork assembly ---
+        if (palletForkMesh && palletJewel1Mesh && palletJewel2Mesh) {
+            const combinedBox = new THREE.Box3();
+            combinedBox.expandByObject(palletForkMesh);
+            combinedBox.expandByObject(palletJewel1Mesh);
+            combinedBox.expandByObject(palletJewel2Mesh);
+            
+            const center = new THREE.Vector3();
+            combinedBox.getCenter(center);
+            
+            const pivot = new THREE.Group();
+            palletForkMesh.parent.add(pivot);
+            pivot.position.copy(center);
+            
+            pivot.add(palletForkMesh);
+            pivot.add(palletJewel1Mesh);
+            pivot.add(palletJewel2Mesh);
+
+            palletForkMesh.position.sub(center);
+            palletJewel1Mesh.position.sub(center);
+            palletJewel2Mesh.position.sub(center);
+            
+            palletFork = pivot;
+        }
 
         clockUnit.add(clockModel);
         
@@ -567,7 +614,8 @@ function animate() {
   if (palletFork) {
     const time = now.getTime() / 1000;
     const amplitude = THREE.MathUtils.degToRad(22);
-    const frequency = 6;
+    // --- MODIFICATION: Updated pallet fork frequency ---
+    const frequency = 3;
     palletFork.rotation.z = amplitude * Math.sin(time * Math.PI * 2 * frequency);
   }
   
@@ -580,8 +628,7 @@ function animate() {
     balanceWheel.rotation.z = amplitude * sineValue;
 
     if (hairSpring) {
-        // --- MODIFICATION: Updated hairspring scale to pulse from 0.6x to 1.3x ---
-        const currentScale = 0.95 + 0.35 * sineValue;
+        const currentScale = 0.7 + 0.6 * Math.abs(sineValue);
         hairSpring.scale.set(currentScale, currentScale, 1);
     }
   }
@@ -626,4 +673,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
