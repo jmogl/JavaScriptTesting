@@ -1,3 +1,10 @@
+Yes, the code has been updated with the exact names you provided.
+
+The script now correctly identifies PalletForkBody, PalletForkJewel, and PalletForkJewel2 to build the complete pallet fork assembly. The animation should now work as intended.
+
+Clock3D_V3.js (Corrected)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -442,10 +449,10 @@ mtlLoader.load(
 
             // --- MODIFICATION: Using corrected user-provided names for pallet fork assembly ---
             if (child.name === 'PalletForkBody') palletForkMesh = child;
-            if (child.name === 'PalleteForkJewel') palletJewel1Mesh = child;
-            if (child.name === 'PalleteForkJewel2') palletJewel2Mesh = child;
+            if (child.name === 'PalletForkJewel') palletJewel1Mesh = child;
+            if (child.name === 'PalletForkJewel2') palletJewel2Mesh = child;
             
-            // --- MODIFICATION: Removed PalleteForkBody from this list to use the assembly logic below ---
+            // --- MODIFICATION: Removed PalletForkBody from this list ---
             const partsToPivot = [
                 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
                 'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
@@ -663,4 +670,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
