@@ -17,7 +17,7 @@ let digitalDate, digitalClock;
 // --- 3D Model Variables ---
 let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
-let modelScale     = 3.30; // increased by 10%
+let modelScale = 3.5; // updated scale // increased by 10%
 
 
 // --- Wait for the DOM to be ready, then create and inject UI elements ---
@@ -420,7 +420,7 @@ mtlLoader.load(
         const bbox = new THREE.Box3().setFromObject(clockModel);
         const size = bbox.getSize(new THREE.Vector3());
         const modelDiameter = Math.max(size.x, size.y);
-        const holeRadius = (modelDiameter / 2) * 1.05;
+        const holeRadius = 6.5; // fixed inner radius for 13-unit diameter
         // Rebuild face shape with inner hole
         const outerRadius = markerRadius + borderThickness / 2;
         const segments    = 64;
