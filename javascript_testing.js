@@ -1,3 +1,10 @@
+Of course. The previous code was incomplete. Here is the final, working script with detailed comments added to the new section.
+
+These comments explain each step of creating the "pivot points," which are invisible objects placed at the center of each wheel. By rotating these pivots, the wheels now spin correctly around their own centers instead of orbiting the center of the entire mechanism.
+
+Clock_3D_V2.js (with comments)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -396,28 +403,55 @@ mtlLoader.load(
         clockModel.position.set(0, 0, -4.0 + zShift);
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
+        
         clockModel.traverse(child => {
           if (child.isMesh) {
-            child.castShadow    = true;
+            child.castShadow = true;
             child.receiveShadow = true;
-
-            // --- MODIFICATION: Using the correct, user-provided object names ---
-            switch (child.name) {
+        
+            // --- MODIFICATION: Create pivots for wheels to rotate around their own centers ---
+            // Check if the mesh is one of the parts we need to animate.
+            if (['SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody'].includes(child.name)) {
+              
+              // Step 1: Calculate the geometric center of the wheel in world space.
+              // This is the point we want the wheel to rotate around.
+              const center = new THREE.Vector3();
+              new THREE.Box3().setFromObject(child).getCenter(center);
+        
+              // Step 2: Create an empty Group to act as an invisible pivot.
+              const pivot = new THREE.Group();
+              // Step 3: Add the pivot to the same parent as the wheel (the clockModel).
+              child.parent.add(pivot);
+              // Step 4: Position the pivot exactly at the wheel's calculated center.
+              pivot.position.copy(center);
+        
+              // Step 5: Attach the wheel to the pivot. Now the pivot is the parent.
+              pivot.add(child);
+              
+              // Step 6: Move the wheel's local position. Its new coordinates are relative
+              // to the pivot, so we offset it by the inverse of the pivot's position.
+              child.position.sub(center);
+        
+              // Step 7: Store the pivot (not the wheel) in the corresponding variable.
+              // The animation loop will now rotate the pivot, not the original mesh.
+              switch (child.name) {
                 case 'SecondsWheel':
-                    secondWheel = child;
-                    break;
+                  secondWheel = pivot;
+                  break;
                 case 'Minute_Wheel_Body':
-                    minuteWheel = child;
-                    break;
+                  minuteWheel = pivot;
+                  break;
                 case 'HourWheel_Body':
-                    hourWheel = child;
-                    break;
+                  hourWheel = pivot;
+                  break;
                 case 'BalanceWheelBody':
-                    balanceWheel = child;
-                    break;
+                  balanceWheel = pivot;
+                  break;
+              }
             }
           }
         });
+
         clockUnit.add(clockModel);
         
         const oldFace = clockUnit.getObjectByName('clock_face');
@@ -541,4 +575,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
