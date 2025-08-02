@@ -1,10 +1,3 @@
-Of course. The animation for the HairSpringBody has been added.
-
-The script now identifies the HairSpringBody object when the 3D model loads. In the animation loop, it calculates a scale value for the spring's X and Y axes that is synchronized with the balance wheel's oscillation. The scale is 1.0x when the balance wheel is centered and expands to 1.3x at its maximum rotation, creating a realistic "breathing" effect.
-
-Clock_3D_V2.js (Final)
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -617,3 +610,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
