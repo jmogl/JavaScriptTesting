@@ -17,7 +17,7 @@ let digitalDate, digitalClock;
 // --- 3D Model Variables ---
 let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
-let modelScale     = 3.0;
+let modelScale     = 3.30; // increased by 10%
 
 
 // --- Wait for the DOM to be ready, then create and inject UI elements ---
@@ -185,7 +185,7 @@ faceMesh.name = 'clock_face';
 faceMesh.receiveShadow = true;
 faceMesh.castShadow = false;
 // Slightly above the wood plane so markers can protrude
-faceMesh.position.z = watch.position.z + 0.01;
+faceMesh.position.z = watch.position.z + 0.1; // raised from +0.01 to +0.1
 clockUnit.add(faceMesh);
 
 
