@@ -1,10 +1,3 @@
-Of course. The material override has been removed, and a new, highly reflective brass material has been created and applied specifically to the wheels of the watch movement.
-
-The rest of the model's components will now use their original, distinct materials as defined in the .mtl file. The wheels will be a reflective brass, and they will properly reflect the light source and environment map.
-
-Clock_3D_V2.js (Corrected)
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -637,3 +630,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
