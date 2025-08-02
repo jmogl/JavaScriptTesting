@@ -409,6 +409,38 @@ mtlLoader.load(
           }
         });
         clockUnit.add(clockModel);
+        // --- Cut a hole in the clock face for the ETA model ---
+        // Remove old solid face
+        const oldFace = clockUnit.getObjectByName('clock_face');
+        if (oldFace) {
+            clockUnit.remove(oldFace);
+            oldFace.geometry.dispose();
+        }
+        // Compute hole radius: 5% larger than the model
+        const bbox = new THREE.Box3().setFromObject(clockModel);
+        const size = bbox.getSize(new THREE.Vector3());
+        const modelDiameter = Math.max(size.x, size.y);
+        const holeRadius = (modelDiameter / 2) * 1.05;
+        // Rebuild face shape with inner hole
+        const outerRadius = markerRadius + borderThickness / 2;
+        const segments    = 64;
+        const shape = new THREE.Shape();
+        shape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
+        const hole = new THREE.Path();
+        hole.absarc(0, 0, holeRadius, 0, Math.PI * 2, true);
+        shape.holes.push(hole);
+        const faceGeom = new THREE.ShapeGeometry(shape, segments);
+        const faceMat  = new THREE.MeshStandardMaterial({
+            color:     0xFFFDD0,
+            metalness: 0.1,
+            roughness: 0.9
+        });
+        const newFace = new THREE.Mesh(faceGeom, faceMat);
+        newFace.name          = 'clock_face';
+        newFace.receiveShadow = true;
+        newFace.position.z    = watch.position.z + 0.1;
+        clockUnit.add(newFace);
+
       },
       undefined,
       (err) => {
