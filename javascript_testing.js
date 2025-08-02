@@ -1,10 +1,3 @@
-Of course. A transparency option has been added, and the TrainWheelBridgeBody is now set to 50% transparency.
-
-To achieve this, the script now checks the name of each part as the 3D model is loaded. If the part is the TrainWheelBridgeBody, its material is cloned and modified to be transparent. All other parts of the model will remain fully opaque by default.
-
-Clock_3D_V2.js (with transparency)
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -593,3 +586,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
