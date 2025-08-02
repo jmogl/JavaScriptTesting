@@ -1,10 +1,3 @@
-Based on your request, I've implemented a completely new tilt rotation system and added the speed multiplier for the balance wheel.
-
-Instead of rotating the clock itself, the camera now moves around the scene as you tilt your device. This creates a realistic 3D effect, making it feel like you are looking through a window at a physical object inside. The shadows will shift realistically as the camera's perspective changes relative to the fixed light source in the virtual world.
-
-Clock_3D_V2.js (Corrected)
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -637,3 +630,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
