@@ -1,3 +1,10 @@
+The animation for the watch movement parts is not working because the object names in the 3D model file are slightly different from the ones used in the script.
+
+To fix this, I've updated the script with the exact body names from your .obj file. This will allow the animate function to find the correct components and apply the rotation logic.
+
+Clock_3D_V2.js (Corrected)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -17,7 +24,6 @@ let digitalDate, digitalClock;
 let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
 let modelScale = 3.5;
-// --- MODIFICATION: Variables to hold animated parts ---
 let secondWheel, minuteWheel, hourWheel, balanceWheel;
 
 
@@ -402,18 +408,18 @@ mtlLoader.load(
             child.castShadow    = true;
             child.receiveShadow = true;
 
-            // --- MODIFICATION: Find and store the specific wheels by name ---
+            // --- MODIFICATION: Using the correct, full object names from the OBJ file ---
             switch (child.name) {
-                case 'Second_Wheel_HIGH':
+                case 'Second_Wheel_HIGH_Second_Wheel':
                     secondWheel = child;
                     break;
-                case 'Minute_Wheel_HIGH':
+                case 'Minute_Wheel_HIGH_Minute_Wheel':
                     minuteWheel = child;
                     break;
-                case 'Hour_Wheel_HIGH':
+                case 'Hour_Wheel_HIGH_Hour_Wheel':
                     hourWheel = child;
                     break;
-                case 'Balance_Complete_HIGH':
+                case 'Balance_Complete_HIGH_Balance_Complete':
                     balanceWheel = child;
                     break;
             }
@@ -487,7 +493,6 @@ function animate() {
   minuteHand.rotation.z = -THREE.MathUtils.degToRad((minutes / 60) * 360);
   hourHand.rotation.z   = -THREE.MathUtils.degToRad((hours / 12) * 360);
   
-  // --- MODIFICATION: Animate the OBJ model wheels ---
   if (secondWheel) {
     // Seconds Wheel: 1 rotation per minute (60 seconds)
     secondWheel.rotation.z = -(seconds / 60) * Math.PI * 2;
@@ -547,4 +552,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
