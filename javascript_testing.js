@@ -17,7 +17,7 @@ let digitalDate, digitalClock;
 // --- 3D Model Variables ---
 let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
-let modelScale     = 1.0;
+let modelScale     = 3.0;
 
 
 // --- Wait for the DOM to be ready, then create and inject UI elements ---
@@ -440,5 +440,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
-
