@@ -1,10 +1,3 @@
-My apologies for that error. Thank you for providing the correct name. It appears there was a typo in the name I used previously.
-
-I have now updated the script with the correct body name, PalleteForkBody. The animation for the pallet fork should now work correctly.
-
-Clock_3D_V2.js (Corrected)
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -607,3 +600,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
