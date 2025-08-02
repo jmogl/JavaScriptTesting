@@ -125,13 +125,17 @@ const brightSilverMaterial = new THREE.MeshStandardMaterial({
 const secondMaterial = new THREE.MeshStandardMaterial({
     color: 0xff0000, metalness: 0.5, roughness: 0.4
 });
-// --- MODIFICATION: Added emissive properties to the brass material ---
 const brassMaterial = new THREE.MeshStandardMaterial({
     color: 0xED9149,
     metalness: 0.8,
     roughness: 0.2,
     emissive: 0xED9149,
     emissiveIntensity: 0.5
+});
+const screwMaterial = new THREE.MeshStandardMaterial({
+    color: 0x00BFFF,
+    metalness: 0.9,
+    roughness: 0.2
 });
 
 
@@ -147,6 +151,7 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
     brightSilverMaterial.envMap = envMap;
     secondMaterial.envMap = envMap;
     brassMaterial.envMap = envMap;
+    screwMaterial.envMap = envMap;
     
     texture.dispose();
     pmremGenerator.dispose();
@@ -394,14 +399,16 @@ tickSound.volume = 0.2;
 // ─── Load the ETA6497 model ───
 const mtlLoader = new MTLLoader();
 mtlLoader.setCrossOrigin('');
+// --- MODIFICATION: Updated material file path ---
 mtlLoader.load(
-  'textures/ETA6497-1_OBJ_TEST.mtl',
+  'textures/ETA6497-1_OBJ.mtl',
   (materials) => {
     materials.preload();
     const objLoader = new OBJLoader();
     objLoader.setMaterials(materials);
+    // --- MODIFICATION: Updated object file path ---
     objLoader.load(
-      'textures/ETA6497-1_OBJ_TEST.obj',
+      'textures/ETA6497-1_OBJ.obj',
       (object) => {
         clockModel = object;
         clockModel.position.set(0, 0, -4.0 + zShift);
@@ -413,6 +420,8 @@ mtlLoader.load(
             'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'BalanceWheelBody'
         ];
 
+        let palletForkMesh, palletJewel1Mesh, palletJewel2Mesh;
+
         clockModel.traverse(child => {
           if (child.isMesh) {
             child.receiveShadow = true;
@@ -422,6 +431,10 @@ mtlLoader.load(
                 child.material = brassMaterial;
             }
 
+            if (child.name.startsWith('Screw_')) {
+                child.material = screwMaterial;
+            }
+
             if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
                 child.material = child.material.clone();
                 child.material.transparent = true;
@@ -429,9 +442,14 @@ mtlLoader.load(
                 child.castShadow = false;
             }
             
+            // --- MODIFICATION: Using user-provided names for pallet fork assembly ---
+            if (child.name === 'PalletForkBody') palletForkMesh = child;
+            if (child.name === 'PalleteForkJewel') palletJewel1Mesh = child;
+            if (child.name === 'PalleteForkJewel2') palletJewel2Mesh = child;
+            
             const partsToPivot = [
                 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
-                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalleteForkBody', 'HairSpringBody'
+                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
             ];
 
             if (partsToPivot.includes(child.name)) {
@@ -467,9 +485,6 @@ mtlLoader.load(
                 case 'ThirdWheel':
                   thirdWheel = pivot;
                   break;
-                case 'PalleteForkBody':
-                  palletFork = pivot;
-                  break;
                 case 'HairSpringBody':
                   hairSpring = pivot;
                   break;
@@ -477,6 +492,30 @@ mtlLoader.load(
             }
           }
         });
+
+        if (palletForkMesh && palletJewel1Mesh && palletJewel2Mesh) {
+            const combinedBox = new THREE.Box3();
+            combinedBox.expandByObject(palletForkMesh);
+            combinedBox.expandByObject(palletJewel1Mesh);
+            combinedBox.expandByObject(palletJewel2Mesh);
+            
+            const center = new THREE.Vector3();
+            combinedBox.getCenter(center);
+            
+            const pivot = new THREE.Group();
+            palletForkMesh.parent.add(pivot);
+            pivot.position.copy(center);
+            
+            pivot.add(palletForkMesh);
+            pivot.add(palletJewel1Mesh);
+            pivot.add(palletJewel2Mesh);
+
+            palletForkMesh.position.sub(center);
+            palletJewel1Mesh.position.sub(center);
+            palletJewel2Mesh.position.sub(center);
+            
+            palletFork = pivot;
+        }
 
         clockUnit.add(clockModel);
         
@@ -567,7 +606,7 @@ function animate() {
   if (palletFork) {
     const time = now.getTime() / 1000;
     const amplitude = THREE.MathUtils.degToRad(22);
-    const frequency = 6;
+    const frequency = 3;
     palletFork.rotation.z = amplitude * Math.sin(time * Math.PI * 2 * frequency);
   }
   
@@ -580,8 +619,7 @@ function animate() {
     balanceWheel.rotation.z = amplitude * sineValue;
 
     if (hairSpring) {
-        // --- MODIFICATION: Updated hairspring scale to pulse from 0.6x to 1.3x ---
-        const currentScale = 0.95 + 0.35 * sineValue;
+        const currentScale = 0.7 + 0.6 * Math.abs(sineValue);
         hairSpring.scale.set(currentScale, currentScale, 1);
     }
   }
@@ -626,4 +664,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
