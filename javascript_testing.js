@@ -1,3 +1,9 @@
+Of course. The animation sequence for the specified parts of the 3D watch movement model has been added.
+
+In the provided code, I've identified each of the four components by their body names from the OBJ model. Then, within the main animation loop, I've applied the precise rotation and oscillation logic you requested, with comments noting the rates.
+
+Clock_3D_V2.js (with animation)
+JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -18,6 +24,8 @@ let digitalDate, digitalClock;
 let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
 let modelScale = 3.5;
+// --- MODIFICATION: Variables to hold animated parts ---
+let secondWheel, minuteWheel, hourWheel, balanceWheel;
 
 
 // --- Wait for the DOM to be ready, then create and inject UI elements ---
@@ -147,7 +155,6 @@ const markerRadius = 10.0;
 
 // --- Border Wall ---
 const borderThickness = 1.0;
-// --- MODIFICATION: Increased bezel depth by 0.1 ---
 const borderHeight    = 1.1;
 const outerRadius     = markerRadius + borderThickness;
 const innerRadius     = markerRadius;
@@ -394,7 +401,6 @@ mtlLoader.load(
       'textures/ETA6497-1_OBJ_TEST.obj',
       (object) => {
         clockModel = object;
-        // --- MODIFICATION: Lowered OBJ model by another 0.5 ---
         clockModel.position.set(0, 0, -4.0 + zShift);
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
@@ -402,6 +408,22 @@ mtlLoader.load(
           if (child.isMesh) {
             child.castShadow    = true;
             child.receiveShadow = true;
+
+            // --- MODIFICATION: Find and store the specific wheels by name ---
+            switch (child.name) {
+                case 'Second_Wheel_HIGH':
+                    secondWheel = child;
+                    break;
+                case 'Minute_Wheel_HIGH':
+                    minuteWheel = child;
+                    break;
+                case 'Hour_Wheel_HIGH':
+                    hourWheel = child;
+                    break;
+                case 'Balance_Complete_HIGH':
+                    balanceWheel = child;
+                    break;
+            }
           }
         });
         clockUnit.add(clockModel);
@@ -471,6 +493,27 @@ function animate() {
   secondHand.rotation.z = -THREE.MathUtils.degToRad((seconds / 60) * 360);
   minuteHand.rotation.z = -THREE.MathUtils.degToRad((minutes / 60) * 360);
   hourHand.rotation.z   = -THREE.MathUtils.degToRad((hours / 12) * 360);
+  
+  // --- MODIFICATION: Animate the OBJ model wheels ---
+  if (secondWheel) {
+    // Seconds Wheel: 1 rotation per minute (60 seconds)
+    secondWheel.rotation.z = -(seconds / 60) * Math.PI * 2;
+  }
+  if (minuteWheel) {
+    // Minute Wheel: 1 rotation per hour (60 minutes)
+    minuteWheel.rotation.z = -(minutes / 60) * Math.PI * 2;
+  }
+  if (hourWheel) {
+    // Hour Wheel: 1 rotation per 12 hours
+    hourWheel.rotation.z = -(hours / 12) * Math.PI * 2;
+  }
+  if (balanceWheel) {
+    // Balance Wheel: Oscillates back and forth 180 degrees, 2 times per second
+    const time = now.getTime() / 1000; // time in seconds
+    const amplitude = Math.PI / 2; // 90 degrees in each direction (180 total)
+    const frequency = 2; // 2 oscillations per second
+    balanceWheel.rotation.z = amplitude * Math.sin(time * Math.PI * 2 * frequency);
+  }
 
   const pad = (n) => n.toString().padStart(2, '0');
   const spanStyles = `background-color: rgba(0, 0, 0, 0.5); padding: 0.1em 0.3em; border-radius: 4px;`;
@@ -511,4 +554,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
