@@ -1,4 +1,4 @@
-
+rrr
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -110,8 +110,6 @@ const watch = new THREE.Mesh(watchGeometry, watchMaterial);
 watch.position.z = -1;
 watch.receiveShadow = true;
 clockUnit.add(watch);
-// Store original wood wall z for other elements
-const baseWatchZ = watch.position.z + 2; // original z (-1)
 
 
 // --- Metallic Materials ---
@@ -167,7 +165,7 @@ const borderMaterial = new THREE.MeshStandardMaterial({ color: 0x000040 });
 const borderMesh = new THREE.Mesh(borderGeom, borderMaterial);
 borderMesh.castShadow = true;
 borderMesh.receiveShadow = true;
-borderMesh.position.z = baseWatchZ; // use original wall z
+borderMesh.position.z = watch.position.z; // reset to reference watch.position.z // use original wall z
 
 clockUnit.add(borderMesh);
 // Rename wood background plane for clarity
@@ -188,7 +186,7 @@ faceMesh.name = 'clock_face';
 faceMesh.receiveShadow = true;
 faceMesh.castShadow = false;
 // Slightly above the wood plane so markers can protrude
-faceMesh.position.z = baseWatchZ + 0.1; // adjusted to use original wall z // raised from +0.01 to +0.1
+faceMesh.position.z = watch.position.z + 0.1; // reset to reference watch.position.z // adjusted to use original wall z // raised from +0.01 to +0.1
 clockUnit.add(faceMesh);
 
 
@@ -229,7 +227,7 @@ for (let i = 0; i < 60; i++) {
     
     const marker = new THREE.Mesh(markerGeom, silverMaterial);
     
-    const markerZ = -1.0;
+    const markerZ = watch.position.z + 0.02; // marker slightly above face
     marker.position.set(markerRadius * Math.sin(angle), markerRadius * Math.cos(angle), markerZ);
 
     marker.rotation.z = -angle;
@@ -264,7 +262,7 @@ fontLoader.load(fontURL, (font) => {
         numeralGeometry.center();
         const numeral = new THREE.Mesh(numeralGeometry, silverMaterial);
 
-        const numeralZ = -1.0;
+        const numeralZ = watch.position.z + 0.03; // numeral slightly above face
         numeral.position.set(numeralRadius * Math.sin(angle), numeralRadius * Math.cos(angle), numeralZ);
         numeral.castShadow = true;
         numeral.receiveShadow = true;
@@ -525,4 +523,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
