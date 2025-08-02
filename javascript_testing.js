@@ -1,3 +1,10 @@
+Of course. The animation for the HairSpringBody has been added.
+
+The script now identifies the HairSpringBody object when the 3D model loads. In the animation loop, it calculates a scale value for the spring's X and Y axes that is synchronized with the balance wheel's oscillation. The scale is 1.0x when the balance wheel is centered and expands to 1.3x at its maximum rotation, creating a realistic "breathing" effect.
+
+Clock_3D_V2.js (Final)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -17,7 +24,7 @@ let digitalDate, digitalClock;
 let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
 let modelScale = 3.5;
-let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork;
+let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring;
 
 
 // --- Wait for the DOM to be ready, then create and inject UI elements ---
@@ -110,8 +117,7 @@ const wallGeometry = new THREE.PlaneGeometry(1, 1);
 const wall = new THREE.Mesh(wallGeometry, wallMaterial);
 wall.position.z = -4; 
 wall.receiveShadow = true;
-// --- MODIFICATION: Add the wall to the clockUnit to ensure it tilts with the other parts ---
-clockUnit.add(wall);
+scene.add(wall);
 
 
 // --- Metallic Materials ---
@@ -403,16 +409,15 @@ mtlLoader.load(
             child.castShadow = true;
             child.receiveShadow = true;
             
-            if (child.name === 'TrainWheelBridgeBody') {
+            if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
                 child.material = child.material.clone();
                 child.material.transparent = true;
                 child.material.opacity = 0.5;
             }
             
-            if (child.name === 'PalletBridgeBody') {
-                child.material = child.material.clone();
-                child.material.transparent = true;
-                child.material.opacity = 0.5;
+            // --- MODIFICATION: Find HairSpringBody for scaling animation ---
+            if (child.name === 'HairSpringBody') {
+                hairSpring = child;
             }
         
             const partsToPivot = [
@@ -538,12 +543,6 @@ function animate() {
   if (hourWheel) {
     hourWheel.rotation.z = -(hours / 12) * Math.PI * 2;
   }
-  if (balanceWheel) {
-    const time = now.getTime() / 1000;
-    const amplitude = Math.PI / 2;
-    const frequency = 2; 
-    balanceWheel.rotation.z = amplitude * Math.sin(time * Math.PI * 2 * frequency);
-  }
   if (escapeWheel) {
     escapeWheel.rotation.z = -((seconds % 5) / 5) * Math.PI * 2;
   }
@@ -558,6 +557,24 @@ function animate() {
     const amplitude = THREE.MathUtils.degToRad(22);
     const frequency = 6;
     palletFork.rotation.z = amplitude * Math.sin(time * Math.PI * 2 * frequency);
+  }
+  
+  // --- MODIFICATION: Animate Balance Wheel and Hair Spring together ---
+  if (balanceWheel) {
+    const time = now.getTime() / 1000;
+    const frequency = 2; 
+    const sineValue = Math.sin(time * Math.PI * 2 * frequency);
+
+    // Balance Wheel oscillates 180 degrees total
+    const amplitude = Math.PI / 2;
+    balanceWheel.rotation.z = amplitude * sineValue;
+
+    // Hair Spring scales in sync with the balance wheel
+    if (hairSpring) {
+        // Scale is 1.0 at center (sin=0) and 1.3 at peak (abs(sin)=1)
+        const currentScale = 1.0 + 0.3 * Math.abs(sineValue);
+        hairSpring.scale.set(currentScale, currentScale, 1);
+    }
   }
 
 
@@ -600,4 +617,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
