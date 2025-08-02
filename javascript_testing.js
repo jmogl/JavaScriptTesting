@@ -1,10 +1,3 @@
-You've correctly identified the issue. The hairspring is scaling from its edge because, like the wheels previously, its geometric center is not aligned with its local origin point in the 3D model.
-
-To fix this, I have applied the same "pivot point" technique to the HairSpringBody. The script now finds the spring's true center, creates an invisible pivot there, and applies the scaling animation to the pivot. This makes the spring expand and contract correctly from its center, in sync with the balance wheel.
-
-Clock_3D_V2.js (Corrected)
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -613,3 +606,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
