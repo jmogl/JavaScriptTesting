@@ -1,4 +1,4 @@
-
+ttt
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -107,9 +107,11 @@ textureLoader.load(
 
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
-watch.position.z = -3;
+watch.position.z = -1;
 watch.receiveShadow = true;
 clockUnit.add(watch);
+// Store original wood wall z for other elements
+const baseWatchZ = watch.position.z + 2; // original z (-1)
 
 
 // --- Metallic Materials ---
@@ -165,7 +167,7 @@ const borderMaterial = new THREE.MeshStandardMaterial({ color: 0x000040 });
 const borderMesh = new THREE.Mesh(borderGeom, borderMaterial);
 borderMesh.castShadow = true;
 borderMesh.receiveShadow = true;
-borderMesh.position.z = watch.position.z;
+borderMesh.position.z = baseWatchZ; // use original wall z
 
 clockUnit.add(borderMesh);
 // Rename wood background plane for clarity
@@ -186,7 +188,7 @@ faceMesh.name = 'clock_face';
 faceMesh.receiveShadow = true;
 faceMesh.castShadow = false;
 // Slightly above the wood plane so markers can protrude
-faceMesh.position.z = watch.position.z + 0.1; // raised from +0.01 to +0.1
+faceMesh.position.z = baseWatchZ + 0.1; // adjusted to use original wall z // raised from +0.01 to +0.1
 clockUnit.add(faceMesh);
 
 
@@ -439,7 +441,7 @@ mtlLoader.load(
         const newFace = new THREE.Mesh(faceGeom, faceMat);
         newFace.name          = 'clock_face';
         newFace.receiveShadow = true;
-        newFace.position.z    = watch.position.z + 0.1;
+        newFace.position.z = baseWatchZ + 0.1; // adjusted to use original wall z
         clockUnit.add(newFace);
 
       },
@@ -523,5 +525,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
-
