@@ -1,10 +1,3 @@
-Excellent, now that we have the correct names for the moving parts, the animation can be fully enabled.
-
-The script has been updated with the exact names you provided. The switch statement that identifies the components of the 3D model now uses these correct names, which will allow the animation logic to find and rotate them as intended. I have also removed the debugging console.log line.
-
-Clock_3D_V2.js (Corrected Animation)
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -548,3 +541,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
