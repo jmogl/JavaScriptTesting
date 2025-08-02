@@ -106,7 +106,7 @@ textureLoader.load(
 
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
-watch.position.z = -1;
+watch.position.z = -2; // lowered wall z height by -1
 watch.receiveShadow = true;
 clockUnit.add(watch);
 
@@ -271,7 +271,7 @@ fontLoader.load(fontURL, (font) => {
 
 // --- Clock Hands ---
 const hourHandShape = new THREE.Shape();
-const hourHandLength = 4.0;
+const hourHandLength = 4.4; // increased by 10% from 4.0
 const hourHandWidth = 0.6;
 const hourHandDepth = 0.4;
 hourHandShape.moveTo(-hourHandWidth / 2, 0);
@@ -290,7 +290,7 @@ hourHand.castShadow = true;
 watchGroup.add(hourHand);
 
 const minuteHandShape = new THREE.Shape();
-const minuteHandLength = 6.0;
+const minuteHandLength = 6.6; // increased by 10% from 6.0
 const minuteHandWidth = 0.4;
 const minuteHandDepth = 0.3;
 minuteHandShape.moveTo(-minuteHandWidth / 2, 0);
@@ -399,7 +399,7 @@ mtlLoader.load(
       'textures/ETA6497-1_OBJ_TEST.obj',
       (object) => {
         clockModel = object;
-        clockModel.position.set(0, 0, -0.5); // raised by +0.5 from -1
+        clockModel.position.set(0, 0, -1.0); // lowered OBJ model z height by -0.5; // raised by +0.5 from -1
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
         clockModel.traverse(child => {
@@ -420,7 +420,7 @@ mtlLoader.load(
         const bbox = new THREE.Box3().setFromObject(clockModel);
         const size = bbox.getSize(new THREE.Vector3());
         const modelDiameter = Math.max(size.x, size.y);
-        const holeRadius = 7; // updated inner radius for 14-unit diameter // fixed inner radius for 13-unit diameter
+        const holeRadius = 6.5; // reduced inner radius to 6.5 // updated inner radius for 14-unit diameter // fixed inner radius for 13-unit diameter
         // Rebuild face shape with inner hole
         const outerRadius = markerRadius + borderThickness / 2;
         const segments    = 64;
@@ -522,4 +522,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
