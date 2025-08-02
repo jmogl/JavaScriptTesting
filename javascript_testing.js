@@ -107,7 +107,7 @@ textureLoader.load(
 
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
-watch.position.z = -1;
+watch.position.z = -4.0; // lowered wood wall by -3
 watch.receiveShadow = true;
 clockUnit.add(watch);
 
@@ -400,7 +400,7 @@ mtlLoader.load(
       'textures/ETA6497-1_OBJ_TEST.obj',
       (object) => {
         clockModel = object;
-        clockModel.position.set(0, 0, -0.9); // lowered by 0.1 // lowered by 0.3 // raised by +0.5 from -1
+        clockModel.position.set(0, 0, -1.0); // lowered OBJ model by -0.1 // lowered by 0.1 // lowered by 0.3 // raised by +0.5 from -1
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
         clockModel.traverse(child => {
@@ -523,4 +523,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
