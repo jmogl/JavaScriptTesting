@@ -1,3 +1,12 @@
+You've hit on the core issue with rendering realistic metals. Your diagnosis is correct.
+
+The wheels look dark because, as highly metallic surfaces, they need a detailed environment to reflect. In a previous step, we told them to only reflect the single virtual light source, which made them appear dark from most angles.
+
+To fix this, I've re-enabled the environmental reflections for the brass material. The wheels will now reflect the entire virtual environment, giving them the bright, polished copper appearance you're looking for, while still being correctly lit and shadowed by the main light source.
+
+Clock_3D_V2.js (Corrected)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -56,7 +65,6 @@ renderer.toneMappingExposure = 1.0;
 document.body.appendChild(renderer.domElement);
 
 // --- Lighting ---
-// --- MODIFICATION: Increased ambient light intensity to brighten metallic surfaces ---
 const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
 scene.add(ambientLight);
 
@@ -144,6 +152,8 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
     silverMaterial.envMap = envMap;
     brightSilverMaterial.envMap = envMap;
     secondMaterial.envMap = envMap;
+    // --- MODIFICATION: Re-enabled environment map for the brass material ---
+    brassMaterial.envMap = envMap;
     
     texture.dispose();
     pmremGenerator.dispose();
@@ -621,4 +631,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
