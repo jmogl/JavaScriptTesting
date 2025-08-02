@@ -1,3 +1,10 @@
+My apologies for that error. Thank you for providing the correct name. It appears there was a typo in the name I used previously.
+
+I have now updated the script with the correct body name, PalleteForkBody. The animation for the pallet fork should now work correctly.
+
+Clock_3D_V2.js (Corrected)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -408,16 +415,16 @@ mtlLoader.load(
                 child.material.opacity = 0.5;
             }
             
-            // --- MODIFICATION: Set transparency for PalletBridgeBody ---
             if (child.name === 'PalletBridgeBody') {
                 child.material = child.material.clone();
                 child.material.transparent = true;
                 child.material.opacity = 0.5;
             }
-        
+            
+            // --- MODIFICATION: Using the corrected name for the Pallet Fork ---
             const partsToPivot = [
                 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
-                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalletForkBody'
+                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalleteForkBody'
             ];
 
             if (partsToPivot.includes(child.name)) {
@@ -453,7 +460,7 @@ mtlLoader.load(
                 case 'ThirdWheel':
                   thirdWheel = pivot;
                   break;
-                case 'PalletForkBody':
+                case 'PalleteForkBody':
                   palletFork = pivot;
                   break;
               }
@@ -553,11 +560,9 @@ function animate() {
   if (thirdWheel) {
     thirdWheel.rotation.z = -((minutes % 7.5) / 7.5) * Math.PI * 2;
   }
-  // --- MODIFICATION: Added animation for PalletForkBody ---
   if (palletFork) {
-    // Oscillates 44 degrees total, 6 times per second
     const time = now.getTime() / 1000;
-    const amplitude = THREE.MathUtils.degToRad(22); // 22 degrees in each direction
+    const amplitude = THREE.MathUtils.degToRad(22);
     const frequency = 6;
     palletFork.rotation.z = amplitude * Math.sin(time * Math.PI * 2 * frequency);
   }
@@ -602,5 +607,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
-
