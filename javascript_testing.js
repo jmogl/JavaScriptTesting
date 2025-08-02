@@ -1,3 +1,10 @@
+Excellent, now that we have the correct names for the moving parts, the animation can be fully enabled.
+
+The script has been updated with the exact names you provided. The switch statement that identifies the components of the 3D model now uses these correct names, which will allow the animation logic to find and rotate them as intended. I have also removed the debugging console.log line.
+
+Clock_3D_V2.js (Corrected Animation)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -400,21 +407,19 @@ mtlLoader.load(
           if (child.isMesh) {
             child.castShadow    = true;
             child.receiveShadow = true;
-            
-            // --- DEBUGGING: Log all mesh names to the console ---
-            console.log(child.name);
 
+            // --- MODIFICATION: Using the correct, user-provided object names ---
             switch (child.name) {
-                case 'Second_Wheel_HIGH_Second_Wheel':
+                case 'SecondsWheel':
                     secondWheel = child;
                     break;
-                case 'Minute_Wheel_HIGH_Minute_Wheel':
+                case 'Minute_Wheel_Body':
                     minuteWheel = child;
                     break;
-                case 'Hour_Wheel_HIGH_Hour_Wheel':
+                case 'HourWheel_Body':
                     hourWheel = child;
                     break;
-                case 'Balance_Complete_HIGH_Balance_Complete':
+                case 'BalanceWheelBody':
                     balanceWheel = child;
                     break;
             }
@@ -543,4 +548,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
