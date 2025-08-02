@@ -17,7 +17,7 @@ let digitalDate, digitalClock;
 let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
 let modelScale = 3.5;
-let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel;
+let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork;
 
 
 // --- Wait for the DOM to be ready, then create and inject UI elements ---
@@ -402,9 +402,14 @@ mtlLoader.load(
             child.castShadow = true;
             child.receiveShadow = true;
             
-            // --- MODIFICATION: Set transparency for a specific part ---
             if (child.name === 'TrainWheelBridgeBody') {
-                // Clone the material to ensure transparency only affects this object
+                child.material = child.material.clone();
+                child.material.transparent = true;
+                child.material.opacity = 0.5;
+            }
+            
+            // --- MODIFICATION: Set transparency for PalletBridgeBody ---
+            if (child.name === 'PalletBridgeBody') {
                 child.material = child.material.clone();
                 child.material.transparent = true;
                 child.material.opacity = 0.5;
@@ -412,7 +417,7 @@ mtlLoader.load(
         
             const partsToPivot = [
                 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
-                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel'
+                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalletForkBody'
             ];
 
             if (partsToPivot.includes(child.name)) {
@@ -447,6 +452,9 @@ mtlLoader.load(
                   break;
                 case 'ThirdWheel':
                   thirdWheel = pivot;
+                  break;
+                case 'PalletForkBody':
+                  palletFork = pivot;
                   break;
               }
             }
@@ -545,6 +553,14 @@ function animate() {
   if (thirdWheel) {
     thirdWheel.rotation.z = -((minutes % 7.5) / 7.5) * Math.PI * 2;
   }
+  // --- MODIFICATION: Added animation for PalletForkBody ---
+  if (palletFork) {
+    // Oscillates 44 degrees total, 6 times per second
+    const time = now.getTime() / 1000;
+    const amplitude = THREE.MathUtils.degToRad(22); // 22 degrees in each direction
+    const frequency = 6;
+    palletFork.rotation.z = amplitude * Math.sin(time * Math.PI * 2 * frequency);
+  }
 
 
   const pad = (n) => n.toString().padStart(2, '0');
@@ -586,4 +602,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
