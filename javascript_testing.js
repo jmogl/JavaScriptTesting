@@ -1,10 +1,3 @@
-Based on your feedback and analysis of the older file, the unrealistic tilt effect has been corrected.
-
-The issue was that the background wall was stationary while the clock components tilted, creating a disconnect. The fix was to place the background wall back inside the main clockUnit group. Now, the entire assembly—including the background, bezel, clock face, and all components—tilts together as a single, solid object, restoring the realistic sense of 3D depth.
-
-Clock_3D_V2.js (Corrected Tilt)
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -607,3 +600,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
