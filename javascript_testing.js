@@ -1,3 +1,10 @@
+You've encountered a syntax error in the code. The issue is a small typo in the buildWalls function. The line that positions the left wall has an extra period (..) which is causing the script to fail.
+
+I've corrected this typo in the code below.
+
+Clock_3D_V2.js (Corrected)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -146,7 +153,7 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
 const markerRadius = 10.0;
 
 // --- Border Wall ---
-const borderThickness = 1.0;
+const borderThickness = 10.0;
 const borderHeight    = 1.1;
 const outerRadius     = markerRadius + borderThickness;
 const innerRadius     = markerRadius;
@@ -310,6 +317,87 @@ secondHand.castShadow = true;
 watchGroup.add(secondHand);
 
 
+// --- Border Wall Creation ---
+const wallGroup = new THREE.Group();
+clockUnit.add(wallGroup);
+
+function buildWalls() {
+    // Clear existing walls and free memory
+    wallGroup.children.forEach(child => {
+        if (child.geometry) child.geometry.dispose();
+    });
+    wallGroup.clear();
+
+    if (!wall || !camera) return;
+    const distance = camera.position.z - (wall.position.z);
+    const vFov = THREE.MathUtils.degToRad(camera.fov);
+    const viewHeight = 2 * Math.tan(vFov / 2) * distance;
+    const viewWidth = viewHeight * camera.aspect;
+    
+    const wallHeight = 15.0; 
+    const wallThickness = 10.0;
+    const wallBaseZ = -6.0;  
+
+    const wallMaterial = new THREE.MeshStandardMaterial({
+        color: 0xff0000,
+        metalness: 0.8,
+        roughness: 0.1,
+        envMap: silverMaterial.envMap 
+    });
+
+    const wallExtrudeSettings = {
+        depth: wallHeight,
+        bevelEnabled: true,
+        bevelSize: 0.05,
+        bevelThickness: 0.05,
+        bevelSegments: 2,
+    };
+    
+    const topBottomWidth = viewWidth + 2 * wallThickness;
+
+    // Top Wall
+    const topShape = new THREE.Shape();
+    topShape.moveTo(-topBottomWidth / 2, -wallThickness / 2);
+    topShape.lineTo(topBottomWidth / 2, -wallThickness / 2);
+    topShape.lineTo(topBottomWidth / 2, wallThickness / 2);
+    topShape.lineTo(-topBottomWidth / 2, wallThickness / 2);
+    topShape.closePath();
+    const topGeometry = new THREE.ExtrudeGeometry(topShape, wallExtrudeSettings);
+    const topWall = new THREE.Mesh(topGeometry, wallMaterial);
+    topWall.position.set(0, viewHeight / 2 + wallThickness / 2, wallBaseZ);
+    topWall.castShadow = true;
+    wallGroup.add(topWall);
+
+    // Bottom Wall
+    const bottomGeometry = new THREE.ExtrudeGeometry(topShape, wallExtrudeSettings);
+    const bottomWall = new THREE.Mesh(bottomGeometry, wallMaterial);
+    bottomWall.position.set(0, -viewHeight / 2 - wallThickness / 2, wallBaseZ);
+    bottomWall.castShadow = true;
+    wallGroup.add(bottomWall);
+
+    // Left Wall
+    const leftShape = new THREE.Shape();
+    leftShape.moveTo(-wallThickness / 2, -viewHeight / 2);
+    leftShape.lineTo(wallThickness / 2, -viewHeight / 2);
+    leftShape.lineTo(wallThickness / 2, viewHeight / 2);
+    leftShape.lineTo(-wallThickness / 2, viewHeight / 2);
+    leftShape.closePath();
+    const leftGeometry = new THREE.ExtrudeGeometry(leftShape, wallExtrudeSettings);
+    const leftWall = new THREE.Mesh(leftGeometry, wallMaterial);
+    // --- MODIFICATION: Corrected typo from '..' to '.' ---
+    leftWall.position.set(-viewWidth / 2 - wallThickness / 2, 0, wallBaseZ);
+    leftWall.castShadow = true;
+    wallGroup.add(leftWall);
+
+    // Right Wall
+    const rightGeometry = new THREE.ExtrudeGeometry(leftShape, wallExtrudeSettings);
+    const rightWall = new THREE.Mesh(rightGeometry, wallMaterial);
+    rightWall.position.set(viewWidth / 2 + wallThickness / 2, 0, wallBaseZ);
+    rightWall.castShadow = true;
+    wallGroup.add(rightWall);
+}
+
+
 // --- Utility Functions ---
 function updateCameraPosition() {
     const clockSize = 22;
@@ -400,8 +488,7 @@ mtlLoader.load(
           if (child.isMesh) {
             child.castShadow    = true;
             child.receiveShadow = true;
-
-            // --- MODIFICATION: Using the correct, full object names from the OBJ file ---
+            
             switch (child.name) {
                 case 'Second_Wheel_HIGH_Second_Wheel':
                     secondWheel = child;
@@ -487,22 +574,18 @@ function animate() {
   hourHand.rotation.z   = -THREE.MathUtils.degToRad((hours / 12) * 360);
   
   if (secondWheel) {
-    // Seconds Wheel: 1 rotation per minute (60 seconds)
     secondWheel.rotation.z = -(seconds / 60) * Math.PI * 2;
   }
   if (minuteWheel) {
-    // Minute Wheel: 1 rotation per hour (60 minutes)
     minuteWheel.rotation.z = -(minutes / 60) * Math.PI * 2;
   }
   if (hourWheel) {
-    // Hour Wheel: 1 rotation per 12 hours
     hourWheel.rotation.z = -(hours / 12) * Math.PI * 2;
   }
   if (balanceWheel) {
-    // Balance Wheel: Oscillates back and forth 180 degrees, 2 times per second
-    const time = now.getTime() / 1000; // time in seconds
-    const amplitude = Math.PI / 2; // 90 degrees in each direction (180 total)
-    const frequency = 2; // 2 oscillations per second
+    const time = now.getTime() / 1000; 
+    const amplitude = Math.PI / 2; 
+    const frequency = 2; 
     balanceWheel.rotation.z = amplitude * Math.sin(time * Math.PI * 2 * frequency);
   }
 
@@ -534,6 +617,7 @@ camera.aspect = window.innerWidth / window.innerHeight;
 camera.updateProjectionMatrix();
 updateCameraPosition();
 updateBackgroundSize();
+buildWalls();
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -541,8 +625,8 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   updateCameraPosition();
   updateBackgroundSize();
+  buildWalls();
 });
 
 setupTiltControls();
 animate();
-
