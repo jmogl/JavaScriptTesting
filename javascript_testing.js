@@ -1,3 +1,5 @@
+ttt
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -72,15 +74,14 @@ scene.add(dirLight);
 const clockUnit = new THREE.Group();
 scene.add(clockUnit);
 
-// This group will contain the hands, numerals, and tick marks
 const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
 
-// --- MODIFICATION: Define a Z-axis shift to increase depth ---
 const zShift = 1.0;
 
 // --- Background Plane (Wood) ---
-const watchMaterial = new THREE.MeshStandardMaterial({
+// --- MODIFICATION: Renamed "watch" object to "wall" ---
+const wallMaterial = new THREE.MeshStandardMaterial({
   color: 0xffffff,
   metalness: 0.1,
   roughness: 0.7
@@ -96,23 +97,22 @@ textureLoader.load(
         texture.wrapT = THREE.RepeatWrapping;
         texture.rotation = Math.PI / 2;
         texture.center.set(0.5, 0.5);
-        watchMaterial.map = texture;
-        watchMaterial.needsUpdate = true;
+        wallMaterial.map = texture;
+        wallMaterial.needsUpdate = true;
         updateBackgroundSize();
     },
     undefined,
     (err) => {
         console.error('An error happened loading the wood texture. Using fallback color.');
-        watchMaterial.color.set(0x111122);
+        wallMaterial.color.set(0x111122);
     }
 );
 
-const watchGeometry = new THREE.PlaneGeometry(1, 1);
-const watch = new THREE.Mesh(watchGeometry, watchMaterial);
-watch.position.z = -4; // Set the base depth for the background.
-watch.receiveShadow = true;
-// --- MODIFICATION: Add wood background directly to the scene so it doesn't tilt ---
-scene.add(watch);
+const wallGeometry = new THREE.PlaneGeometry(1, 1);
+const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+wall.position.z = -4; 
+wall.receiveShadow = true;
+scene.add(wall);
 
 
 // --- Metallic Materials ---
@@ -149,7 +149,8 @@ const markerRadius = 10.0;
 
 // --- Border Wall ---
 const borderThickness = 1.0;
-const borderHeight    = 0.5;
+// --- MODIFICATION: Increased bezel depth by 0.5 ---
+const borderHeight    = 1.0;
 const outerRadius     = markerRadius + borderThickness;
 const innerRadius     = markerRadius;
 
@@ -159,19 +160,17 @@ const holePath = new THREE.Path();
 holePath.absarc(0, 0, innerRadius, 0, Math.PI * 2, true);
 borderShape.holes.push(holePath);
 
-const extrudeSettings = { depth: borderHeight, bevelEnabled: false, curveSegments: 256 };
-const borderGeom = new THREE.ExtrudeGeometry(borderShape, extrudeSettings);
+const borderExtrudeSettings = { depth: borderHeight, bevelEnabled: false, curveSegments: 256 };
+const borderGeom = new THREE.ExtrudeGeometry(borderShape, borderExtrudeSettings);
 borderGeom.translate(0, 0, -borderHeight / 2);
 
 const borderMaterial = new THREE.MeshStandardMaterial({ color: 0x000040 });
 const borderMesh = new THREE.Mesh(borderGeom, borderMaterial);
 borderMesh.castShadow = true;
 borderMesh.receiveShadow = true;
-// --- MODIFICATION: Apply Z-shift for increased depth ---
 borderMesh.position.z = -4 + zShift;
 
 clockUnit.add(borderMesh);
-watch.name = 'wall_face';
 
 // --- Creamy White Clock Face ---
 const faceRadius = markerRadius + borderThickness / 2;
@@ -186,7 +185,6 @@ const faceMesh = new THREE.Mesh(faceGeometry, faceMaterial);
 faceMesh.name = 'clock_face';
 faceMesh.receiveShadow = true;
 faceMesh.castShadow = false;
-// --- MODIFICATION: Apply Z-shift for increased depth ---
 faceMesh.position.z = -3.4 + zShift;
 clockUnit.add(faceMesh);
 
@@ -226,7 +224,6 @@ for (let i = 0; i < 60; i++) {
     
     const marker = new THREE.Mesh(markerGeom, silverMaterial);
     
-    // --- MODIFICATION: Apply Z-shift for increased depth ---
     const markerZ = -3.35 + zShift;
     marker.position.set(markerRadius * Math.sin(angle), markerRadius * Math.cos(angle), markerZ);
 
@@ -261,7 +258,6 @@ fontLoader.load(fontURL, (font) => {
         numeralGeometry.center();
         const numeral = new THREE.Mesh(numeralGeometry, silverMaterial);
 
-        // --- MODIFICATION: Apply Z-shift for increased depth ---
         const numeralZ = -3.34 + zShift;
         numeral.position.set(numeralRadius * Math.sin(angle), numeralRadius * Math.cos(angle), numeralZ);
         numeral.castShadow = true;
@@ -286,7 +282,6 @@ const hourExtrudeSettings = {
 const hourGeometry = new THREE.ExtrudeGeometry(hourHandShape, hourExtrudeSettings);
 hourGeometry.translate(0, 0, -hourHandDepth / 2);
 const hourHand = new THREE.Mesh(hourGeometry, silverMaterial);
-// --- MODIFICATION: Apply Z-shift for increased depth ---
 hourHand.position.z = -2.04 + zShift;
 hourHand.castShadow = true;
 watchGroup.add(hourHand);
@@ -306,7 +301,6 @@ const minuteExtrudeSettings = {
 const minuteGeometry = new THREE.ExtrudeGeometry(minuteHandShape, minuteExtrudeSettings);
 minuteGeometry.translate(0, 0, -minuteHandDepth / 2);
 const minuteHand = new THREE.Mesh(minuteGeometry, brightSilverMaterial);
-// --- MODIFICATION: Apply Z-shift for increased depth ---
 minuteHand.position.z = -2.03 + zShift;
 minuteHand.castShadow = true;
 watchGroup.add(minuteHand);
@@ -314,7 +308,6 @@ watchGroup.add(minuteHand);
 const secondGeometry = new THREE.BoxGeometry(0.1, 7.0, 0.3);
 secondGeometry.translate(0, 3.5, 0);
 const secondHand = new THREE.Mesh(secondGeometry, secondMaterial);
-// --- MODIFICATION: Apply Z-shift for increased depth ---
 secondHand.position.z = -2.02 + zShift;
 secondHand.castShadow = true;
 watchGroup.add(secondHand);
@@ -335,21 +328,21 @@ function updateCameraPosition() {
 }
 
 function updateBackgroundSize() {
-    if (!watch || !camera) return;
-    // --- MODIFICATION: Calculation is simpler now that watch is not in clockUnit ---
-    const distance = camera.position.z - watch.position.z;
+    // --- MODIFICATION: Updated to use "wall" variable ---
+    if (!wall || !camera) return;
+    const distance = camera.position.z - wall.position.z;
     const vFov = THREE.MathUtils.degToRad(camera.fov);
     const height = 2 * Math.tan(vFov / 2) * distance;
     const width = height * camera.aspect;
 
     const safetyMargin = 1.2;
-    watch.scale.set(width * safetyMargin, height * safetyMargin, 1);
+    wall.scale.set(width * safetyMargin, height * safetyMargin, 1);
 
-    if (watch.material.map) {
+    if (wall.material.map) {
         const textureScale = 25;
-        watch.material.map.repeat.set(
-            watch.scale.x / textureScale,
-            watch.scale.y / textureScale
+        wall.material.map.repeat.set(
+            wall.scale.x / textureScale,
+            wall.scale.y / textureScale
         );
     }
 }
@@ -404,8 +397,8 @@ mtlLoader.load(
       'textures/ETA6497-1_OBJ_TEST.obj',
       (object) => {
         clockModel = object;
-        // --- MODIFICATION: Apply Z-shift for increased depth ---
-        clockModel.position.set(0, 0, -3.0 + zShift);
+        // --- MODIFICATION: Lowered OBJ model by 0.5 ---
+        clockModel.position.set(0, 0, -3.5 + zShift);
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
         clockModel.traverse(child => {
@@ -415,7 +408,7 @@ mtlLoader.load(
           }
         });
         clockUnit.add(clockModel);
-        // --- Cut a hole in the clock face for the ETA model ---
+        
         const oldFace = clockUnit.getObjectByName('clock_face');
         if (oldFace) {
             clockUnit.remove(oldFace);
@@ -439,7 +432,6 @@ mtlLoader.load(
         const newFace = new THREE.Mesh(faceGeom, faceMat);
         newFace.name          = 'clock_face';
         newFace.receiveShadow = true;
-        // --- MODIFICATION: Apply Z-shift for increased depth ---
         newFace.position.z = -3.4 + zShift;
         clockUnit.add(newFace);
 
@@ -522,4 +514,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
