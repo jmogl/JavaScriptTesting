@@ -1,3 +1,10 @@
+You've correctly identified the issue. The hairspring is scaling from its edge because, like the wheels previously, its geometric center is not aligned with its local origin point in the 3D model.
+
+To fix this, I have applied the same "pivot point" technique to the HairSpringBody. The script now finds the spring's true center, creates an invisible pivot there, and applies the scaling animation to the pivot. This makes the spring expand and contract correctly from its center, in sync with the balance wheel.
+
+Clock_3D_V2.js (Corrected)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -408,14 +415,10 @@ mtlLoader.load(
                 child.material.opacity = 0.5;
             }
             
-            // --- MODIFICATION: Find HairSpringBody for scaling animation ---
-            if (child.name === 'HairSpringBody') {
-                hairSpring = child;
-            }
-        
+            // --- MODIFICATION: Added HairSpringBody to the pivot creation logic ---
             const partsToPivot = [
                 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
-                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalleteForkBody'
+                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalleteForkBody', 'HairSpringBody'
             ];
 
             if (partsToPivot.includes(child.name)) {
@@ -453,6 +456,9 @@ mtlLoader.load(
                   break;
                 case 'PalleteForkBody':
                   palletFork = pivot;
+                  break;
+                case 'HairSpringBody':
+                  hairSpring = pivot;
                   break;
               }
             }
@@ -552,19 +558,16 @@ function animate() {
     palletFork.rotation.z = amplitude * Math.sin(time * Math.PI * 2 * frequency);
   }
   
-  // --- MODIFICATION: Animate Balance Wheel and Hair Spring together ---
   if (balanceWheel) {
     const time = now.getTime() / 1000;
     const frequency = 2; 
     const sineValue = Math.sin(time * Math.PI * 2 * frequency);
 
-    // Balance Wheel oscillates 180 degrees total
     const amplitude = Math.PI / 2;
     balanceWheel.rotation.z = amplitude * sineValue;
 
-    // Hair Spring scales in sync with the balance wheel
     if (hairSpring) {
-        // Scale is 1.0 at center (sin=0) and 1.3 at peak (abs(sin)=1)
+        // --- MODIFICATION: Apply scaling animation to the hairSpring pivot ---
         const currentScale = 1.0 + 0.3 * Math.abs(sineValue);
         hairSpring.scale.set(currentScale, currentScale, 1);
     }
@@ -610,4 +613,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
