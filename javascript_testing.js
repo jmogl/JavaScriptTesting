@@ -1,3 +1,5 @@
+ttttt
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -61,15 +63,19 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
 dirLight.castShadow = true;
-// --- MODIFICATION: Light is now stationary in the scene to create dynamic shadows ---
-dirLight.position.set(10, 15, 36);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
 dirLight.shadow.camera.top = 15;
 dirLight.shadow.camera.bottom = -15;
 dirLight.shadow.bias = -0.0001;
-scene.add(dirLight);
+
+// --- MODIFICATION: Attach light to the camera for dynamic shadows and reflections ---
+camera.add(dirLight);
+camera.add(dirLight.target);
+dirLight.position.set(10, 15, 20); // Position relative to the camera
+dirLight.target.position.set(0, 0, 0); // Target relative to the camera
+scene.add(camera);
 
 
 // --- Create a master "clockUnit" group ---
@@ -507,16 +513,15 @@ function animate() {
   requestAnimationFrame(animate);
 
   // --- MODIFICATION: The clock is stationary, only the camera moves with tilt ---
-  const cameraMoveScale = 4;
+  const cameraMoveScale = 6; // Increased scale for more pronounced movement
   const clampedTiltX = THREE.MathUtils.clamp(tiltX, -45, 45);
   const clampedTiltY = THREE.MathUtils.clamp(tiltY, -45, 45);
-  const targetCameraX = THREE.MathUtils.degToRad(clampedTiltX) * cameraMoveScale * -1;
-  const targetCameraY = THREE.MathUtils.degToRad(clampedTiltY) * cameraMoveScale;
   
-  // Smoothly interpolate camera position for a fluid feel
-  camera.position.x += (targetCameraX - camera.position.x) * 0.05;
-  camera.position.y += (targetCameraY - camera.position.y) * 0.05;
+  // Set position directly for a more responsive feel
+  camera.position.x = THREE.MathUtils.degToRad(clampedTiltX) * cameraMoveScale * -1;
+  camera.position.y = THREE.MathUtils.degToRad(clampedTiltY) * cameraMoveScale;
   
+  // The camera always looks at the center of the clock unit
   camera.lookAt(clockUnit.position);
 
   const now = new Date();
@@ -611,4 +616,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
