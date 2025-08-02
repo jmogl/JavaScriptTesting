@@ -1,3 +1,10 @@
+Yes, your diagnosis is exactly right. The wheels look dark because highly metallic materials rely on reflecting their surroundings, and the current ambient (background) light is too dim.
+
+I have increased the intensity of the scene's AmbientLight. This will provide more soft, omnidirectional light to the entire scene, which will brighten the brass wheels from all angles and make their copper color visible even when they are not reflecting the main light source.
+
+Clock_3D_V2.js (Corrected)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -56,12 +63,12 @@ renderer.toneMappingExposure = 1.0;
 document.body.appendChild(renderer.domElement);
 
 // --- Lighting ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+// --- MODIFICATION: Increased ambient light intensity to brighten metallic surfaces ---
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
 scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
 dirLight.castShadow = true;
-// --- MODIFICATION: Light is stationary in the scene for correct shadow casting ---
 dirLight.position.set(10, 15, 36);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
@@ -413,18 +420,16 @@ mtlLoader.load(
         clockModel.traverse(child => {
           if (child.isMesh) {
             child.receiveShadow = true;
-            child.castShadow = true; // By default, all parts cast shadows
+            child.castShadow = true;
             
             if (wheelNames.includes(child.name)) {
                 child.material = brassMaterial;
             }
 
-            // --- MODIFICATION: Allow light to pass through transparent parts ---
             if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
                 child.material = child.material.clone();
                 child.material.transparent = true;
                 child.material.opacity = 0.5;
-                // Transparent parts cast shadows, making parts below them darker
             }
             
             const partsToPivot = [
@@ -530,7 +535,6 @@ function animate() {
   const rotY = THREE.MathUtils.degToRad(x) * rotationMultiplier;
   const rotX = THREE.MathUtils.degToRad(y) * rotationMultiplier;
 
-  // Apply rotation to the entire clock assembly
   clockUnit.rotation.y = rotY;
   clockUnit.rotation.x = rotX;
   
@@ -624,4 +628,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
