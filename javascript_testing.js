@@ -1,3 +1,7 @@
+Of course. The clock mechanism model has been lowered by an additional 0.5 units, and the bezel's depth has been increased by 0.1 units.
+
+Clock_3D_V2.js (Corrected)
+JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -79,7 +83,6 @@ clockUnit.add(watchGroup);
 const zShift = 1.0;
 
 // --- Background Plane (Wood) ---
-// --- MODIFICATION: Renamed "watch" object to "wall" ---
 const wallMaterial = new THREE.MeshStandardMaterial({
   color: 0xffffff,
   metalness: 0.1,
@@ -148,8 +151,8 @@ const markerRadius = 10.0;
 
 // --- Border Wall ---
 const borderThickness = 1.0;
-// --- MODIFICATION: Increased bezel depth by 0.5 ---
-const borderHeight    = 1.0;
+// --- MODIFICATION: Increased bezel depth by 0.1 ---
+const borderHeight    = 1.1;
 const outerRadius     = markerRadius + borderThickness;
 const innerRadius     = markerRadius;
 
@@ -327,7 +330,6 @@ function updateCameraPosition() {
 }
 
 function updateBackgroundSize() {
-    // --- MODIFICATION: Updated to use "wall" variable ---
     if (!wall || !camera) return;
     const distance = camera.position.z - wall.position.z;
     const vFov = THREE.MathUtils.degToRad(camera.fov);
@@ -396,8 +398,8 @@ mtlLoader.load(
       'textures/ETA6497-1_OBJ_TEST.obj',
       (object) => {
         clockModel = object;
-        // --- MODIFICATION: Lowered OBJ model by 0.5 ---
-        clockModel.position.set(0, 0, -3.5 + zShift);
+        // --- MODIFICATION: Lowered OBJ model by another 0.5 ---
+        clockModel.position.set(0, 0, -4.0 + zShift);
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
         clockModel.traverse(child => {
@@ -513,4 +515,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
