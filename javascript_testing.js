@@ -1,3 +1,10 @@
+Of course. The animation for the three new wheels has been added, and the rotation of the Seconds Wheel has been updated.
+
+Each of the new components now rotates about its own local center, using the same "pivot point" method as the other animated parts. The rotation rates and directions are noted in the comments.
+
+Clock_3D_V2.js (with new animations)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -17,7 +24,8 @@ let digitalDate, digitalClock;
 let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
 let modelScale = 3.5;
-let secondWheel, minuteWheel, hourWheel, balanceWheel;
+// --- MODIFICATION: Added variables for new animated parts ---
+let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel;
 
 
 // --- Wait for the DOM to be ready, then create and inject UI elements ---
@@ -402,31 +410,23 @@ mtlLoader.load(
             child.castShadow = true;
             child.receiveShadow = true;
         
-            // --- MODIFICATION: Create pivots for wheels to rotate around their own centers ---
-            // Check if the mesh is one of the parts we need to animate.
-            if (['SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody'].includes(child.name)) {
-              
-              // Step 1: Calculate the geometric center of the wheel in world space.
-              // This is the point we want the wheel to rotate around.
+            // --- MODIFICATION: Added new wheels to the pivot creation logic ---
+            const partsToPivot = [
+                'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
+                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel'
+            ];
+
+            if (partsToPivot.includes(child.name)) {
               const center = new THREE.Vector3();
               new THREE.Box3().setFromObject(child).getCenter(center);
         
-              // Step 2: Create an empty Group to act as an invisible pivot.
               const pivot = new THREE.Group();
-              // Step 3: Add the pivot to the same parent as the wheel (the clockModel).
               child.parent.add(pivot);
-              // Step 4: Position the pivot exactly at the wheel's calculated center.
               pivot.position.copy(center);
         
-              // Step 5: Attach the wheel to the pivot. Now the pivot is the parent.
               pivot.add(child);
-              
-              // Step 6: Move the wheel's local position. Its new coordinates are relative
-              // to the pivot, so we offset it by the inverse of the pivot's position.
               child.position.sub(center);
         
-              // Step 7: Store the pivot (not the wheel) in the corresponding variable.
-              // The animation loop will now rotate the pivot, not the original mesh.
               switch (child.name) {
                 case 'SecondsWheel':
                   secondWheel = pivot;
@@ -439,6 +439,15 @@ mtlLoader.load(
                   break;
                 case 'BalanceWheelBody':
                   balanceWheel = pivot;
+                  break;
+                case 'EscapeWheel':
+                  escapeWheel = pivot;
+                  break;
+                case 'CenterWheelBody':
+                  centerWheel = pivot;
+                  break;
+                case 'ThirdWheel':
+                  thirdWheel = pivot;
                   break;
               }
             }
@@ -513,21 +522,39 @@ function animate() {
   minuteHand.rotation.z = -THREE.MathUtils.degToRad((minutes / 60) * 360);
   hourHand.rotation.z   = -THREE.MathUtils.degToRad((hours / 12) * 360);
   
+  // --- MODIFICATION: Added/updated animations for all wheels ---
   if (secondWheel) {
-    secondWheel.rotation.z = -(seconds / 60) * Math.PI * 2;
+    // Seconds Wheel: Counter-clockwise, 1 rotation per minute
+    secondWheel.rotation.z = (seconds / 60) * Math.PI * 2;
   }
   if (minuteWheel) {
+    // Minute Wheel: 1 rotation per hour
     minuteWheel.rotation.z = -(minutes / 60) * Math.PI * 2;
   }
   if (hourWheel) {
+    // Hour Wheel: 1 rotation per 12 hours
     hourWheel.rotation.z = -(hours / 12) * Math.PI * 2;
   }
   if (balanceWheel) {
-    const time = now.getTime() / 1000; 
-    const amplitude = Math.PI / 2; 
+    // Balance Wheel: Oscillates 180 degrees, 2 times per second
+    const time = now.getTime() / 1000;
+    const amplitude = Math.PI / 2;
     const frequency = 2; 
     balanceWheel.rotation.z = amplitude * Math.sin(time * Math.PI * 2 * frequency);
   }
+  if (escapeWheel) {
+    // Escape Wheel: Clockwise, 1 rotation per 5 seconds
+    escapeWheel.rotation.z = -((seconds % 5) / 5) * Math.PI * 2;
+  }
+  if (centerWheel) {
+    // Center Wheel: Counter-clockwise, 1 rotation per hour
+    centerWheel.rotation.z = (minutes / 60) * Math.PI * 2;
+  }
+  if (thirdWheel) {
+    // Third Wheel: Clockwise, 1 rotation per 7.5 minutes
+    thirdWheel.rotation.z = -((minutes % 7.5) / 7.5) * Math.PI * 2;
+  }
+
 
   const pad = (n) => n.toString().padStart(2, '0');
   const spanStyles = `background-color: rgba(0, 0, 0, 0.5); padding: 0.1em 0.3em; border-radius: 4px;`;
@@ -568,4 +595,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
