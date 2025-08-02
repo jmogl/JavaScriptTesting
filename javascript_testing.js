@@ -1,4 +1,4 @@
-
+rrr
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -106,7 +106,7 @@ textureLoader.load(
 
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
-watch.position.z = -1; // reset wood plane z
+watch.position.z = -2; // lowered wood wall to -2 for proper layering // reset wood plane z
 watch.receiveShadow = true;
 clockUnit.add(watch);
 
@@ -185,7 +185,7 @@ faceMesh.name = 'clock_face';
 faceMesh.receiveShadow = true;
 faceMesh.castShadow = false;
 // Slightly above the wood plane so markers can protrude
-faceMesh.position.z = watch.position.z + 0.1; // face slightly above wood // reset to reference watch.position.z // adjusted to use original wall z // raised from +0.01 to +0.1
+faceMesh.position.z = watch.position.z + 0.1; // face just above wall // face slightly above wood // reset to reference watch.position.z // adjusted to use original wall z // raised from +0.01 to +0.1
 clockUnit.add(faceMesh);
 
 
@@ -226,7 +226,7 @@ for (let i = 0; i < 60; i++) {
     
     const marker = new THREE.Mesh(markerGeom, silverMaterial);
     
-    const markerZ = watch.position.z + 0.02; // marker slightly above face
+    const markerZ = watch.position.z + 0.11; // markers above face // marker slightly above face
     marker.position.set(markerRadius * Math.sin(angle), markerRadius * Math.cos(angle), markerZ);
 
     marker.rotation.z = -angle;
@@ -261,7 +261,7 @@ fontLoader.load(fontURL, (font) => {
         numeralGeometry.center();
         const numeral = new THREE.Mesh(numeralGeometry, silverMaterial);
 
-        const numeralZ = watch.position.z + 0.03; // numeral slightly above face
+        const numeralZ = watch.position.z + 0.12; // numerals above face // numeral slightly above face
         numeral.position.set(numeralRadius * Math.sin(angle), numeralRadius * Math.cos(angle), numeralZ);
         numeral.castShadow = true;
         numeral.receiveShadow = true;
@@ -445,14 +445,14 @@ mtlLoader.load(
       undefined,
       (err) => {
         console.error('Failed to load OBJ:', err);
-        alert('Error: Could not load ETA6497-1_OBJ_TEST.obj');
+        // alert removed: OBJ load error logged to console
       }
     );
   },
   undefined,
   (err) => {
     console.error('Failed to load MTL:', err);
-    alert('Error: Could not load ETA6497-1_OBJ_TEST.mtl');
+    // alert removed: MTL load error logged to console
   }
 );
 
@@ -522,4 +522,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
