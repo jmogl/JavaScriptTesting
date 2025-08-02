@@ -1,3 +1,10 @@
+Of course. The material override has been removed, and a new, highly reflective brass material has been created and applied specifically to the wheels of the watch movement.
+
+The rest of the model's components will now use their original, distinct materials as defined in the .mtl file. The wheels will be a reflective brass, and they will properly reflect the light source and environment map.
+
+Clock_3D_V2.js (Corrected)
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -18,7 +25,7 @@ let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
 let modelScale = 3.5;
 let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring;
-const balanceWheelSpeedMultiplier = 0.5;
+const balanceWheelSpeedMultiplier = 1.0;
 
 
 // --- Wait for the DOM to be ready, then create and inject UI elements ---
@@ -61,18 +68,22 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
 dirLight.castShadow = true;
-// --- MODIFICATION: Light is stationary in the scene for correct shadow casting ---
-dirLight.position.set(10, 15, 36);
 dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
 dirLight.shadow.camera.top = 15;
 dirLight.shadow.camera.bottom = -15;
 dirLight.shadow.bias = -0.0001;
-scene.add(dirLight);
+
+// Attach light to the camera for a "headlamp" effect
+camera.add(dirLight);
+camera.add(dirLight.target);
+dirLight.position.set(5, 10, 20);
+dirLight.target.position.set(0, 0, 0);
+scene.add(camera);
 
 
-// --- Create a master "clockUnit" group to handle tilting ---
+// --- Create a master "clockUnit" group ---
 const clockUnit = new THREE.Group();
 scene.add(clockUnit);
 
@@ -126,6 +137,12 @@ const brightSilverMaterial = new THREE.MeshStandardMaterial({
 const secondMaterial = new THREE.MeshStandardMaterial({
     color: 0xff0000, metalness: 0.5, roughness: 0.4
 });
+// --- MODIFICATION: Added a new reflective brass material for the wheels ---
+const brassMaterial = new THREE.MeshStandardMaterial({
+    color: 0xB8860B,
+    metalness: 0.9,
+    roughness: 0.2
+});
 
 
 // Environment Map is applied selectively
@@ -139,6 +156,8 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
     silverMaterial.envMap = envMap;
     brightSilverMaterial.envMap = envMap;
     secondMaterial.envMap = envMap;
+    // --- MODIFICATION: Apply environment map to brass material for reflections ---
+    brassMaterial.envMap = envMap;
     
     texture.dispose();
     pmremGenerator.dispose();
@@ -400,11 +419,22 @@ mtlLoader.load(
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
         
+        // --- MODIFICATION: List of wheels to receive the new brass material ---
+        const wheelNames = [
+            'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body',
+            'EscapeWheel', 'CenterWheelBody', 'ThirdWheel'
+        ];
+
         clockModel.traverse(child => {
           if (child.isMesh) {
             child.castShadow = true;
             child.receiveShadow = true;
             
+            // Apply brass material to the wheels
+            if (wheelNames.includes(child.name)) {
+                child.material = brassMaterial;
+            }
+
             if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
                 child.material = child.material.clone();
                 child.material.transparent = true;
@@ -506,7 +536,6 @@ mtlLoader.load(
 function animate() {
   requestAnimationFrame(animate);
 
-  // --- MODIFICATION: Reverted to rotating the clock unit, not the camera ---
   const maxTilt = 15;
   const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
   const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
@@ -515,11 +544,9 @@ function animate() {
   const rotY = THREE.MathUtils.degToRad(x) * rotationMultiplier;
   const rotX = THREE.MathUtils.degToRad(y) * rotationMultiplier;
 
-  // Apply rotation to the entire clock assembly for a unified, realistic tilt
   clockUnit.rotation.y = rotY;
   clockUnit.rotation.x = rotX;
   
-  // The camera remains stationary but always looks at the clock's center
   camera.lookAt(clockUnit.position);
 
   const now = new Date();
@@ -610,4 +637,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
