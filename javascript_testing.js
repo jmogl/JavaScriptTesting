@@ -1,12 +1,3 @@
-You are correct. The previous tilt method was not right—attaching the light to the camera flattened the scene and removed the dynamic shadows.
-
-I've implemented a new solution that should achieve the exact effect you're looking for. The light is now fixed in the world, while the camera moves based on the device's tilt.
-
-This creates the desired sense of depth. As you tilt your device, your viewpoint will shift, allowing you to "look around" the stationary clock. Because the light source is fixed, you will see the shadows and reflections on the clock's surfaces change realistically, matching your description.
-
-Clock_3D_V2.js (Corrected)
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -620,3 +611,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
