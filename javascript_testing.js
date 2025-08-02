@@ -1,16 +1,3 @@
-Of course. The pallet fork animation has been updated, the jewels have been attached, and the screws have been changed to the reflective silver material.
-
-Here is a summary of the changes:
-
-Pallet Fork Frequency: The oscillation speed has been changed from 6 to 3 times per second.
-
-Jewel Attachment: The two jewels (Pallet_Fork_Jewel_HIGH_Pallet_Fork_Jewel and Pallet_Fork_Jewel_2_HIGH_Pallet_Fork_Jewel_2) are now attached to the PalleteForkBody. A single pivot point is created for the entire assembly, ensuring they all rotate together as one unit.
-
-Screw Material: All objects in the 3D model with names that start with "Screw_" now use the same reflective silverMaterial as the clock's tick marks and numerals.
-
-Clock_3D_V2.js (Corrected)
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -673,3 +660,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
