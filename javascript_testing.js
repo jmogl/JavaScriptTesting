@@ -1,3 +1,4 @@
+ZZZz
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -105,7 +106,7 @@ textureLoader.load(
 
 const watchGeometry = new THREE.PlaneGeometry(1, 1);
 const watch = new THREE.Mesh(watchGeometry, watchMaterial);
-watch.position.z = -2; // lowered wood wall to -2 for proper layering // reset wood plane z
+watch.position.z = -3; // lowered wood wall to -3 for proper layering // lowered wood wall to -2 for proper layering // reset wood plane z
 watch.receiveShadow = true;
 clockUnit.add(watch);
 
@@ -437,7 +438,7 @@ mtlLoader.load(
         const newFace = new THREE.Mesh(faceGeom, faceMat);
         newFace.name          = 'clock_face';
         newFace.receiveShadow = true;
-        newFace.position.z = baseWatchZ + 0.1; // adjusted to use original wall z
+        newFace.position.z = watch.position.z + 0.1; // fixed to reference watch.position.z // adjusted to use original wall z
         clockUnit.add(newFace);
 
       },
@@ -521,4 +522,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
