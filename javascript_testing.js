@@ -1,3 +1,5 @@
+tttt
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -567,7 +569,7 @@ function animate() {
   if (palletFork) {
     const time = now.getTime() / 1000;
     const amplitude = THREE.MathUtils.degToRad(22);
-    const frequency = 6;
+    const frequency = 3;
     palletFork.rotation.z = amplitude * Math.sin(time * Math.PI * 2 * frequency);
   }
   
@@ -626,5 +628,6 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
 
 
