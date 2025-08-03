@@ -1,8 +1,12 @@
+Of course. Here is the complete, full listing for javascript_testing.js with the robust logic for the pallet fork assembly.
+
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
-// Jeff Miller 2025. 8/2/25
-// MODIFIED: Attached PalletForkJewel1 and PalletForkJewel2 to the pallet fork's rotation pivot.
+// Jeff Miller 2025. 8/3/25
+// MODIFIED: Implemented robust pallet fork pivot logic.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -413,125 +417,118 @@ mtlLoader.load(
             'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'BalanceWheelBody'
         ];
         
-        // --- MODIFICATION: Variables to hold meshes for custom pivoting ---
-        let palletForkBodyMesh, palletJewelBodyMesh, palletForkJewel1Mesh, palletForkJewel2Mesh;
+        // --- MODIFICATION: Robust pivot logic for Pallet Fork ---
+        const palletPivotParts = {};
+        const requiredParts = [
+            'PalletForkBody',
+            'Plate_Jewel_Body',
+            'PalletForkJewel1',
+            'PalletForkJewel2'
+        ];
 
         clockModel.traverse(child => {
-          if (child.isMesh) {
-            console.log(`'${child.name}'`); // Add this line
-			
-			// --- TEMPORARY TEST CODE ---
-			const testMaterial = new THREE.MeshStandardMaterial({color: 0xff0000});
-			child.material = testMaterial;
-			// --- END TEST CODE ---
-			
-            child.receiveShadow = true;
-            child.castShadow = true;
+            if (child.isMesh) {
+  
+				console.log(`'${child.name}'`); // Add this line
+  
+				// This part remains the same for other objects
+                child.receiveShadow = true;
+                child.castShadow = true;
+
+                // Collect required parts for the pallet fork pivot
+                if (requiredParts.includes(child.name)) {
+                    palletPivotParts[child.name] = child;
+                }
+                
+                // The rest of your traverse logic for wheels, bridges, etc. remains here
+                if (wheelNames.includes(child.name)) {
+                    child.material = brassMaterial;
+                }
+
+                if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
+                    child.material = child.material.clone();
+                    child.material.transparent = true;
+                    child.material.opacity = 0.5;
+                    child.castShadow = false;
+                }
+                
+                const partsToPivot = [
+                    'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
+                    'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
+                ];
+
+                if (partsToPivot.includes(child.name)) {
+                  const center = new THREE.Vector3();
+                  new THREE.Box3().setFromObject(child).getCenter(center);
             
-            // --- MODIFICATION: Find meshes for custom pallet fork pivot ---
-            if (child.name === 'PalletForkBody') {
-                palletForkBodyMesh = child;
-            }
-            if (child.name === 'Plate_Jewel_Body') {
-                palletJewelBodyMesh = child;
-            }
-            if (child.name === 'PalletForkJewel1') {
-                palletForkJewel1Mesh = child;
-            }
-            if (child.name === 'PalletForkJewel2') {
-                palletForkJewel2Mesh = child;
-            }
-
-            if (wheelNames.includes(child.name)) {
-                child.material = brassMaterial;
-            }
-
-            if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
-                child.material = child.material.clone();
-                child.material.transparent = true;
-                child.material.opacity = 0.5;
-                child.castShadow = false;
-            }
+                  const pivot = new THREE.Group();
+                  child.parent.add(pivot);
+                  pivot.position.copy(center);
             
-            const partsToPivot = [
-                'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
-                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
-            ];
-
-            if (partsToPivot.includes(child.name)) {
-              const center = new THREE.Vector3();
-              new THREE.Box3().setFromObject(child).getCenter(center);
-        
-              const pivot = new THREE.Group();
-              child.parent.add(pivot);
-              pivot.position.copy(center);
-        
-              pivot.add(child);
-              child.position.sub(center);
-        
-              switch (child.name) {
-                case 'SecondsWheel':
-                  secondWheel = pivot;
-                  break;
-                case 'Minute_Wheel_Body':
-                  minuteWheel = pivot;
-                  break;
-                case 'HourWheel_Body':
-                  hourWheel = pivot;
-                  break;
-                case 'BalanceWheelBody':
-                  balanceWheel = pivot;
-                  break;
-                case 'EscapeWheel':
-                  escapeWheel = pivot;
-                  break;
-                case 'CenterWheelBody':
-                  centerWheel = pivot;
-                  break;
-                case 'ThirdWheel':
-                  thirdWheel = pivot;
-                  break;
-                case 'HairSpringBody':
-                  hairSpring = pivot;
-                  break;
-              }
+                  pivot.add(child);
+                  child.position.sub(center);
+            
+                  switch (child.name) {
+                    case 'SecondsWheel':
+                      secondWheel = pivot;
+                      break;
+                    case 'Minute_Wheel_Body':
+                      minuteWheel = pivot;
+                      break;
+                    case 'HourWheel_Body':
+                      hourWheel = pivot;
+                      break;
+                    case 'BalanceWheelBody':
+                      balanceWheel = pivot;
+                      break;
+                    case 'EscapeWheel':
+                      escapeWheel = pivot;
+                      break;
+                    case 'CenterWheelBody':
+                      centerWheel = pivot;
+                      break;
+                    case 'ThirdWheel':
+                      thirdWheel = pivot;
+                      break;
+                    case 'HairSpringBody':
+                      hairSpring = pivot;
+                      break;
+                  }
+                }
             }
-          }
         });
-        
-        // --- MODIFICATION: Custom pivot logic for Pallet Fork and its Jewels ---
-        if (palletForkBodyMesh && palletJewelBodyMesh) {
+
+        // After traversing, build the pallet fork pivot from the collected parts
+        if (palletPivotParts['PalletForkBody'] && palletPivotParts['Plate_Jewel_Body']) {
             const jewelCenter = new THREE.Vector3();
-            new THREE.Box3().setFromObject(palletJewelBodyMesh).getCenter(jewelCenter);
+            new THREE.Box3().setFromObject(palletPivotParts['Plate_Jewel_Body']).getCenter(jewelCenter);
     
             const pivot = new THREE.Group();
-            palletForkBodyMesh.parent.add(pivot);
+            palletPivotParts['PalletForkBody'].parent.add(pivot);
             pivot.position.copy(jewelCenter);
-    
-            // Add the main fork body to the pivot
-            pivot.add(palletForkBodyMesh);
-            palletForkBodyMesh.position.sub(jewelCenter);
 
-            // Add the first jewel to the pivot if it was found
-            if (palletForkJewel1Mesh) {
-                pivot.add(palletForkJewel1Mesh);
-                palletForkJewel1Mesh.position.sub(jewelCenter);
+            // Add all three parts to the pivot
+            pivot.add(palletPivotParts['PalletForkBody']);
+            palletPivotParts['PalletForkBody'].position.sub(jewelCenter);
+
+            if (palletPivotParts['PalletForkJewel1']) {
+                pivot.add(palletPivotParts['PalletForkJewel1']);
+                palletPivotParts['PalletForkJewel1'].position.sub(jewelCenter);
             } else {
-                console.error("Could not find 'PalletForkJewel1' mesh in the model.");
+                 console.error("Could not find 'PalletForkJewel1' mesh in the model.");
             }
 
-            // Add the second jewel to the pivot if it was found
-            if (palletForkJewel2Mesh) {
-                pivot.add(palletForkJewel2Mesh);
-                palletForkJewel2Mesh.position.sub(jewelCenter);
+            if (palletPivotParts['PalletForkJewel2']) {
+                pivot.add(palletPivotParts['PalletForkJewel2']);
+                palletPivotParts['PalletForkJewel2'].position.sub(jewelCenter);
             } else {
                 console.error("Could not find 'PalletForkJewel2' mesh in the model.");
             }
-    
-            palletFork = pivot; // Assign the new pivot to the global variable for animation
+
+            palletFork = pivot;
         } else {
-            if (!palletForkBodyMesh) console.error("Could not find 'PalletForkBody' mesh in the model.");
-            if (!palletJewelBodyMesh) console.error("Could not find 'Plate_Jewel_Body' mesh in the model.");
+            if (!palletPivotParts['PalletForkBody']) console.error("Could not find 'PalletForkBody' mesh in the model.");
+            if (!palletPivotParts['Plate_Jewel_Body']) console.error("Could not find 'Plate_Jewel_Body' mesh in the model.");
         }
 
         clockUnit.add(clockModel);
@@ -681,4 +678,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
