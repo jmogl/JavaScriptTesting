@@ -1,3 +1,7 @@
+Of course. Here is the complete, updated code for the ClockSimV011.js file, which includes all previous logic as well as the recent modifications.
+
+ClockSimV011.js
+JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -392,9 +396,29 @@ const tickSound = new Audio('https://cdn.jsdelivr.net/gh/freebiesupply/sounds/ti
 tickSound.volume = 0.2;
 
 
-// ─── Load the ETA6497 model ───
+// --- Load the ETA6497 model ---
 const mtlLoader = new MTLLoader();
 mtlLoader.setCrossOrigin('');
+
+// --- NEW: Texture Loader for Brushed Steel ---
+const brushedTextureLoader = new THREE.TextureLoader();
+const brushedSteelTexture = brushedTextureLoader.load(
+    'https://www.dropbox.com/scl/fi/i6putjm3keob4es8t2qcp/brushed-steel.jpg?rlkey=sdqzao5dkb07y2xlq021vbxqn&raw=1',
+    (texture) => {
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(0.1, 0.1); // Adjust tiling as needed
+    }
+);
+
+const brushedSteelMaterial = new THREE.MeshStandardMaterial({
+    map: brushedSteelTexture,
+    metalness: 0.8,
+    roughness: 0.4,
+    color: 0xaaaaaa, // Base color for the steel
+});
+
+
 mtlLoader.load(
   'textures/ETA6497-1_OBJ.mtl',
   (materials) => {
@@ -409,7 +433,6 @@ mtlLoader.load(
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
 
-        // --- Step 1: Find and collect all necessary parts without modifying them ---
         const collectedParts = {};
         clockModel.traverse(child => {
             if (child.isMesh) {
@@ -419,7 +442,19 @@ mtlLoader.load(
             }
         });
 
-        // --- Step 2: Now that traversal is complete, modify the collected parts ---
+        // --- MODIFICATION: Apply transparency to MovementBarrel2_Body ---
+        if (collectedParts['MovementBarrel2_Body']) {
+            const part = collectedParts['MovementBarrel2_Body'];
+            part.material = part.material.clone();
+            part.material.transparent = true;
+            part.material.opacity = 0.5;
+        }
+
+        // --- MODIFICATION: Apply brushed steel texture to BarrelBridge_Body ---
+        if (collectedParts['BarrelBridge_Body']) {
+            collectedParts['BarrelBridge_Body'].material = brushedSteelMaterial;
+        }
+
 
         // Apply materials
         const wheelNames = [
@@ -655,4 +690,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
