@@ -1,3 +1,7 @@
+Of course. Here is the complete, updated JavaScript file with all the corrections for the pallet fork and jewel animation.
+
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -126,6 +130,7 @@ const brightSilverMaterial = new THREE.MeshStandardMaterial({
 const secondMaterial = new THREE.MeshStandardMaterial({
     color: 0xff0000, metalness: 0.5, roughness: 0.4
 });
+// --- MODIFICATION: Added emissive properties to the brass material ---
 const brassMaterial = new THREE.MeshStandardMaterial({
     color: 0xED9149,
     metalness: 0.8,
@@ -451,8 +456,9 @@ mtlLoader.load(
               child.parent.add(pivot);
               pivot.position.copy(center);
         
-              pivot.add(child);
-              child.position.sub(center);
+              // MODIFICATION: Replaced manual parenting with the .attach() method
+              // for a more robust pivot creation.
+              pivot.attach(child);
         
               switch (child.name) {
                 case 'SecondsWheel':
@@ -487,14 +493,10 @@ mtlLoader.load(
           }
         });
         
+        // MODIFICATION: Use .attach() to parent the jewels to the pallet fork's pivot.
         if (palletFork && palletForkJewel && palletForkJewel2) {
-            const center = palletFork.position;
-            
-            palletFork.add(palletForkJewel);
-            palletFork.add(palletForkJewel2);
-            
-            palletForkJewel.position.sub(center);
-            palletForkJewel2.position.sub(center);
+            palletFork.attach(palletForkJewel);
+            palletFork.attach(palletForkJewel2);
         }
 
         clockUnit.add(clockModel);
@@ -599,6 +601,7 @@ function animate() {
     balanceWheel.rotation.z = amplitude * sineValue;
 
     if (hairSpring) {
+        // --- MODIFICATION: Updated hairspring scale to pulse from 0.6x to 1.3x ---
         const currentScale = 0.95 + 0.35 * sineValue;
         hairSpring.scale.set(currentScale, currentScale, 1);
     }
@@ -644,4 +647,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
