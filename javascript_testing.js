@@ -1,4 +1,3 @@
-tttt
 
 // Final, complete javascript_testing.js file
 
@@ -666,3 +665,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
