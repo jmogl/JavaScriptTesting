@@ -1,8 +1,9 @@
+ttttt
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/2/25
-// MODIFIED: Implemented robust pivot logic and added visual debug material.
+// MODIFIED: Implemented robust pivot logic using correct coordinate spaces and added a debug color change.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -133,6 +134,10 @@ const brassMaterial = new THREE.MeshStandardMaterial({
     emissive: 0xED9149,
     emissiveIntensity: 0.5
 });
+// --- MODIFICATION: Added steel material for debugging ---
+const steelMaterial = new THREE.MeshStandardMaterial({
+    color: 0xaaaaaa, metalness: 1.0, roughness: 0.3
+});
 
 
 // Environment Map is applied selectively
@@ -147,6 +152,7 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
     brightSilverMaterial.envMap = envMap;
     secondMaterial.envMap = envMap;
     brassMaterial.envMap = envMap;
+    steelMaterial.envMap = envMap; // Assign env map to steel material
     
     texture.dispose();
     pmremGenerator.dispose();
@@ -404,16 +410,6 @@ mtlLoader.load(
       'textures/ETA6497-1_OBJ.obj',
       (object) => {
         clockModel = object;
-
-        // --- DEBUGGING: Check the console for the exact mesh names ---
-        console.log("--- All Mesh Names in Model (for debugging) ---");
-        clockModel.traverse(node => {
-            if (node.isMesh) {
-                console.log(`'${node.name}'`);
-            }
-        });
-        console.log("-------------------------------------------------");
-
         clockModel.position.set(0, 0, -4.0 + zShift);
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
@@ -430,15 +426,20 @@ mtlLoader.load(
             child.receiveShadow = true;
             child.castShadow = true;
             
-            if (child.name === 'PalletForkBody') palletForkBodyMesh = child;
-            if (child.name === 'Plate_Jewel_Body') palletJewelBodyMesh = child;
-            if (child.name === 'PalletForkJewel2') palletForkJewel2Mesh = child;
-
-            // --- Find the problematic jewel. Check console for the correct name ---
+            if (child.name === 'PalletForkBody') {
+                palletForkBodyMesh = child;
+            }
+            if (child.name === 'Plate_Jewel_Body') {
+                palletJewelBodyMesh = child;
+            }
             if (child.name === 'PalletForkJewel1') {
                 palletForkJewel1Mesh = child;
+                // --- MODIFICATION: Apply steel material for debugging ---
+                child.material = steelMaterial;
             }
-
+            if (child.name === 'PalletForkJewel2') {
+                palletForkJewel2Mesh = child;
+            }
 
             if (wheelNames.includes(child.name)) {
                 child.material = brassMaterial;
@@ -481,41 +482,35 @@ mtlLoader.load(
           }
         });
         
-        // --- MODIFICATION: Robust pivot logic for pallet fork assembly ---
+        // --- MODIFICATION: New robust pivot logic ---
         if (palletForkBodyMesh && palletJewelBodyMesh) {
             const pivot = new THREE.Group();
-            clockModel.add(pivot);
+            const parent = palletForkBodyMesh.parent; // Assume all parts share this parent
 
+            // 1. Get the pivot point in World Coordinates
             const pivotPointWorld = new THREE.Vector3();
-            palletJewelBodyMesh.getWorldPosition(pivotPointWorld);
-            pivot.position.copy(pivotPointWorld);
+            new THREE.Box3().setFromObject(palletJewelBodyMesh).getCenter(pivotPointWorld);
 
-            const partsToAttach = [palletForkBodyMesh, palletForkJewel2Mesh];
+            // 2. Convert the World pivot point to the Parent's Local Coordinates
+            const pivotPointLocal = parent.worldToLocal(pivotPointWorld.clone());
+            
+            // 3. Add the pivot to the parent and set its local position
+            parent.add(pivot);
+            pivot.position.copy(pivotPointLocal);
 
-            // --- VISUAL DEBUG: Test if palletForkJewel1Mesh is found ---
-            const debugMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
-            if (palletForkJewel1Mesh) {
-                console.log("SUCCESS: 'PalletForkJewel1' was found. It should now be bright green.");
-                palletForkJewel1Mesh.material = debugMaterial;
-                partsToAttach.push(palletForkJewel1Mesh);
-            } else {
-                console.error("FAILURE: 'PalletForkJewel1' was NOT found in the model traversal.");
-            }
+            // 4. Define the list of parts to attach to the new pivot
+            const partsToAttach = [palletForkBodyMesh, palletForkJewel1Mesh, palletForkJewel2Mesh];
 
             partsToAttach.forEach(part => {
                 if (part) {
-                    // This logic moves the part into the pivot group while ensuring
-                    // its position is now relative to the pivot's center. This creates
-                    // the correct oscillation (arcing) motion.
-                    const partWorldPos = new THREE.Vector3();
-                    part.getWorldPosition(partWorldPos);
-                    
+                    // Add the part to the pivot group. three.js will preserve its world position.
                     pivot.add(part);
-                    
-                    part.position.copy(partWorldPos).sub(pivotPointWorld);
+                    // Adjust the part's new local position to be relative to the pivot's center.
+                    part.position.sub(pivotPointLocal);
                 }
             });
 
+            // The animation will rotate this pivot group
             palletFork = pivot;
         } else {
             if (!palletForkBodyMesh) console.error("Could not find 'PalletForkBody' mesh in the model.");
@@ -669,4 +664,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
