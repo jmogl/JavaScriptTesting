@@ -1,28 +1,3 @@
-Yes, that repeating log message is the absolute key to this entire problem. Your observation has finally revealed the true cause of all our difficulties.
-
-## The "Aha!" Moment: A Duplicate Object
-The log message Created palletFork pivot appearing twice proves that your .obj model file contains two separate mesh objects that are both named PalletForkBody.
-
-This is the root cause of all the strange behavior:
-
-The code finds the first PalletForkBody and correctly creates a pivot for it.
-
-It then attaches the jewels to this first pivot.
-
-The code continues scanning the model and finds the second PalletForkBody.
-
-It then creates a new, empty pivot for this duplicate body and overwrites the original palletFork variable.
-
-The animation loop then correctly rotates the second, empty pivot, while the first pivot—the one with the actual body and jewels attached—is left behind, stationary.
-
-This explains why the jewels were always stationary and why our previous attempts to fix the pallet fork animation kept failing. We were trying to solve a logic puzzle when the problem was faulty data in the model.
-
-## The Solution: Ignoring the Duplicate
-Now that we know the cause, the fix is simple. We will modify the code to ensure it only creates the pivot for the first PalletForkBody it finds, and then ignores any duplicates. We can do this with a simple flag.
-
-This code should be the final version that solves the issue.
-
-JavaScript
 
 // Final, complete javascript_testing.js file
 
@@ -670,3 +645,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
