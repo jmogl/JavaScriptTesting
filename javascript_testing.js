@@ -1,3 +1,24 @@
+Of course. It's clear that the previous approaches have failed because of a subtle issue with how the different parts of the model are parented and positioned. The fact that we know the exact names of the objects is the key to implementing the correct and final solution.
+
+The problem is that the jewels must be attached to the pallet fork's pivot at the same time as the pallet fork body itself. Doing it in a separate step afterwards causes coordinate space problems that make the jewels ignore the pivot's rotation.
+
+The solution is to treat the "Pallet Fork Assembly" (the body and its two jewels) as a special case. The code will now:
+
+Find all three mesh objects during the initial scan.
+
+Handle all other moving parts as it did before.
+
+After the scan, it will create a single pivot point based on the center of the PalletForkBody.
+
+Finally, it will attach the body and both jewels to this single pivot using the robust .attach() method.
+
+This ensures all three parts are in the same coordinate system and will rotate together correctly.
+
+Final Code
+This is the complete and corrected code. Please replace the entire content of your javascript_testing.js file with this.
+
+JavaScript
+
 // Final, complete javascript_testing.js file
 
 import * as THREE from 'three';
@@ -14,7 +35,7 @@ let digitalDate, digitalClock;
 let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
 let modelScale = 3.5;
-let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring, palletForkJewel, palletForkJewel2;
+let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring, palletForkJewel, palletForkJewel2, palletForkBodyMesh;
 
 const balanceWheelSpeedMultiplier = 1.0;
 
@@ -410,6 +431,12 @@ mtlLoader.load(
             'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'BalanceWheelBody'
         ];
 
+        // MODIFICATION: The PalletForkBody is now handled specially and removed from this list.
+        const partsToPivot = [
+            'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
+            'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
+        ];
+
         clockModel.traverse(child => {
             if (child.isMesh) {
                 child.receiveShadow = true;
@@ -419,6 +446,10 @@ mtlLoader.load(
                     child.material = brassMaterial;
                 }
 
+                // Find all parts of the pallet fork assembly first
+                if (child.name === 'PalletForkBody') {
+                    palletForkBodyMesh = child;
+                }
                 if (child.name === 'PalletForkJewel') {
                     palletForkJewel = child;
                     child.material = secondMaterial;
@@ -435,11 +466,7 @@ mtlLoader.load(
                     child.castShadow = false;
                 }
                 
-                const partsToPivot = [
-                    'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
-                    'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalletForkBody', 'HairSpringBody'
-                ];
-
+                // Handle all other standard parts
                 if (partsToPivot.includes(child.name)) {
                   const center = new THREE.Vector3();
                   new THREE.Box3().setFromObject(child).getCenter(center);
@@ -459,18 +486,29 @@ mtlLoader.load(
                     case 'EscapeWheel': escapeWheel = pivot; break;
                     case 'CenterWheelBody': centerWheel = pivot; break;
                     case 'ThirdWheel': thirdWheel = pivot; break;
-                    case 'PalletForkBody': palletFork = pivot; break;
+                    // PalletForkBody is no longer here
                     case 'HairSpringBody': hairSpring = pivot; break;
                   }
                 }
             }
         });
 
-        // Attach the jewels to the pallet fork pivot
-        if (palletFork && palletForkJewel && palletForkJewel2) {
-            // Use .attach() to move the jewels into the pivot group
-            // while preserving their world position. They will now
-            // inherit the pivot's rotation.
+        // --- Create Pallet Fork Assembly ---
+        // After finding all parts, create a single pivot for the pallet fork assembly
+        if (palletForkBodyMesh && palletForkJewel && palletForkJewel2) {
+            const center = new THREE.Vector3();
+            new THREE.Box3().setFromObject(palletForkBodyMesh).getCenter(center);
+    
+            // This Group is the actual animated object now
+            palletFork = new THREE.Group();
+            
+            // Add pivot to the scene graph at the correct location
+            palletForkBodyMesh.parent.add(palletFork);
+            palletFork.position.copy(center);
+    
+            // Attach all three parts to the pivot group.
+            // .attach() correctly handles re-parenting.
+            palletFork.attach(palletForkBodyMesh);
             palletFork.attach(palletForkJewel);
             palletFork.attach(palletForkJewel2);
         }
@@ -622,5 +660,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
-
