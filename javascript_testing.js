@@ -418,6 +418,7 @@ mtlLoader.load(
 
         clockModel.traverse(child => {
           if (child.isMesh) {
+            console.log(`'${child.name}'`); // Add this line
             child.receiveShadow = true;
             child.castShadow = true;
             
@@ -674,4 +675,5 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
 
