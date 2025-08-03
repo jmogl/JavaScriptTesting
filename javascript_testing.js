@@ -1,3 +1,38 @@
+I apologize for the continued trouble with this; debugging 3D model loading can be very tricky. Your information that this logging method has worked before is the key. It confirms the function is correct, but something in the current environment is preventing the messages from being seen.
+
+The most likely cause is that your browser's developer console has been accidentally set to filter out regular log messages. This can happen easily by clicking one of the filter buttons (like "Errors" or "Warnings") at the top of the console panel.
+
+The Foolproof Diagnostic: Using alert()
+To bypass any console filters, we will use a more direct method: a JavaScript alert() pop-up. This is an old-school technique, but it's impossible to miss.
+
+Warning: This will create many pop-up boxes, one for every single part in the 3D model. You will have to click "OK" on each one. The goal is to patiently click through them and write down the exact names for the two jewel objects when their alerts appear.
+
+In your javascript_testing.js file, find the clockModel.traverse function within the objLoader.load callback.
+
+Add the alert() line as shown below.
+
+JavaScript
+
+// ... inside objLoader.load ...
+      (object) => {
+        clockModel = object;
+        // ... etc ...
+        
+        clockModel.traverse(child => {
+            
+            // TEMPORARY DEBUGGING STEP
+            alert("Found object name: " + child.name);
+            
+            // Find jewels by name first, regardless of their type
+            // ... the rest of the function ...
+Save the file and reload the page. Click through the alerts until you see the ones for the jewels and record their names.
+
+Once you have the names, remove the alert() line and proceed to the final step below.
+
+Final Code
+This is the same robust code from our last attempt. Once you have the correct names from the alert() boxes, replace the 'PUT_CORRECT_JEWEL_NAME_HERE...' placeholders with the names you discovered. This structure will correctly handle the objects regardless of their type (Mesh, Group, etc.) and attach them to the moving pallet fork.
+
+JavaScript
 
 // Final, complete javascript_testing.js file
 
@@ -413,6 +448,7 @@ mtlLoader.load(
 
         clockModel.traverse(child => {
             // Find jewels by name first, regardless of their type
+            // ** REPLACE THESE PLACEHOLDER NAMES WITH THE ONES FROM THE ALERT BOXES **
             if (child.name === 'PUT_CORRECT_JEWEL_NAME_1_HERE') {
                 palletForkJewel = child;
             }
@@ -628,4 +664,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
