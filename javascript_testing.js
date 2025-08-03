@@ -1,14 +1,3 @@
-You are right, my apologies. Using the .attach() method was incorrect as it fundamentally changed the pivot logic that was already working for the other components.
-
-Let's go back to the original file and try a different approach that respects the existing animation logic. The key is to apply the same parenting math that works for the PalletForkBody to the jewels after they have all been identified.
-
-This version keeps the original, working pivot logic intact and carefully adds the jewels to the pallet fork's pivot group using that same logic.
-
-Complete Code Listing
-Here is the full, corrected code.
-
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -662,3 +651,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
