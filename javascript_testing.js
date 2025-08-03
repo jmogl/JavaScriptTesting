@@ -1,9 +1,35 @@
+It sounds like the last update created a new problem while the original one persists. Let's tackle both.
+
+The two issues you're seeing are linked, and they both point to a mismatch between the code and the 3D model's structure.
+
+"Moving in an arc": My previous change used the .attach() method. This method correctly makes the pallet fork assembly rotate around the jewel's position. An oscillating motion (like a pendulum) is movement along an arc. It's possible we just have a misunderstanding in terms, but if the motion looks fundamentally wrong or too large, the fix below should correct it. The original code's method for creating pivots was flawed, and we need to use a more robust technique.
+
+"One jewel is not moving": This remains the core issue. Since the code to move both jewels is identical, this indicates the program is still failing to correctly identify the PalletForkJewel1 object.
+
+The Definitive Fix
+We need to definitively confirm whether the script is finding PalletForkJewel1. I've updated the code with a powerful visual debugging tool.
+
+Instead of just trying to move the jewel, the code will now turn PalletForkJewel1 bright green if it finds it.
+
+Here's how to solve this:
+
+Replace your code with the new version below.
+
+Run the simulation and look closely at the pallet fork assembly.
+
+If you see a bright green jewel: This means the name is correct and the issue is with the positioning logic. The new, more robust pivot code in this update should fix it.
+
+If the jewel is NOT green: This is the most likely outcome. It gives us 100% confirmation that the name 'PalletForkJewel1' in the script is incorrect. You will need to find the correct name. I have re-enabled the code that prints all mesh names to the developer console (F12) to help you find the right one.
+
+The new pivot logic is also much more robust and should fix the "arcing" issue by correctly re-calculating the local positions of the attached parts relative to their new pivot.
+
+JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/2/25
-// MODIFIED: Replaced manual object repositioning with the robust .attach() method.
+// MODIFIED: Implemented robust pivot logic and added visual debug material.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -405,6 +431,16 @@ mtlLoader.load(
       'textures/ETA6497-1_OBJ.obj',
       (object) => {
         clockModel = object;
+
+        // --- DEBUGGING: Check the console for the exact mesh names ---
+        console.log("--- All Mesh Names in Model (for debugging) ---");
+        clockModel.traverse(node => {
+            if (node.isMesh) {
+                console.log(`'${node.name}'`);
+            }
+        });
+        console.log("-------------------------------------------------");
+
         clockModel.position.set(0, 0, -4.0 + zShift);
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
@@ -421,18 +457,15 @@ mtlLoader.load(
             child.receiveShadow = true;
             child.castShadow = true;
             
-            if (child.name === 'PalletForkBody') {
-                palletForkBodyMesh = child;
-            }
-            if (child.name === 'Plate_Jewel_Body') {
-                palletJewelBodyMesh = child;
-            }
+            if (child.name === 'PalletForkBody') palletForkBodyMesh = child;
+            if (child.name === 'Plate_Jewel_Body') palletJewelBodyMesh = child;
+            if (child.name === 'PalletForkJewel2') palletForkJewel2Mesh = child;
+
+            // --- Find the problematic jewel. Check console for the correct name ---
             if (child.name === 'PalletForkJewel1') {
                 palletForkJewel1Mesh = child;
             }
-            if (child.name === 'PalletForkJewel2') {
-                palletForkJewel2Mesh = child;
-            }
+
 
             if (wheelNames.includes(child.name)) {
                 child.material = brassMaterial;
@@ -462,66 +495,55 @@ mtlLoader.load(
               child.position.sub(center);
         
               switch (child.name) {
-                case 'SecondsWheel':
-                  secondWheel = pivot;
-                  break;
-                case 'Minute_Wheel_Body':
-                  minuteWheel = pivot;
-                  break;
-                case 'HourWheel_Body':
-                  hourWheel = pivot;
-                  break;
-                case 'BalanceWheelBody':
-                  balanceWheel = pivot;
-                  break;
-                case 'EscapeWheel':
-                  escapeWheel = pivot;
-                  break;
-                case 'CenterWheelBody':
-                  centerWheel = pivot;
-                  break;
-                case 'ThirdWheel':
-                  thirdWheel = pivot;
-                  break;
-                case 'HairSpringBody':
-                  hairSpring = pivot;
-                  break;
+                case 'SecondsWheel': secondWheel = pivot; break;
+                case 'Minute_Wheel_Body': minuteWheel = pivot; break;
+                case 'HourWheel_Body': hourWheel = pivot; break;
+                case 'BalanceWheelBody': balanceWheel = pivot; break;
+                case 'EscapeWheel': escapeWheel = pivot; break;
+                case 'CenterWheelBody': centerWheel = pivot; break;
+                case 'ThirdWheel': thirdWheel = pivot; break;
+                case 'HairSpringBody': hairSpring = pivot; break;
               }
             }
           }
         });
         
-        // --- MODIFICATION: Using robust .attach() method for pivoting ---
+        // --- MODIFICATION: Robust pivot logic for pallet fork assembly ---
         if (palletForkBodyMesh && palletJewelBodyMesh) {
-            // Create a new group that will serve as the pivot for the pallet fork assembly.
             const pivot = new THREE.Group();
-
-            // The pivot's center of rotation should be the center of the 'Plate_Jewel_Body'.
-            // We get its world position and orientation and set our pivot group to match.
-            palletJewelBodyMesh.getWorldPosition(pivot.position);
-            palletJewelBodyMesh.getWorldQuaternion(pivot.quaternion);
-
-            // Add the new pivot to the main clock model.
             clockModel.add(pivot);
 
-            // Use the .attach() method to reparent the fork and its jewels.
-            // .attach() correctly handles all position and rotation adjustments for us.
-            pivot.attach(palletForkBodyMesh);
+            const pivotPointWorld = new THREE.Vector3();
+            palletJewelBodyMesh.getWorldPosition(pivotPointWorld);
+            pivot.position.copy(pivotPointWorld);
 
+            const partsToAttach = [palletForkBodyMesh, palletForkJewel2Mesh];
+
+            // --- VISUAL DEBUG: Test if palletForkJewel1Mesh is found ---
+            const debugMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
             if (palletForkJewel1Mesh) {
-                pivot.attach(palletForkJewel1Mesh);
+                console.log("SUCCESS: 'PalletForkJewel1' was found. It should now be bright green.");
+                palletForkJewel1Mesh.material = debugMaterial;
+                partsToAttach.push(palletForkJewel1Mesh);
             } else {
-                console.error("Could not find 'PalletForkJewel1' mesh in the model.");
+                console.error("FAILURE: 'PalletForkJewel1' was NOT found in the model traversal.");
             }
 
-            if (palletForkJewel2Mesh) {
-                pivot.attach(palletForkJewel2Mesh);
-            } else {
-                console.error("Could not find 'PalletForkJewel2' mesh in the model.");
-            }
+            partsToAttach.forEach(part => {
+                if (part) {
+                    // This logic moves the part into the pivot group while ensuring
+                    // its position is now relative to the pivot's center. This creates
+                    // the correct oscillation (arcing) motion.
+                    const partWorldPos = new THREE.Vector3();
+                    part.getWorldPosition(partWorldPos);
+                    
+                    pivot.add(part);
+                    
+                    part.position.copy(partWorldPos).sub(pivotPointWorld);
+                }
+            });
 
-            // The animation will now rotate this pivot group.
-            palletFork = pivot; 
+            palletFork = pivot;
         } else {
             if (!palletForkBodyMesh) console.error("Could not find 'PalletForkBody' mesh in the model.");
             if (!palletJewelBodyMesh) console.error("Could not find 'Plate_Jewel_Body' mesh in the model.");
@@ -674,4 +696,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
