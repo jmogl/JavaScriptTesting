@@ -1,4 +1,3 @@
-
 // Final, complete javascript_testing.js file
 
 import * as THREE from 'three';
@@ -412,22 +411,21 @@ mtlLoader.load(
         ];
 
         clockModel.traverse(child => {
-            // Find jewels by name first, regardless of their type
-            // ** REPLACE THESE PLACEHOLDER NAMES WITH THE ONES FROM THE ALERT BOXES **
-            if (child.name === 'PUT_CORRECT_JEWEL_NAME_1_HERE') {
-                palletForkJewel = child;
-            }
-            if (child.name === 'PUT_CORRECT_JEWEL_NAME_2_HERE') {
-                palletForkJewel2 = child;
-            }
-
-            // Continue with mesh-specific logic
             if (child.isMesh) {
                 child.receiveShadow = true;
                 child.castShadow = true;
                 
                 if (wheelNames.includes(child.name)) {
                     child.material = brassMaterial;
+                }
+
+                if (child.name === 'PalletForkJewel') {
+                    palletForkJewel = child;
+                    child.material = secondMaterial;
+                }
+                if (child.name === 'PalletForkJewel2') {
+                    palletForkJewel2 = child;
+                    child.material = secondMaterial;
                 }
 
                 if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
@@ -468,18 +466,13 @@ mtlLoader.load(
             }
         });
 
+        // Attach the jewels to the pallet fork pivot
         if (palletFork && palletForkJewel && palletForkJewel2) {
-            // Safely apply material to the jewel objects, even if they are groups
-            palletForkJewel.traverse(node => { if (node.isMesh) node.material = secondMaterial; });
-            palletForkJewel2.traverse(node => { if (node.isMesh) node.material = secondMaterial; });
-            
-            const pivotCenter = palletFork.position;
-
-            palletFork.add(palletForkJewel);
-            palletForkJewel.position.sub(pivotCenter);
-
-            palletFork.add(palletForkJewel2);
-            palletForkJewel2.position.sub(pivotCenter);
+            // Use .attach() to move the jewels into the pivot group
+            // while preserving their world position. They will now
+            // inherit the pivot's rotation.
+            palletFork.attach(palletForkJewel);
+            palletFork.attach(palletForkJewel2);
         }
 
         clockUnit.add(clockModel);
@@ -629,4 +622,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
