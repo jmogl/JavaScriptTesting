@@ -1,15 +1,3 @@
-Here is the complete, updated code listing.
-
-This version incorporates all the previous fixes and is based on the mesh names you've provided. The most critical areas to ensure are correct on your end are the exact names for BalanceWheelBody and HairSpringBody, as these directly affect the animations you've mentioned.
-
-Key Fixes in This Version
-Pallet Fork: Uses the confirmed names (PalletForkBody, PalletForkJewel, PalletForkJewel2) to correctly group and animate the pallet fork.
-
-Hairspring Animation: The animation logic is corrected to ensure the hairspring pulses (scales) in and out, while the balance wheel rotates. These are two separate actions.
-
-Cleaned Code: All previous diagnostic console.log statements have been removed for a final, clean version.
-
-JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -659,3 +647,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
