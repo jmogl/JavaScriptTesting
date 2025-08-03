@@ -1,10 +1,3 @@
-Of course. Here is the complete program listing with robust logging to ensure the model's body list appears in the console.
-
-This version also corrects the hairspring animation. The issue was that the hairSpring object was likely being rotated along with the balanceWheel. The fix ensures that the balance wheel's rotation drives the hairspring's scale (for the pulsing effect) but does not affect its rotation.
-
-## Complete and Corrected Program
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -665,3 +658,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
