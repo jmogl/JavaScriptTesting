@@ -1,3 +1,12 @@
+Excellent! That's the breakthrough we needed. The console has given us the exact names required.
+
+Based on your output, the pallet fork components are correctly named PalletForkBody, PalletForkJewel, and PalletForkJewel2. The code I provided in the last update already uses these names.
+
+Here is the final, cleaned-up version of the program. All the diagnostic console.log statements have been removed, and the confirmed names are used to ensure the pallet fork animates correctly.
+
+Final Working Code
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -408,20 +417,7 @@ mtlLoader.load(
     objLoader.load(
       'textures/ETA6497-1_OBJ.obj',
       (object) => {
-        // --- 🔽 DIAGNOSTIC LOGGING 🔽 ---
-        console.log("✅ OBJ loader 'onLoad' callback was executed successfully.");
-        console.log("Inspecting loaded object structure:", object);
-        
         clockModel = object;
-
-        console.log("--- Starting Model Traversal (Body List) ---");
-        clockModel.traverse(child => {
-          console.log(`Found child: '${child.name}', Type: '${child.type}'`);
-        });
-        console.log("--- Finished Model Traversal ---");
-        // --- 🔼 DIAGNOSTIC LOGGING 🔼 ---
-
-
         clockModel.position.set(0, 0, -4.0 + zShift);
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
@@ -452,7 +448,7 @@ mtlLoader.load(
                 child.castShadow = false;
             }
 
-            // Find pallet fork parts by their name (VERIFY THESE NAMES FROM CONSOLE LOG)
+            // Find pallet fork parts using the names confirmed from the console
             if (child.name === 'PalletForkBody') palletForkMesh = child;
             if (child.name === 'PalletForkJewel') palletJewel1Mesh = child;
             if (child.name === 'PalletForkJewel2') palletJewel2Mesh = child;
@@ -460,7 +456,7 @@ mtlLoader.load(
             // Define all parts that need their own central pivot for rotation
             const partsToPivot = [
                 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
-                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody' // VERIFY THIS NAME
+                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
             ];
 
             if (partsToPivot.includes(child.name)) {
@@ -482,7 +478,7 @@ mtlLoader.load(
                 case 'EscapeWheel':       escapeWheel = pivot; break;
                 case 'CenterWheelBody':   centerWheel = pivot; break;
                 case 'ThirdWheel':        thirdWheel = pivot; break;
-                case 'HairSpringBody':    hairSpring = pivot; break; // VERIFY THIS NAME
+                case 'HairSpringBody':    hairSpring = pivot; break;
               }
             }
           }
@@ -544,16 +540,17 @@ mtlLoader.load(
 
       },
       (xhr) => {
-        console.log(`Model loading: ${(xhr.loaded / xhr.total * 100)}% loaded`);
+        // Optional: you can leave this to monitor loading in the future
+        // console.log(`Model loading: ${(xhr.loaded / xhr.total * 100)}% loaded`);
       },
       (err) => {
-        console.error('❌ An error occurred loading the model:', err);
+        console.error('An error occurred loading the model:', err);
       }
     );
   },
   undefined,
   (err) => {
-    console.error('❌ An error occurred loading the material:', err);
+    console.error('An error occurred loading the material:', err);
   }
 );
 
@@ -658,4 +655,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
