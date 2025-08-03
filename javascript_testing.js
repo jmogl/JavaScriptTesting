@@ -1,30 +1,3 @@
-It sounds like the last update created a new problem while the original one persists. Let's tackle both.
-
-The two issues you're seeing are linked, and they both point to a mismatch between the code and the 3D model's structure.
-
-"Moving in an arc": My previous change used the .attach() method. This method correctly makes the pallet fork assembly rotate around the jewel's position. An oscillating motion (like a pendulum) is movement along an arc. It's possible we just have a misunderstanding in terms, but if the motion looks fundamentally wrong or too large, the fix below should correct it. The original code's method for creating pivots was flawed, and we need to use a more robust technique.
-
-"One jewel is not moving": This remains the core issue. Since the code to move both jewels is identical, this indicates the program is still failing to correctly identify the PalletForkJewel1 object.
-
-The Definitive Fix
-We need to definitively confirm whether the script is finding PalletForkJewel1. I've updated the code with a powerful visual debugging tool.
-
-Instead of just trying to move the jewel, the code will now turn PalletForkJewel1 bright green if it finds it.
-
-Here's how to solve this:
-
-Replace your code with the new version below.
-
-Run the simulation and look closely at the pallet fork assembly.
-
-If you see a bright green jewel: This means the name is correct and the issue is with the positioning logic. The new, more robust pivot code in this update should fix it.
-
-If the jewel is NOT green: This is the most likely outcome. It gives us 100% confirmation that the name 'PalletForkJewel1' in the script is incorrect. You will need to find the correct name. I have re-enabled the code that prints all mesh names to the developer console (F12) to help you find the right one.
-
-The new pivot logic is also much more robust and should fix the "arcing" issue by correctly re-calculating the local positions of the attached parts relative to their new pivot.
-
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -696,3 +669,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
