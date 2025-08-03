@@ -1,4 +1,7 @@
-// Final, complete javascript_testing.js file
+// 3D Javacript Clock using three.js
+// Goal is to have a realistic 3D depth with tilt on mobile devices
+// MIT License. - Work in Progress using Gemini
+// Jeff Miller 2025. 8/2/25
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -15,7 +18,6 @@ let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
 let modelScale = 3.5;
 let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring;
-
 const balanceWheelSpeedMultiplier = 1.0;
 
 
@@ -123,6 +125,7 @@ const brightSilverMaterial = new THREE.MeshStandardMaterial({
 const secondMaterial = new THREE.MeshStandardMaterial({
     color: 0xff0000, metalness: 0.5, roughness: 0.4
 });
+// --- MODIFICATION: Added emissive properties to the brass material ---
 const brassMaterial = new THREE.MeshStandardMaterial({
     color: 0xED9149,
     metalness: 0.8,
@@ -405,25 +408,12 @@ mtlLoader.load(
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
         
-        let palletForkBodyMesh, palletForkJewel, palletForkJewel2;
         const wheelNames = [
             'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body',
             'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'BalanceWheelBody'
         ];
 
         clockModel.traverse(child => {
-          // Step 1: Find the FIRST instance of each of the three required parts.
-          // This ensures we ignore duplicates and unrelated parts like 'PalletFork_Jewel_Body'.
-          if (child.name === 'PalletForkBody' && !palletForkBodyMesh) {
-            palletForkBodyMesh = child;
-          }
-          if (child.name === 'PalletForkJewel' && !palletForkJewel) {
-            palletForkJewel = child;
-          }
-          if (child.name === 'PalletForkJewel2' && !palletForkJewel2) {
-            palletForkJewel2 = child;
-          }
-
           if (child.isMesh) {
             child.receiveShadow = true;
             child.castShadow = true;
@@ -441,7 +431,7 @@ mtlLoader.load(
             
             const partsToPivot = [
                 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
-                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
+                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalletForkBody', 'HairSpringBody'
             ];
 
             if (partsToPivot.includes(child.name)) {
@@ -456,39 +446,37 @@ mtlLoader.load(
               child.position.sub(center);
         
               switch (child.name) {
-                case 'SecondsWheel': secondWheel = pivot; break;
-                case 'Minute_Wheel_Body': minuteWheel = pivot; break;
-                case 'HourWheel_Body': hourWheel = pivot; break;
-                case 'BalanceWheelBody': balanceWheel = pivot; break;
-                case 'EscapeWheel': escapeWheel = pivot; break;
-                case 'CenterWheelBody': centerWheel = pivot; break;
-                case 'ThirdWheel': thirdWheel = pivot; break;
-                case 'HairSpringBody': hairSpring = pivot; break;
+                case 'SecondsWheel':
+                  secondWheel = pivot;
+                  break;
+                case 'Minute_Wheel_Body':
+                  minuteWheel = pivot;
+                  break;
+                case 'HourWheel_Body':
+                  hourWheel = pivot;
+                  break;
+                case 'BalanceWheelBody':
+                  balanceWheel = pivot;
+                  break;
+                case 'EscapeWheel':
+                  escapeWheel = pivot;
+                  break;
+                case 'CenterWheelBody':
+                  centerWheel = pivot;
+                  break;
+                case 'ThirdWheel':
+                  thirdWheel = pivot;
+                  break;
+                case 'PalletForkBody':
+                  palletFork = pivot;
+                  break;
+                case 'HairSpringBody':
+                  hairSpring = pivot;
+                  break;
               }
             }
           }
         });
-
-        // Step 2: After the traversal, build the pallet fork assembly from the parts we found.
-        if (palletForkBodyMesh && palletForkJewel && palletForkJewel2) {
-            const center = new THREE.Vector3();
-            new THREE.Box3().setFromObject(palletForkBodyMesh).getCenter(center);
-    
-            palletFork = new THREE.Group();
-            
-            palletForkBodyMesh.parent.add(palletFork);
-            palletFork.position.copy(center);
-    
-            // Step 3: Attach all three parts to the new pivot.
-            // Using .attach() is the cleanest method for re-parenting.
-            palletFork.attach(palletForkBodyMesh);
-            palletFork.attach(palletForkJewel);
-            palletFork.attach(palletForkJewel2);
-            
-            // Assign the correct materials after attaching
-            palletForkJewel.material = secondMaterial;
-            palletForkJewel2.material = secondMaterial;
-        }
 
         clockUnit.add(clockModel);
         
@@ -592,6 +580,7 @@ function animate() {
     balanceWheel.rotation.z = amplitude * sineValue;
 
     if (hairSpring) {
+        // --- MODIFICATION: Updated hairspring scale to pulse from 0.6x to 1.3x ---
         const currentScale = 0.95 + 0.35 * sineValue;
         hairSpring.scale.set(currentScale, currentScale, 1);
     }
@@ -637,4 +626,5 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
 
