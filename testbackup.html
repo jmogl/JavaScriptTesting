@@ -57,7 +57,7 @@
 
                         let count = 0;
                         object.traverse(child => {
-                            logToPage(`Part ${count}: Name = '${child.name}', Type = ${child.type}`);
+                            logToPage(`Part ${count}: Name = '${child.name}', Type = ${child.type}, Length: ${child.name.length}`);
                             count++;
                         });
 
