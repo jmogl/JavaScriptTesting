@@ -481,36 +481,31 @@ mtlLoader.load(
           }
         });
         
-        // --- MODIFICATION: New robust pivot logic ---
+        // --- MODIFICATION: Custom pivot logic for Pallet Fork and its Jewels ---
         if (palletForkBodyMesh && palletJewelBodyMesh) {
+            const jewelCenter = new THREE.Vector3();
+            new THREE.Box3().setFromObject(palletJewelBodyMesh).getCenter(jewelCenter);
+
             const pivot = new THREE.Group();
-            const parent = palletForkBodyMesh.parent; // Assume all parts share this parent
+            // Add the new pivot group to the scene graph at the same level as the parts
+            palletForkBodyMesh.parent.add(pivot);
+            pivot.position.copy(jewelCenter);
 
-            // 1. Get the pivot point in World Coordinates
-            const pivotPointWorld = new THREE.Vector3();
-            new THREE.Box3().setFromObject(palletJewelBodyMesh).getCenter(pivotPointWorld);
-
-            // 2. Convert the World pivot point to the Parent's Local Coordinates
-            const pivotPointLocal = parent.worldToLocal(pivotPointWorld.clone());
+            // Group all pallet fork parts together
+            const palletParts = [palletForkBodyMesh, palletForkJewel1Mesh, palletForkJewel2Mesh];
             
-            // 3. Add the pivot to the parent and set its local position
-            parent.add(pivot);
-            pivot.position.copy(pivotPointLocal);
-
-            // 4. Define the list of parts to attach to the new pivot
-            const partsToAttach = [palletForkBodyMesh, palletForkJewel1Mesh, palletForkJewel2Mesh];
-
-            partsToAttach.forEach(part => {
+            palletParts.forEach(part => {
+                // Check if the part was successfully found during traversal
                 if (part) {
-                    // Add the part to the pivot group. three.js will preserve its world position.
+                    // Add the part to the pivot group
                     pivot.add(part);
-                    // Adjust the part's new local position to be relative to the pivot's center.
-                    part.position.sub(pivotPointLocal);
+                    // Move the part's origin to the pivot point
+                    part.position.sub(jewelCenter);
                 }
             });
-
-            // The animation will rotate this pivot group
-            palletFork = pivot;
+    
+            // Assign the new pivot to the global variable for animation
+            palletFork = pivot; 
         } else {
             if (!palletForkBodyMesh) console.error("Could not find 'PalletForkBody' mesh in the model.");
             if (!palletJewelBodyMesh) console.error("Could not find 'Plate_Jewel_Body' mesh in the model.");
@@ -663,4 +658,5 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
 
