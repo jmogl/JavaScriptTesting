@@ -1,3 +1,19 @@
+You are right to point out the error and call a halt to the geometry merging method. That import error is due to a change in the three.js library, but more importantly, if the parenting method can be made to work, it's a much cleaner solution.
+
+Let's go back to the previous method of grouping the objects. Based on all of our debugging, we now know three critical things:
+
+Your model has a duplicate PalletForkBody.
+
+Your model has an unrelated part named PalletFork_Jewel_Body.
+
+The parenting logic (add and then subtract position) works for single parts in your file.
+
+The final, correct approach is to combine this knowledge. The following code finds the first instance of the three correct parts, ignoring all duplicates and the unrelated PalletFork_Jewel_Body. Then, after the scan is complete, it builds a single pivot group for the assembly using the parenting logic that is known to work.
+
+This is the most robust version of our original plan.
+
+## Final Code
+JavaScript
 
 // Final, complete javascript_testing.js file
 
@@ -7,7 +23,6 @@ import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
-import { BufferGeometryUtils } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 // --- Declare UI element variables in the global scope ---
 let digitalDate, digitalClock;
@@ -407,115 +422,89 @@ mtlLoader.load(
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
         
+        let palletForkBodyMesh, palletForkJewel, palletForkJewel2;
         const wheelNames = [
             'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body',
             'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'BalanceWheelBody'
         ];
-        
-        let palletForkBodyMesh, palletForkJewel, palletForkJewel2;
 
         clockModel.traverse(child => {
-            // Find the FIRST instance of each part to avoid issues with duplicates.
-            if (child.name === 'PalletForkBody' && !palletForkBodyMesh) {
-                palletForkBodyMesh = child;
-            }
-            if (child.name === 'PalletForkJewel' && !palletForkJewel) {
-                palletForkJewel = child;
-            }
-            if (child.name === 'PalletForkJewel2' && !palletForkJewel2) {
-                palletForkJewel2 = child;
-            }
-            
-            if (child.isMesh) {
-                child.receiveShadow = true;
-                child.castShadow = true;
-                
-                if (wheelNames.includes(child.name)) {
-                    child.material = brassMaterial;
-                }
+          // Step 1: Find the FIRST instance of each of the three required parts.
+          // This ensures we ignore duplicates and unrelated parts like 'PalletFork_Jewel_Body'.
+          if (child.name === 'PalletForkBody' && !palletForkBodyMesh) {
+            palletForkBodyMesh = child;
+          }
+          if (child.name === 'PalletForkJewel' && !palletForkJewel) {
+            palletForkJewel = child;
+          }
+          if (child.name === 'PalletForkJewel2' && !palletForkJewel2) {
+            palletForkJewel2 = child;
+          }
 
-                if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
-                    child.material = child.material.clone();
-                    child.material.transparent = true;
-                    child.material.opacity = 0.5;
-                    child.castShadow = false;
-                }
-                
-                const partsToPivot = [
-                    'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
-                    'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
-                ];
-
-                if (partsToPivot.includes(child.name)) {
-                  const center = new THREE.Vector3();
-                  new THREE.Box3().setFromObject(child).getCenter(center);
+          if (child.isMesh) {
+            child.receiveShadow = true;
+            child.castShadow = true;
             
-                  const pivot = new THREE.Group();
-                  child.parent.add(pivot);
-                  pivot.position.copy(center);
-            
-                  pivot.add(child);
-                  child.position.sub(center);
-            
-                  switch (child.name) {
-                    case 'SecondsWheel': secondWheel = pivot; break;
-                    case 'Minute_Wheel_Body': minuteWheel = pivot; break;
-                    case 'HourWheel_Body': hourWheel = pivot; break;
-                    case 'BalanceWheelBody': balanceWheel = pivot; break;
-                    case 'EscapeWheel': escapeWheel = pivot; break;
-                    case 'CenterWheelBody': centerWheel = pivot; break;
-                    case 'ThirdWheel': thirdWheel = pivot; break;
-                    case 'HairSpringBody': hairSpring = pivot; break;
-                  }
-                }
+            if (wheelNames.includes(child.name)) {
+                child.material = brassMaterial;
             }
+
+            if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
+                child.material = child.material.clone();
+                child.material.transparent = true;
+                child.material.opacity = 0.5;
+                child.castShadow = false;
+            }
+            
+            const partsToPivot = [
+                'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
+                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
+            ];
+
+            if (partsToPivot.includes(child.name)) {
+              const center = new THREE.Vector3();
+              new THREE.Box3().setFromObject(child).getCenter(center);
+        
+              const pivot = new THREE.Group();
+              child.parent.add(pivot);
+              pivot.position.copy(center);
+        
+              pivot.add(child);
+              child.position.sub(center);
+        
+              switch (child.name) {
+                case 'SecondsWheel': secondWheel = pivot; break;
+                case 'Minute_Wheel_Body': minuteWheel = pivot; break;
+                case 'HourWheel_Body': hourWheel = pivot; break;
+                case 'BalanceWheelBody': balanceWheel = pivot; break;
+                case 'EscapeWheel': escapeWheel = pivot; break;
+                case 'CenterWheelBody': centerWheel = pivot; break;
+                case 'ThirdWheel': thirdWheel = pivot; break;
+                case 'HairSpringBody': hairSpring = pivot; break;
+              }
+            }
+          }
         });
 
-        // --- Create Pallet Fork Assembly by Merging Geometry ---
+        // Step 2: After the traversal, build the pallet fork assembly from the parts we found.
         if (palletForkBodyMesh && palletForkJewel && palletForkJewel2) {
-            palletForkBodyMesh.updateWorldMatrix(true, false);
-            palletForkJewel.updateWorldMatrix(true, false);
-            palletForkJewel2.updateWorldMatrix(true, false);
-
             const center = new THREE.Vector3();
             new THREE.Box3().setFromObject(palletForkBodyMesh).getCenter(center);
-
-            const geometriesToMerge = [];
+    
+            palletFork = new THREE.Group();
             
-            const bodyGeom = palletForkBodyMesh.geometry.clone();
-            bodyGeom.applyMatrix4(palletForkBodyMesh.matrixWorld);
-            geometriesToMerge.push(bodyGeom);
-
-            const jewel1Geom = palletForkJewel.geometry.clone();
-            jewel1Geom.applyMatrix4(palletForkJewel.matrixWorld);
-            geometriesToMerge.push(jewel1Geom);
-
-            const jewel2Geom = palletForkJewel2.geometry.clone();
-            jewel2Geom.applyMatrix4(palletForkJewel2.matrixWorld);
-            geometriesToMerge.push(jewel2Geom);
-
-            const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometriesToMerge, true);
-            mergedGeometry.translate(-center.x, -center.y, -center.z);
-
-            const materials = [
-                palletForkBodyMesh.material,
-                secondMaterial,
-                secondMaterial
-            ];
-            const mergedMesh = new THREE.Mesh(mergedGeometry, materials);
-            mergedMesh.castShadow = true;
-            
-            mergedMesh.position.copy(center);
-            
-            // The new merged mesh is now our single palletFork object
-            palletFork = mergedMesh;
-            // Add it to the same parent as the original parts
             palletForkBodyMesh.parent.add(palletFork);
-
-            // Hide the original parts
-            palletForkBodyMesh.visible = false;
-            palletForkJewel.visible = false;
-            palletForkJewel2.visible = false;
+            palletFork.position.copy(center);
+    
+            // Step 3: Attach all three parts to the new pivot.
+            // Using .attach() is the cleanest method for re-parenting.
+            palletFork.attach(palletForkBodyMesh);
+            palletFork.attach(palletForkJewel);
+            palletFork.attach(palletForkJewel2);
+            
+            // Assign the correct materials after attaching
+            palletForkJewel.material = secondMaterial;
+            palletForkJewel2.material = secondMaterial;
         }
 
         clockUnit.add(clockModel);
@@ -665,4 +654,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
