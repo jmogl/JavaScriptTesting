@@ -1,3 +1,13 @@
+You are right, my apologies. Using the .attach() method was incorrect as it fundamentally changed the pivot logic that was already working for the other components.
+
+Let's go back to the original file and try a different approach that respects the existing animation logic. The key is to apply the same parenting math that works for the PalletForkBody to the jewels after they have all been identified.
+
+This version keeps the original, working pivot logic intact and carefully adds the jewels to the pallet fork's pivot group using that same logic.
+
+Complete Code Listing
+Here is the full, corrected code.
+
+JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -18,6 +28,7 @@ let digitalDate, digitalClock;
 let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
 let modelScale = 3.5;
+// MODIFICATION: Added palletForkJewel and palletForkJewel2 variables
 let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring, palletForkJewel, palletForkJewel2;
 
 const balanceWheelSpeedMultiplier = 1.0;
@@ -127,7 +138,6 @@ const brightSilverMaterial = new THREE.MeshStandardMaterial({
 const secondMaterial = new THREE.MeshStandardMaterial({
     color: 0xff0000, metalness: 0.5, roughness: 0.4
 });
-// --- MODIFICATION: Added emissive properties to the brass material ---
 const brassMaterial = new THREE.MeshStandardMaterial({
     color: 0xED9149,
     metalness: 0.8,
@@ -424,9 +434,10 @@ mtlLoader.load(
                 child.material = brassMaterial;
             }
 
+            // MODIFICATION: Find jewel objects during traversal
             if (child.name === 'PalletForkJewel') {
                 palletForkJewel = child;
-                child.material = secondMaterial; 
+                child.material = secondMaterial;
             }
             if (child.name === 'PalletForkJewel2') {
                 palletForkJewel2 = child;
@@ -453,9 +464,8 @@ mtlLoader.load(
               child.parent.add(pivot);
               pivot.position.copy(center);
         
-              // MODIFICATION: Replaced manual parenting with the .attach() method
-              // for a more robust pivot creation.
-              pivot.attach(child);
+              pivot.add(child);
+              child.position.sub(center);
         
               switch (child.name) {
                 case 'SecondsWheel':
@@ -489,11 +499,19 @@ mtlLoader.load(
             }
           }
         });
-        
-        // MODIFICATION: Use .attach() to parent the jewels to the pallet fork's pivot.
+
+        // MODIFICATION: After traversal, attach jewels to the pallet fork's pivot
+        // using the same logic as the other parts.
         if (palletFork && palletForkJewel && palletForkJewel2) {
-            palletFork.attach(palletForkJewel);
-            palletFork.attach(palletForkJewel2);
+            const pivotCenter = palletFork.position;
+
+            // Add first jewel and adjust its position relative to the pivot
+            palletFork.add(palletForkJewel);
+            palletForkJewel.position.sub(pivotCenter);
+
+            // Add second jewel and adjust its position relative to the pivot
+            palletFork.add(palletForkJewel2);
+            palletForkJewel2.position.sub(pivotCenter);
         }
 
         clockUnit.add(clockModel);
@@ -644,4 +662,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
