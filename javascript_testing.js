@@ -1,3 +1,5 @@
+tttt
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -17,7 +19,8 @@ let digitalDate, digitalClock;
 let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
 let modelScale = 3.5;
-let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring;
+let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring, palletForkJewel, palletForkJewel2;
+
 const balanceWheelSpeedMultiplier = 1.0;
 
 
@@ -125,7 +128,6 @@ const brightSilverMaterial = new THREE.MeshStandardMaterial({
 const secondMaterial = new THREE.MeshStandardMaterial({
     color: 0xff0000, metalness: 0.5, roughness: 0.4
 });
-// --- MODIFICATION: Added emissive properties to the brass material ---
 const brassMaterial = new THREE.MeshStandardMaterial({
     color: 0xED9149,
     metalness: 0.8,
@@ -422,6 +424,15 @@ mtlLoader.load(
                 child.material = brassMaterial;
             }
 
+            if (child.name === 'PalletForkJewel') {
+                palletForkJewel = child;
+                child.material = secondMaterial; 
+            }
+            if (child.name === 'PalletForkJewel2') {
+                palletForkJewel2 = child;
+                child.material = secondMaterial;
+            }
+
             if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
                 child.material = child.material.clone();
                 child.material.transparent = true;
@@ -477,6 +488,16 @@ mtlLoader.load(
             }
           }
         });
+        
+        if (palletFork && palletForkJewel && palletForkJewel2) {
+            const center = palletFork.position;
+            
+            palletFork.add(palletForkJewel);
+            palletFork.add(palletForkJewel2);
+            
+            palletForkJewel.position.sub(center);
+            palletForkJewel2.position.sub(center);
+        }
 
         clockUnit.add(clockModel);
         
@@ -580,7 +601,6 @@ function animate() {
     balanceWheel.rotation.z = amplitude * sineValue;
 
     if (hairSpring) {
-        // --- MODIFICATION: Updated hairspring scale to pulse from 0.6x to 1.3x ---
         const currentScale = 0.95 + 0.35 * sineValue;
         hairSpring.scale.set(currentScale, currentScale, 1);
     }
@@ -626,5 +646,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
-
