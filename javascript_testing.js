@@ -1,8 +1,12 @@
+Of course. Here is the complete, final listing of the javascript_testing.js file with the corrected logic that separates the finding and modifying of the clock parts.
+
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/3/25
-// MODIFIED: Implemented robust pallet fork pivot logic.
+// MODIFIED: Corrected traversal logic to be order-independent.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -407,129 +411,107 @@ mtlLoader.load(
         clockModel.position.set(0, 0, -4.0 + zShift);
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
-        
+
+        // --- Step 1: Find and collect all necessary parts without modifying them ---
+        const collectedParts = {};
+        clockModel.traverse(child => {
+            if (child.isMesh) {
+                child.receiveShadow = true;
+                child.castShadow = true;
+                collectedParts[child.name] = child;
+            }
+        });
+
+        // --- Step 2: Now that traversal is complete, modify the collected parts ---
+
+        // Apply materials
         const wheelNames = [
             'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body',
             'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'BalanceWheelBody'
         ];
+        wheelNames.forEach(name => {
+            if (collectedParts[name]) {
+                collectedParts[name].material = brassMaterial;
+            }
+        });
+
+        const bridgeNames = ['TrainWheelBridgeBody', 'PalletBridgeBody'];
+        bridgeNames.forEach(name => {
+            if (collectedParts[name]) {
+                const part = collectedParts[name];
+                part.material = part.material.clone();
+                part.material.transparent = true;
+                part.material.opacity = 0.5;
+                part.castShadow = false;
+            }
+        });
         
-        // --- MODIFICATION: Robust pivot logic for Pallet Fork ---
-        const palletPivotParts = {};
-        const requiredParts = [
-            'PalletForkBody',
-            'Plate_Jewel_Body',
-            'PalletForkJewel1',
-            'PalletForkJewel2'
+        // Create pivots for wheels
+        const partsToPivot = [
+            'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
+            'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
         ];
+        partsToPivot.forEach(name => {
+            const part = collectedParts[name];
+            if (part) {
+                const center = new THREE.Vector3();
+                new THREE.Box3().setFromObject(part).getCenter(center);
+                const pivot = new THREE.Group();
+                part.parent.add(pivot);
+                pivot.position.copy(center);
+                pivot.add(part);
+                part.position.sub(center);
 
-        clockModel.traverse(child => {
-            if (child.isMesh) {
-  
-			//	console.log(`'${child.name}'`); // Add this line
-  
-				// This part remains the same for other objects
-                child.receiveShadow = true;
-                child.castShadow = true;
-
-                // Collect required parts for the pallet fork pivot
-                if (requiredParts.includes(child.name)) {
-                    palletPivotParts[child.name] = child;
-                }
-                
-                // The rest of your traverse logic for wheels, bridges, etc. remains here
-                if (wheelNames.includes(child.name)) {
-                    child.material = brassMaterial;
-                }
-
-                if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
-                    child.material = child.material.clone();
-                    child.material.transparent = true;
-                    child.material.opacity = 0.5;
-                    child.castShadow = false;
-                }
-                
-                const partsToPivot = [
-                    'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
-                    'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
-                ];
-
-                if (partsToPivot.includes(child.name)) {
-                  const center = new THREE.Vector3();
-                  new THREE.Box3().setFromObject(child).getCenter(center);
-            
-                  const pivot = new THREE.Group();
-                  child.parent.add(pivot);
-                  pivot.position.copy(center);
-            
-                  pivot.add(child);
-                  child.position.sub(center);
-            
-                  switch (child.name) {
-                    case 'SecondsWheel':
-                      secondWheel = pivot;
-                      break;
-                    case 'Minute_Wheel_Body':
-                      minuteWheel = pivot;
-                      break;
-                    case 'HourWheel_Body':
-                      hourWheel = pivot;
-                      break;
-                    case 'BalanceWheelBody':
-                      balanceWheel = pivot;
-                      break;
-                    case 'EscapeWheel':
-                      escapeWheel = pivot;
-                      break;
-                    case 'CenterWheelBody':
-                      centerWheel = pivot;
-                      break;
-                    case 'ThirdWheel':
-                      thirdWheel = pivot;
-                      break;
-                    case 'HairSpringBody':
-                      hairSpring = pivot;
-                      break;
-                  }
+                // Assign to global animation variables
+                switch (name) {
+                    case 'SecondsWheel': secondWheel = pivot; break;
+                    case 'Minute_Wheel_Body': minuteWheel = pivot; break;
+                    case 'HourWheel_Body': hourWheel = pivot; break;
+                    case 'BalanceWheelBody': balanceWheel = pivot; break;
+                    case 'EscapeWheel': escapeWheel = pivot; break;
+                    case 'CenterWheelBody': centerWheel = pivot; break;
+                    case 'ThirdWheel': thirdWheel = pivot; break;
+                    case 'HairSpringBody': hairSpring = pivot; break;
                 }
             }
         });
-		
-		 // ADD THIS LINE FOR FINAL DIAGNOSIS
-        console.log('Parts collected for pivot:', palletPivotParts);
 
-        // After traversing, build the pallet fork pivot from the collected parts
-        if (palletPivotParts['PalletForkBody'] && palletPivotParts['Plate_Jewel_Body']) {
+        // Create pivot for the Pallet Fork
+        const palletForkBodyMesh = collectedParts['PalletForkBody'];
+        const palletJewelBodyMesh = collectedParts['Plate_Jewel_Body'];
+        const palletForkJewel1Mesh = collectedParts['PalletForkJewel1'];
+        const palletForkJewel2Mesh = collectedParts['PalletForkJewel2'];
+
+        if (palletForkBodyMesh && palletJewelBodyMesh) {
             const jewelCenter = new THREE.Vector3();
-            new THREE.Box3().setFromObject(palletPivotParts['Plate_Jewel_Body']).getCenter(jewelCenter);
-    
+            new THREE.Box3().setFromObject(palletJewelBodyMesh).getCenter(jewelCenter);
             const pivot = new THREE.Group();
-            palletPivotParts['PalletForkBody'].parent.add(pivot);
+            palletForkBodyMesh.parent.add(pivot);
             pivot.position.copy(jewelCenter);
+            
+            pivot.add(palletForkBodyMesh);
+            palletForkBodyMesh.position.sub(jewelCenter);
 
-            // Add all three parts to the pivot
-            pivot.add(palletPivotParts['PalletForkBody']);
-            palletPivotParts['PalletForkBody'].position.sub(jewelCenter);
-
-            if (palletPivotParts['PalletForkJewel1']) {
-                pivot.add(palletPivotParts['PalletForkJewel1']);
-                palletPivotParts['PalletForkJewel1'].position.sub(jewelCenter);
+            if (palletForkJewel1Mesh) {
+                pivot.add(palletForkJewel1Mesh);
+                palletForkJewel1Mesh.position.sub(jewelCenter);
             } else {
-                 console.error("Could not find 'PalletForkJewel1' mesh in the model.");
+                console.error("Could not find 'PalletForkJewel1' mesh in the model.");
             }
 
-            if (palletPivotParts['PalletForkJewel2']) {
-                pivot.add(palletPivotParts['PalletForkJewel2']);
-                palletPivotParts['PalletForkJewel2'].position.sub(jewelCenter);
+            if (palletForkJewel2Mesh) {
+                pivot.add(palletForkJewel2Mesh);
+                palletForkJewel2Mesh.position.sub(jewelCenter);
             } else {
                 console.error("Could not find 'PalletForkJewel2' mesh in the model.");
             }
-
             palletFork = pivot;
         } else {
-            if (!palletPivotParts['PalletForkBody']) console.error("Could not find 'PalletForkBody' mesh in the model.");
-            if (!palletPivotParts['Plate_Jewel_Body']) console.error("Could not find 'Plate_Jewel_Body' mesh in the model.");
+            if (!palletForkBodyMesh) console.error("Could not find 'PalletForkBody' mesh in the model.");
+            if (!palletJewelBodyMesh) console.error("Could not find 'Plate_Jewel_Body' mesh in the model.");
         }
 
+        // --- Final scene adjustments ---
         clockUnit.add(clockModel);
         
         const oldFace = clockUnit.getObjectByName('clock_face');
@@ -538,26 +520,25 @@ mtlLoader.load(
             oldFace.geometry.dispose();
         }
         
-        const holeRadius = 6.25; 
+        const holeRadius = 6.25;
         const outerRadius = markerRadius + borderThickness / 2;
-        const segments    = 64;
+        const segments = 64;
         const shape = new THREE.Shape();
         shape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
         const hole = new THREE.Path();
         hole.absarc(0, 0, holeRadius, 0, Math.PI * 2, true);
         shape.holes.push(hole);
         const faceGeom = new THREE.ShapeGeometry(shape, segments);
-        const faceMat  = new THREE.MeshStandardMaterial({
-            color:     0xFFFDD0,
+        const faceMat = new THREE.MeshStandardMaterial({
+            color: 0xFFFDD0,
             metalness: 0.1,
             roughness: 0.9
         });
         const newFace = new THREE.Mesh(faceGeom, faceMat);
-        newFace.name          = 'clock_face';
+        newFace.name = 'clock_face';
         newFace.receiveShadow = true;
         newFace.position.z = -3.4 + zShift;
         clockUnit.add(newFace);
-
       },
       undefined,
       (err) => {
@@ -677,4 +658,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
