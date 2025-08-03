@@ -2,82 +2,39 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Model Inspector</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D JavaScript Clock</title>
     <style>
-        body { font-family: monospace; background-color: #111; color: #eee; padding: 1em; }
-        #output { border: 1px solid #555; padding: 1em; margin-top: 1em; height: 400px; overflow-y: scroll; }
-        .found { color: #7f7; }
-        .missing { color: #f77; }
+        /* A more robust CSS reset to prevent conflicts */
+        * {
+            box-sizing: border-box;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Hide scrollbars */
+        }
+        body {
+            background-color: #cccccc; /* Match renderer clear color */
+        }
+        canvas {
+            display: block;
+        }
     </style>
 </head>
 <body>
-    <h1>Model Object Inspector</h1>
-    <p>This page will attempt to load your model and list all of its internal parts below.</p>
-    <div id="output">Loading...</div>
-
     <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.166.0/build/three.module.js",
-            "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.166.0/examples/jsm/"
-        }
-    }
-    </script>
-
-    <script type="module">
-        import * as THREE from 'three';
-        import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
-        import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
-
-        const outputDiv = document.getElementById('output');
-
-        function logToPage(message, className = '') {
-            outputDiv.innerHTML += `<div class="${className}">${message}</div>`;
-        }
-
-        logToPage("Starting model load...");
-
-        const mtlLoader = new MTLLoader();
-        mtlLoader.setCrossOrigin('');
-        mtlLoader.setPath('textures/'); // Assuming models are in a 'textures' subfolder
-        mtlLoader.load(
-            'ETA6497-1_OBJ.mtl',
-            (materials) => {
-                logToPage("MTL file loaded successfully.", "found");
-                materials.preload();
-
-                const objLoader = new OBJLoader();
-                objLoader.setMaterials(materials);
-                objLoader.setPath('textures/'); // Assuming models are in a 'textures' subfolder
-                objLoader.load(
-                    'ETA6497-1_OBJ.obj',
-                    (object) => {
-                        logToPage("OBJ file loaded successfully. Traversing parts...", "found");
-                        outputDiv.innerHTML = '<strong>--- Model Parts ---</strong><br>'; // Clear "Loading..."
-
-                        let count = 0;
-                        object.traverse(child => {
-                            logToPage(`Part ${count}: Name = '${child.name}', Type = ${child.type}, , Length: ${child.name.length}`);
-                            count++;
-                        });
-
-                        if (count === 0) {
-                            logToPage("Traversal complete, but no parts were found inside the model.", "missing");
-                        }
-                    },
-                    undefined,
-                    (err) => {
-                        logToPage("An error occurred loading the OBJ file.", "missing");
-                        console.error(err);
-                    }
-                );
-            },
-            undefined,
-            (err) => {
-                logToPage("An error occurred loading the MTL file.", "missing");
-                console.error(err);
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.166.0/build/three.module.js",
+                "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.166.0/examples/jsm/"
             }
-        );
+        }
     </script>
+
+    <script type="module" src="javascript_testing.js?v=1.02"></script>
+
 </body>
 </html>
