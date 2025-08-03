@@ -1,3 +1,12 @@
+Of course. The issue with the hairspring not pulsing is almost certainly the same root cause as the pallet fork problem: the code is looking for a mesh with a specific name ('HairSpringBody'), but the actual name in the 3D model file is likely different.
+
+The animation logic that links the hairspring's scale to the balance wheel's rotation is correct, but it only runs if the hairSpring variable has been successfully assigned. To fix this, you must find the correct mesh name by using console.log(child.name) within the model traversal loop, as we did for the pallet fork.
+
+Below is the complete, updated listing with the previous pallet fork fix and the correct structure for the hairspring animation. You will still need to verify the mesh name for 'HairSpringBody' and correct it if necessary.
+
+Full Corrected Code
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -422,6 +431,10 @@ mtlLoader.load(
 
         clockModel.traverse(child => {
           if (child.isMesh) {
+            // ---> DIAGNOSTIC LOG <---
+            // Use this log to find the exact names of your meshes.
+            // console.log(child.name); 
+
             child.receiveShadow = true;
             child.castShadow = true;
             
@@ -440,15 +453,15 @@ mtlLoader.load(
                 child.castShadow = false;
             }
 
-            // --- MODIFICATION: Using corrected user-provided names for pallet fork assembly ---
+            // Find pallet fork parts by their name (VERIFY THESE NAMES)
             if (child.name === 'PalletForkBody') palletForkMesh = child;
             if (child.name === 'PalletForkJewel') palletJewel1Mesh = child;
             if (child.name === 'PalletForkJewel2') palletJewel2Mesh = child;
             
-            // --- MODIFICATION: Removed PalletForkBody from this list ---
+            // Define all parts that need their own central pivot for rotation
             const partsToPivot = [
                 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
-                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
+                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody' // VERIFY THIS NAME
             ];
 
             if (partsToPivot.includes(child.name)) {
@@ -484,7 +497,7 @@ mtlLoader.load(
                 case 'ThirdWheel':
                   thirdWheel = pivot;
                   break;
-                case 'HairSpringBody':
+                case 'HairSpringBody': // VERIFY THIS NAME
                   hairSpring = pivot;
                   break;
               }
@@ -492,6 +505,7 @@ mtlLoader.load(
           }
         });
 
+        // Group the pallet fork parts into a single animatable object
         if (palletForkMesh && palletJewel1Mesh && palletJewel2Mesh) {
             const combinedBox = new THREE.Box3();
             combinedBox.expandByObject(palletForkMesh);
@@ -518,6 +532,7 @@ mtlLoader.load(
 
         clockUnit.add(clockModel);
         
+        // Cut a hole in the clock face to reveal the mechanism
         const oldFace = clockUnit.getObjectByName('clock_face');
         if (oldFace) {
             clockUnit.remove(oldFace);
@@ -580,10 +595,12 @@ function animate() {
   const minutes = now.getMinutes() + seconds / 60;
   const hours = now.getHours() % 12 + minutes / 60;
 
+  // Animate clock hands
   secondHand.rotation.z = -THREE.MathUtils.degToRad((seconds / 60) * 360);
   minuteHand.rotation.z = -THREE.MathUtils.degToRad((minutes / 60) * 360);
   hourHand.rotation.z   = -THREE.MathUtils.degToRad((hours / 12) * 360);
   
+  // Animate internal gears
   if (secondWheel) {
     secondWheel.rotation.z = (seconds / 60) * Math.PI * 2;
   }
@@ -609,6 +626,7 @@ function animate() {
     palletFork.rotation.z = amplitude * Math.sin(time * Math.PI * 2 * frequency);
   }
   
+  // Animate balance wheel and hairspring
   if (balanceWheel) {
     const time = now.getTime() / 1000;
     const frequency = 3 * balanceWheelSpeedMultiplier; 
@@ -617,13 +635,14 @@ function animate() {
     const amplitude = Math.PI / 2;
     balanceWheel.rotation.z = amplitude * sineValue;
 
+    // Pulse the hairspring in sync with the balance wheel
     if (hairSpring) {
         const currentScale = 0.7 + 0.6 * Math.abs(sineValue);
         hairSpring.scale.set(currentScale, currentScale, 1);
     }
   }
 
-
+  // Update digital display
   const pad = (n) => n.toString().padStart(2, '0');
   const spanStyles = `background-color: rgba(0, 0, 0, 0.5); padding: 0.1em 0.3em; border-radius: 4px;`;
 
@@ -637,6 +656,7 @@ function animate() {
       digitalDate.innerHTML = `<span style="${spanStyles}">${date}</span>`;
   }
 
+  // Play tick sound
   const currentSecond = Math.floor(now.getSeconds());
   if (animate.lastSecond !== currentSecond) {
     tickSound.currentTime = 0;
@@ -663,4 +683,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
