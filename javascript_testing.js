@@ -1,6 +1,3 @@
-Of course. Here is the complete, final listing of the javascript_testing.js file with the corrected logic that separates the finding and modifying of the clock parts.
-
-JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -658,3 +655,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
