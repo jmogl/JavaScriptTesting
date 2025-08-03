@@ -1,3 +1,7 @@
+Of course. Here is the complete, full listing for javascript_testing.js with the robust logic for the pallet fork assembly.
+
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -425,7 +429,7 @@ mtlLoader.load(
         clockModel.traverse(child => {
             if (child.isMesh) {
   
-				console.log(`'${child.name}'`); // Add this line
+			//	console.log(`'${child.name}'`); // Add this line
   
 				// This part remains the same for other objects
                 child.receiveShadow = true;
@@ -493,6 +497,9 @@ mtlLoader.load(
                 }
             }
         });
+		
+		 // ADD THIS LINE FOR FINAL DIAGNOSIS
+        console.log('Parts collected for pivot:', palletPivotParts);
 
         // After traversing, build the pallet fork pivot from the collected parts
         if (palletPivotParts['PalletForkBody'] && palletPivotParts['Plate_Jewel_Body']) {
@@ -674,4 +681,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
