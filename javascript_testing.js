@@ -1,3 +1,4 @@
+tttt
 
 // Final, complete javascript_testing.js file
 
@@ -7,6 +8,7 @@ import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import { BufferGeometryUtils } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 // --- Declare UI element variables in the global scope ---
 let digitalDate, digitalClock;
@@ -15,7 +17,7 @@ let digitalDate, digitalClock;
 let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
 let modelScale = 3.5;
-let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring, palletForkJewel, palletForkJewel2;
+let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring;
 
 const balanceWheelSpeedMultiplier = 1.0;
 
@@ -410,93 +412,112 @@ mtlLoader.load(
             'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body',
             'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'BalanceWheelBody'
         ];
-
-        let palletForkPivotCreated = false; // Flag to handle the duplicate PalletForkBody
+        
+        let palletForkBodyMesh, palletForkJewel, palletForkJewel2;
 
         clockModel.traverse(child => {
-          if (child.isMesh) {
-            child.receiveShadow = true;
-            child.castShadow = true;
-            
-            if (wheelNames.includes(child.name)) {
-                child.material = brassMaterial;
+            // Find the FIRST instance of each part to avoid issues with duplicates.
+            if (child.name === 'PalletForkBody' && !palletForkBodyMesh) {
+                palletForkBodyMesh = child;
             }
-
-            if (child.name === 'PalletForkJewel') {
+            if (child.name === 'PalletForkJewel' && !palletForkJewel) {
                 palletForkJewel = child;
-                child.material = secondMaterial;
             }
-            if (child.name === 'PalletForkJewel2') {
+            if (child.name === 'PalletForkJewel2' && !palletForkJewel2) {
                 palletForkJewel2 = child;
-                child.material = secondMaterial;
-            }
-
-            if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
-                child.material = child.material.clone();
-                child.material.transparent = true;
-                child.material.opacity = 0.5;
-                child.castShadow = false;
             }
             
-            const partsToPivot = [
-                'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
-                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalletForkBody', 'HairSpringBody'
-            ];
+            if (child.isMesh) {
+                child.receiveShadow = true;
+                child.castShadow = true;
+                
+                if (wheelNames.includes(child.name)) {
+                    child.material = brassMaterial;
+                }
 
-            if (partsToPivot.includes(child.name)) {
-              const center = new THREE.Vector3();
-              new THREE.Box3().setFromObject(child).getCenter(center);
-        
-              const pivot = new THREE.Group();
-              child.parent.add(pivot);
-              pivot.position.copy(center);
-        
-              pivot.add(child);
-              child.position.sub(center);
-        
-              switch (child.name) {
-                case 'SecondsWheel':
-                  secondWheel = pivot;
-                  break;
-                case 'Minute_Wheel_Body':
-                  minuteWheel = pivot;
-                  break;
-                case 'HourWheel_Body':
-                  hourWheel = pivot;
-                  break;
-                case 'BalanceWheelBody':
-                  balanceWheel = pivot;
-                  break;
-                case 'EscapeWheel':
-                  escapeWheel = pivot;
-                  break;
-                case 'CenterWheelBody':
-                  centerWheel = pivot;
-                  break;
-                case 'ThirdWheel':
-                  thirdWheel = pivot;
-                  break;
-                case 'PalletForkBody':
-                  // Only create the pivot for the FIRST PalletForkBody found
-                  if (!palletForkPivotCreated) {
-                    palletFork = pivot;
-                    // Immediately try to attach jewels if they were found earlier
-                    if (palletForkJewel) {
-                        palletFork.attach(palletForkJewel);
-                    }
-                    if (palletForkJewel2) {
-                        palletFork.attach(palletForkJewel2);
-                    }
-                    palletForkPivotCreated = true;
+                if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
+                    child.material = child.material.clone();
+                    child.material.transparent = true;
+                    child.material.opacity = 0.5;
+                    child.castShadow = false;
+                }
+                
+                const partsToPivot = [
+                    'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
+                    'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
+                ];
+
+                if (partsToPivot.includes(child.name)) {
+                  const center = new THREE.Vector3();
+                  new THREE.Box3().setFromObject(child).getCenter(center);
+            
+                  const pivot = new THREE.Group();
+                  child.parent.add(pivot);
+                  pivot.position.copy(center);
+            
+                  pivot.add(child);
+                  child.position.sub(center);
+            
+                  switch (child.name) {
+                    case 'SecondsWheel': secondWheel = pivot; break;
+                    case 'Minute_Wheel_Body': minuteWheel = pivot; break;
+                    case 'HourWheel_Body': hourWheel = pivot; break;
+                    case 'BalanceWheelBody': balanceWheel = pivot; break;
+                    case 'EscapeWheel': escapeWheel = pivot; break;
+                    case 'CenterWheelBody': centerWheel = pivot; break;
+                    case 'ThirdWheel': thirdWheel = pivot; break;
+                    case 'HairSpringBody': hairSpring = pivot; break;
                   }
-                  break;
-                case 'HairSpringBody':
-                  hairSpring = pivot;
-                  break;
-              }
+                }
             }
-          }
         });
+
+        // --- Create Pallet Fork Assembly by Merging Geometry ---
+        if (palletForkBodyMesh && palletForkJewel && palletForkJewel2) {
+            palletForkBodyMesh.updateWorldMatrix(true, false);
+            palletForkJewel.updateWorldMatrix(true, false);
+            palletForkJewel2.updateWorldMatrix(true, false);
+
+            const center = new THREE.Vector3();
+            new THREE.Box3().setFromObject(palletForkBodyMesh).getCenter(center);
+
+            const geometriesToMerge = [];
+            
+            const bodyGeom = palletForkBodyMesh.geometry.clone();
+            bodyGeom.applyMatrix4(palletForkBodyMesh.matrixWorld);
+            geometriesToMerge.push(bodyGeom);
+
+            const jewel1Geom = palletForkJewel.geometry.clone();
+            jewel1Geom.applyMatrix4(palletForkJewel.matrixWorld);
+            geometriesToMerge.push(jewel1Geom);
+
+            const jewel2Geom = palletForkJewel2.geometry.clone();
+            jewel2Geom.applyMatrix4(palletForkJewel2.matrixWorld);
+            geometriesToMerge.push(jewel2Geom);
+
+            const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometriesToMerge, true);
+            mergedGeometry.translate(-center.x, -center.y, -center.z);
+
+            const materials = [
+                palletForkBodyMesh.material,
+                secondMaterial,
+                secondMaterial
+            ];
+            const mergedMesh = new THREE.Mesh(mergedGeometry, materials);
+            mergedMesh.castShadow = true;
+            
+            mergedMesh.position.copy(center);
+            
+            // The new merged mesh is now our single palletFork object
+            palletFork = mergedMesh;
+            // Add it to the same parent as the original parts
+            palletForkBodyMesh.parent.add(palletFork);
+
+            // Hide the original parts
+            palletForkBodyMesh.visible = false;
+            palletForkJewel.visible = false;
+            palletForkJewel2.visible = false;
+        }
 
         clockUnit.add(clockModel);
         
@@ -645,4 +666,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
