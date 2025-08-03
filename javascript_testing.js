@@ -1,7 +1,10 @@
+WWWW
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/2/25
+// MODIFIED: Updated the palletFork rotation axis to align with Plate_Jewel_Body.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -125,7 +128,6 @@ const brightSilverMaterial = new THREE.MeshStandardMaterial({
 const secondMaterial = new THREE.MeshStandardMaterial({
     color: 0xff0000, metalness: 0.5, roughness: 0.4
 });
-// --- MODIFICATION: Added emissive properties to the brass material ---
 const brassMaterial = new THREE.MeshStandardMaterial({
     color: 0xED9149,
     metalness: 0.8,
@@ -412,12 +414,23 @@ mtlLoader.load(
             'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body',
             'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'BalanceWheelBody'
         ];
+        
+        // --- MODIFICATION: Variables to hold meshes for custom pivoting ---
+        let palletForkBodyMesh, palletJewelBodyMesh;
 
         clockModel.traverse(child => {
           if (child.isMesh) {
             child.receiveShadow = true;
             child.castShadow = true;
             
+            // --- MODIFICATION: Find meshes for custom pallet fork pivot ---
+            if (child.name === 'PalletForkBody') {
+                palletForkBodyMesh = child;
+            }
+            if (child.name === 'Plate_Jewel_Body') {
+                palletJewelBodyMesh = child;
+            }
+
             if (wheelNames.includes(child.name)) {
                 child.material = brassMaterial;
             }
@@ -429,9 +442,10 @@ mtlLoader.load(
                 child.castShadow = false;
             }
             
+            // --- MODIFICATION: Removed 'PalletForkBody' from this array ---
             const partsToPivot = [
                 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
-                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalletForkBody', 'HairSpringBody'
+                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
             ];
 
             if (partsToPivot.includes(child.name)) {
@@ -467,9 +481,7 @@ mtlLoader.load(
                 case 'ThirdWheel':
                   thirdWheel = pivot;
                   break;
-                case 'PalletForkBody':
-                  palletFork = pivot;
-                  break;
+                // --- MODIFICATION: Removed 'PalletForkBody' case ---
                 case 'HairSpringBody':
                   hairSpring = pivot;
                   break;
@@ -477,6 +489,24 @@ mtlLoader.load(
             }
           }
         });
+        
+        // --- MODIFICATION: Custom pivot logic for Pallet Fork ---
+        if (palletForkBodyMesh && palletJewelBodyMesh) {
+            const jewelCenter = new THREE.Vector3();
+            new THREE.Box3().setFromObject(palletJewelBodyMesh).getCenter(jewelCenter);
+    
+            const pivot = new THREE.Group();
+            palletForkBodyMesh.parent.add(pivot);
+            pivot.position.copy(jewelCenter);
+    
+            pivot.add(palletForkBodyMesh);
+            palletForkBodyMesh.position.sub(jewelCenter);
+    
+            palletFork = pivot; // Assign the new pivot to the global variable for animation
+        } else {
+            if (!palletForkBodyMesh) console.error("Could not find 'PalletForkBody' mesh in the model.");
+            if (!palletJewelBodyMesh) console.error("Could not find 'Plate_Jewel_Body' mesh in the model.");
+        }
 
         clockUnit.add(clockModel);
         
@@ -547,7 +577,7 @@ function animate() {
   hourHand.rotation.z   = -THREE.MathUtils.degToRad((hours / 12) * 360);
   
   if (secondWheel) {
-    secondWheel.rotation.z = (seconds / 60) * Math.PI * 2;
+    secondWheel.rotation.z = -(seconds / 60) * Math.PI * 2;
   }
   if (minuteWheel) {
     minuteWheel.rotation.z = -(minutes / 60) * Math.PI * 2;
@@ -556,7 +586,7 @@ function animate() {
     hourWheel.rotation.z = -(hours / 12) * Math.PI * 2;
   }
   if (escapeWheel) {
-    escapeWheel.rotation.z = -((seconds % 5) / 5) * Math.PI * 2;
+    escapeWheel.rotation.z = ((seconds % 5) / 5) * Math.PI * 2;
   }
   if (centerWheel) {
     centerWheel.rotation.z = (minutes / 60) * Math.PI * 2;
@@ -580,7 +610,6 @@ function animate() {
     balanceWheel.rotation.z = amplitude * sineValue;
 
     if (hairSpring) {
-        // --- MODIFICATION: Updated hairspring scale to pulse from 0.6x to 1.3x ---
         const currentScale = 0.95 + 0.35 * sineValue;
         hairSpring.scale.set(currentScale, currentScale, 1);
     }
@@ -626,8 +655,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
-
-
-
-
