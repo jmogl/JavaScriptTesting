@@ -1,16 +1,3 @@
-Of course! Here is the updated Javascript file. The PalletForkJewel1 and PalletForkJewel2 bodies will now rotate in sync with the PalletForkBody.
-
-Summary of Changes:
-Identify Jewel Meshes: The code now looks for and stores the PalletForkJewel1 and PalletForkJewel2 meshes when loading the 3D model.
-
-Attach Jewels to Pivot: These two jewel meshes are now added to the same rotating pivot group as the main pallet fork body.
-
-Synchronized Rotation: By parenting the jewels to the pallet fork's pivot, they now inherit its rotation, ensuring they move together as a single, physically-correct unit.
-
-This change enhances the mechanical realism of the clock simulation.
-
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -687,3 +674,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
