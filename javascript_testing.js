@@ -1,13 +1,3 @@
-You are correct. Your observation that no error appeared in the console is the key to solving this. It confirms the script successfully found all three meshes (PalletForkBody, PalletForkJewel1, and PalletForkJewel2).
-
-This means the issue wasn't in finding the object, but in the manual code used to move it. The previous method of repositioning the objects by subtracting vector positions can be fragile and likely failed due to some subtle difference in the PalletForkJewel1 object's properties within the 3D model file.
-
-A More Robust Solution
-I have updated the script to use the modern, built-in three.js function .attach() for this task. This function is specifically designed to reparent 3D objects and correctly handles all the complex position and rotation adjustments automatically.
-
-This new approach is much cleaner, more reliable, and should resolve the issue with PalletForkJewel1's movement.
-
-JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -684,3 +674,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
