@@ -1,8 +1,19 @@
+You are correct. Your observation that no error appeared in the console is the key to solving this. It confirms the script successfully found all three meshes (PalletForkBody, PalletForkJewel1, and PalletForkJewel2).
+
+This means the issue wasn't in finding the object, but in the manual code used to move it. The previous method of repositioning the objects by subtracting vector positions can be fragile and likely failed due to some subtle difference in the PalletForkJewel1 object's properties within the 3D model file.
+
+A More Robust Solution
+I have updated the script to use the modern, built-in three.js function .attach() for this task. This function is specifically designed to reparent 3D objects and correctly handles all the complex position and rotation adjustments automatically.
+
+This new approach is much cleaner, more reliable, and should resolve the issue with PalletForkJewel1's movement.
+
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/2/25
-// MODIFIED: Attached PalletForkJewel1 and PalletForkJewel2 to the pallet fork's rotation pivot.
+// MODIFIED: Replaced manual object repositioning with the robust .attach() method.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -413,7 +424,6 @@ mtlLoader.load(
             'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'BalanceWheelBody'
         ];
         
-        // --- MODIFICATION: Variables to hold meshes for custom pivoting ---
         let palletForkBodyMesh, palletJewelBodyMesh, palletForkJewel1Mesh, palletForkJewel2Mesh;
 
         clockModel.traverse(child => {
@@ -421,7 +431,6 @@ mtlLoader.load(
             child.receiveShadow = true;
             child.castShadow = true;
             
-            // --- MODIFICATION: Find meshes for custom pallet fork pivot ---
             if (child.name === 'PalletForkBody') {
                 palletForkBodyMesh = child;
             }
@@ -492,36 +501,37 @@ mtlLoader.load(
           }
         });
         
-        // --- MODIFICATION: Custom pivot logic for Pallet Fork and its Jewels ---
+        // --- MODIFICATION: Using robust .attach() method for pivoting ---
         if (palletForkBodyMesh && palletJewelBodyMesh) {
-            const jewelCenter = new THREE.Vector3();
-            new THREE.Box3().setFromObject(palletJewelBodyMesh).getCenter(jewelCenter);
-    
+            // Create a new group that will serve as the pivot for the pallet fork assembly.
             const pivot = new THREE.Group();
-            palletForkBodyMesh.parent.add(pivot);
-            pivot.position.copy(jewelCenter);
-    
-            // Add the main fork body to the pivot
-            pivot.add(palletForkBodyMesh);
-            palletForkBodyMesh.position.sub(jewelCenter);
 
-            // Add the first jewel to the pivot if it was found
+            // The pivot's center of rotation should be the center of the 'Plate_Jewel_Body'.
+            // We get its world position and orientation and set our pivot group to match.
+            palletJewelBodyMesh.getWorldPosition(pivot.position);
+            palletJewelBodyMesh.getWorldQuaternion(pivot.quaternion);
+
+            // Add the new pivot to the main clock model.
+            clockModel.add(pivot);
+
+            // Use the .attach() method to reparent the fork and its jewels.
+            // .attach() correctly handles all position and rotation adjustments for us.
+            pivot.attach(palletForkBodyMesh);
+
             if (palletForkJewel1Mesh) {
-                pivot.add(palletForkJewel1Mesh);
-                palletForkJewel1Mesh.position.sub(jewelCenter);
+                pivot.attach(palletForkJewel1Mesh);
             } else {
                 console.error("Could not find 'PalletForkJewel1' mesh in the model.");
             }
 
-            // Add the second jewel to the pivot if it was found
             if (palletForkJewel2Mesh) {
-                pivot.add(palletForkJewel2Mesh);
-                palletForkJewel2Mesh.position.sub(jewelCenter);
+                pivot.attach(palletForkJewel2Mesh);
             } else {
                 console.error("Could not find 'PalletForkJewel2' mesh in the model.");
             }
-    
-            palletFork = pivot; // Assign the new pivot to the global variable for animation
+
+            // The animation will now rotate this pivot group.
+            palletFork = pivot; 
         } else {
             if (!palletForkBodyMesh) console.error("Could not find 'PalletForkBody' mesh in the model.");
             if (!palletJewelBodyMesh) console.error("Could not find 'Plate_Jewel_Body' mesh in the model.");
@@ -674,4 +684,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
