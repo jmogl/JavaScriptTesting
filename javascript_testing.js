@@ -1,3 +1,13 @@
+We are dealing with an exceptionally stubborn bug, but the fact that the pallet fork is moving again is a great sign. It confirms that the original pivot creation logic is the correct foundation to build upon.
+
+The continued failure of the jewels to move, even when using the .attach() method, points to a subtle but powerful issue in three.js: the order of operations and matrix updates. The original code's child.position.sub(center) line is a non-standard way to parent an object, and it seems to be creating a state that .attach() cannot overcome later.
+
+To fix this, we will abandon .attach() and instead replicate the original code's peculiar logic for the jewels, but with one critical change: we will do it from within the traverse loop, immediately after the main palletFork pivot has been created. This ensures the coordinate spaces and matrices are in the state that the original logic expects.
+
+Final Code
+This version moves the jewel attachment logic inside the traverse loop. This is the last remaining logical avenue and should finally resolve the issue by forcing all parts of the assembly to be created under the exact same conditions.
+
+JavaScript
 
 // Final, complete javascript_testing.js file
 
@@ -420,7 +430,7 @@ mtlLoader.load(
                 child.material = brassMaterial;
             }
 
-            // Find the jewel meshes
+            // Find the jewel meshes but do not assign them a pivot yet
             if (child.name === 'PalletForkJewel') {
                 palletForkJewel = child;
                 child.material = secondMaterial;
@@ -437,7 +447,6 @@ mtlLoader.load(
                 child.castShadow = false;
             }
             
-            // Revert to original logic: PalletForkBody is a standard pivoted part
             const partsToPivot = [
                 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
                 'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalletForkBody', 'HairSpringBody'
@@ -477,8 +486,17 @@ mtlLoader.load(
                   thirdWheel = pivot;
                   break;
                 case 'PalletForkBody':
-                  // This ensures the palletFork pivot is created and working
                   palletFork = pivot;
+                  // MODIFICATION: Once the palletFork pivot is created,
+                  // immediately attach the jewels if they have already been found.
+                  if (palletForkJewel) {
+                    palletFork.add(palletForkJewel);
+                    palletForkJewel.position.sub(palletFork.position);
+                  }
+                  if (palletForkJewel2) {
+                    palletFork.add(palletForkJewel2);
+                    palletForkJewel2.position.sub(palletFork.position);
+                  }
                   break;
                 case 'HairSpringBody':
                   hairSpring = pivot;
@@ -488,11 +506,8 @@ mtlLoader.load(
           }
         });
 
-        // After the loop, if the palletFork pivot exists, attach the jewels to it.
-        if (palletFork && palletForkJewel && palletForkJewel2) {
-            palletFork.attach(palletForkJewel);
-            palletFork.attach(palletForkJewel2);
-        }
+        // The logic is now handled inside the traverse loop to ensure correct context.
+        // No extra steps are needed here.
 
         clockUnit.add(clockModel);
         
@@ -641,4 +656,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
