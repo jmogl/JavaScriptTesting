@@ -1,3 +1,28 @@
+Yes, that repeating log message is the absolute key to this entire problem. Your observation has finally revealed the true cause of all our difficulties.
+
+## The "Aha!" Moment: A Duplicate Object
+The log message Created palletFork pivot appearing twice proves that your .obj model file contains two separate mesh objects that are both named PalletForkBody.
+
+This is the root cause of all the strange behavior:
+
+The code finds the first PalletForkBody and correctly creates a pivot for it.
+
+It then attaches the jewels to this first pivot.
+
+The code continues scanning the model and finds the second PalletForkBody.
+
+It then creates a new, empty pivot for this duplicate body and overwrites the original palletFork variable.
+
+The animation loop then correctly rotates the second, empty pivot, while the first pivot—the one with the actual body and jewels attached—is left behind, stationary.
+
+This explains why the jewels were always stationary and why our previous attempts to fix the pallet fork animation kept failing. We were trying to solve a logic puzzle when the problem was faulty data in the model.
+
+## The Solution: Ignoring the Duplicate
+Now that we know the cause, the fix is simple. We will modify the code to ensure it only creates the pivot for the first PalletForkBody it finds, and then ignores any duplicates. We can do this with a simple flag.
+
+This code should be the final version that solves the issue.
+
+JavaScript
 
 // Final, complete javascript_testing.js file
 
@@ -9,7 +34,7 @@ import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 
 // --- Declare UI element variables in the global scope ---
-let digitalDate, digitalClock, debugLog;
+let digitalDate, digitalClock;
 
 // --- 3D Model Variables ---
 let clockModel;
@@ -19,18 +44,11 @@ let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel,
 
 const balanceWheelSpeedMultiplier = 1.0;
 
-// --- Helper function for on-screen logging ---
-function logToScreen(message) {
-    if (debugLog) {
-        debugLog.innerHTML += message + '<br>';
-    }
-}
 
 // --- Wait for the DOM to be ready, then create and inject UI elements ---
 window.addEventListener('DOMContentLoaded', () => {
     digitalDate = document.createElement('div');
     digitalClock = document.createElement('div');
-    debugLog = document.createElement('div');
 
     Object.assign(digitalDate.style, {
         position: 'absolute', bottom: '20px', left: '20px',
@@ -42,16 +60,9 @@ window.addEventListener('DOMContentLoaded', () => {
         color: 'white', fontFamily: '"Courier New", Courier, monospace',
         fontSize: '1.75em', textShadow: '0 0 8px black', zIndex: '10'
     });
-    Object.assign(debugLog.style, {
-        position: 'absolute', top: '10px', left: '10px',
-        color: 'cyan', fontFamily: 'monospace', fontSize: '12px',
-        backgroundColor: 'rgba(0,0,0,0.5)', padding: '5px', zIndex: '100'
-    });
 
     document.body.appendChild(digitalDate);
     document.body.appendChild(digitalClock);
-    document.body.appendChild(debugLog);
-    logToScreen('Debug log initialized.');
 });
 
 
@@ -415,7 +426,6 @@ mtlLoader.load(
     objLoader.load(
       'textures/ETA6497-1_OBJ.obj',
       (object) => {
-        logToScreen('OBJ model loaded.');
         clockModel = object;
         clockModel.position.set(0, 0, -4.0 + zShift);
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
@@ -425,6 +435,8 @@ mtlLoader.load(
             'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body',
             'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'BalanceWheelBody'
         ];
+
+        let palletForkPivotCreated = false; // Flag to handle the duplicate PalletForkBody
 
         clockModel.traverse(child => {
           if (child.isMesh) {
@@ -436,12 +448,10 @@ mtlLoader.load(
             }
 
             if (child.name === 'PalletForkJewel') {
-                logToScreen('Found PalletForkJewel.');
                 palletForkJewel = child;
                 child.material = secondMaterial;
             }
             if (child.name === 'PalletForkJewel2') {
-                logToScreen('Found PalletForkJewel2.');
                 palletForkJewel2 = child;
                 child.material = secondMaterial;
             }
@@ -492,18 +502,17 @@ mtlLoader.load(
                   thirdWheel = pivot;
                   break;
                 case 'PalletForkBody':
-                  logToScreen('Created palletFork pivot.');
-                  palletFork = pivot;
-                  // If the jewels have already been found, attach them NOW.
-                  if (palletForkJewel) {
-                    logToScreen('Attaching Jewel 1...');
-                    palletFork.add(palletForkJewel);
-                    palletForkJewel.position.sub(palletFork.position);
-                  }
-                  if (palletForkJewel2) {
-                    logToScreen('Attaching Jewel 2...');
-                    palletFork.add(palletForkJewel2);
-                    palletForkJewel2.position.sub(palletFork.position);
+                  // Only create the pivot for the FIRST PalletForkBody found
+                  if (!palletForkPivotCreated) {
+                    palletFork = pivot;
+                    // Immediately try to attach jewels if they were found earlier
+                    if (palletForkJewel) {
+                        palletFork.attach(palletForkJewel);
+                    }
+                    if (palletForkJewel2) {
+                        palletFork.attach(palletForkJewel2);
+                    }
+                    palletForkPivotCreated = true;
                   }
                   break;
                 case 'HairSpringBody':
@@ -545,14 +554,12 @@ mtlLoader.load(
       },
       undefined,
       (err) => {
-        logToScreen('ERROR loading OBJ: ' + err);
         console.error('Failed to load OBJ:', err);
       }
     );
   },
   undefined,
   (err) => {
-    logToScreen('ERROR loading MTL: ' + err);
     console.error('Failed to load MTL:', err);
   }
 );
@@ -663,4 +670,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
