@@ -1,6 +1,3 @@
-Of course. Here is the complete, updated JavaScript file with all the corrections for the pallet fork and jewel animation.
-
-JavaScript
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -647,3 +644,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
