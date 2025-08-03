@@ -1,3 +1,5 @@
+tttt
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -17,7 +19,6 @@ let digitalDate, digitalClock;
 let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
 let modelScale = 3.5;
-// MODIFICATION: Added palletForkJewel and palletForkJewel2 variables
 let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring, palletForkJewel, palletForkJewel2;
 
 const balanceWheelSpeedMultiplier = 1.0;
@@ -416,6 +417,8 @@ mtlLoader.load(
 
         clockModel.traverse(child => {
           if (child.isMesh) {
+            // You can add console.log(child.name) here to find the correct names
+            
             child.receiveShadow = true;
             child.castShadow = true;
             
@@ -423,12 +426,12 @@ mtlLoader.load(
                 child.material = brassMaterial;
             }
 
-            // MODIFICATION: Find jewel objects during traversal
-            if (child.name === 'PalletForkJewel') {
+            // MODIFICATION: Replace these placeholder names with the correct ones
+            if (child.name === 'PUT_CORRECT_JEWEL_NAME_1_HERE') {
                 palletForkJewel = child;
                 child.material = secondMaterial;
             }
-            if (child.name === 'PalletForkJewel2') {
+            if (child.name === 'PUT_CORRECT_JEWEL_NAME_2_HERE') {
                 palletForkJewel2 = child;
                 child.material = secondMaterial;
             }
@@ -489,16 +492,13 @@ mtlLoader.load(
           }
         });
 
-        // MODIFICATION: After traversal, attach jewels to the pallet fork's pivot
-        // using the same logic as the other parts.
+        // MODIFICATION: After traversal, attach the correctly-named jewels to the pallet fork's pivot
         if (palletFork && palletForkJewel && palletForkJewel2) {
             const pivotCenter = palletFork.position;
 
-            // Add first jewel and adjust its position relative to the pivot
             palletFork.add(palletForkJewel);
             palletForkJewel.position.sub(pivotCenter);
 
-            // Add second jewel and adjust its position relative to the pivot
             palletFork.add(palletForkJewel2);
             palletForkJewel2.position.sub(pivotCenter);
         }
@@ -651,4 +651,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
