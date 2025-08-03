@@ -1,7 +1,148 @@
-// 3D Javacript Clock using three.js
-// Goal is to have a realistic 3D depth with tilt on mobile devices
-// MIT License. - Work in Progress using Gemini
-// Jeff Miller 2025. 8/2/25
+It's very unusual that nothing appeared in the console log. That, combined with the fork animating but not the jewels, points to a more complex issue with the 3D model's structure.
+
+My primary suspect is that the jewel objects are not actually Mesh types. They might be Group objects that contain the meshes, or another type of Object3D. The previous code would have missed them because it only looked at children where child.isMesh was true.
+
+Let's try a more robust diagnostic and a more flexible solution.
+
+Step 1: A Better Diagnostic
+We need to see the name and type of every single object in the model, not just the meshes. This will tell us definitively what the jewel objects are called and what type they are.
+
+Please replace the entire objLoader.load callback with the one below. The first traverse block is for debugging only. It will print the vital information to your browser's console.
+
+JavaScript
+
+// REPLACE THE ENTIRE objLoader.load() CALLBACK WITH THIS
+objLoader.load(
+    'textures/ETA6497-1_OBJ.obj',
+    (object) => {
+        // --- Diagnostic Step ---
+        console.log("--- Traversing Full Model Hierarchy ---");
+        object.traverse(child => {
+            // This will log the name and type of EVERY part of the model
+            console.log(`Found object: Name = '${child.name}', Type = '${child.type}'`);
+        });
+        // --- End Diagnostic Step ---
+
+        clockModel = object;
+        clockModel.position.set(0, 0, -4.0 + zShift);
+        clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
+        clockModel.scale.set(modelScale, modelScale, modelScale);
+
+        const wheelNames = [
+            'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body',
+            'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'BalanceWheelBody'
+        ];
+
+        clockModel.traverse(child => {
+            // Find jewels by name, regardless of type
+            if (child.name === 'PUT_CORRECT_JEWEL_NAME_1_HERE') {
+                palletForkJewel = child;
+            }
+            if (child.name === 'PUT_CORRECT_JEWEL_NAME_2_HERE') {
+                palletForkJewel2 = child;
+            }
+
+            if (child.isMesh) {
+                child.receiveShadow = true;
+                child.castShadow = true;
+
+                if (wheelNames.includes(child.name)) {
+                    child.material = brassMaterial;
+                }
+
+                if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
+                    child.material = child.material.clone();
+                    child.material.transparent = true;
+                    child.material.opacity = 0.5;
+                    child.castShadow = false;
+                }
+
+                const partsToPivot = [
+                    'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
+                    'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalletForkBody', 'HairSpringBody'
+                ];
+
+                if (partsToPivot.includes(child.name)) {
+                    const center = new THREE.Vector3();
+                    new THREE.Box3().setFromObject(child).getCenter(center);
+
+                    const pivot = new THREE.Group();
+                    child.parent.add(pivot);
+                    pivot.position.copy(center);
+
+                    pivot.add(child);
+                    child.position.sub(center);
+
+                    switch (child.name) {
+                        case 'SecondsWheel': secondWheel = pivot; break;
+                        case 'Minute_Wheel_Body': minuteWheel = pivot; break;
+                        case 'HourWheel_Body': hourWheel = pivot; break;
+                        case 'BalanceWheelBody': balanceWheel = pivot; break;
+                        case 'EscapeWheel': escapeWheel = pivot; break;
+                        case 'CenterWheelBody': centerWheel = pivot; break;
+                        case 'ThirdWheel': thirdWheel = pivot; break;
+                        case 'PalletForkBody': palletFork = pivot; break;
+                        case 'HairSpringBody': hairSpring = pivot; break;
+                    }
+                }
+            }
+        });
+
+        if (palletFork && palletForkJewel && palletForkJewel2) {
+            // Apply jewel material safely
+            palletForkJewel.traverse(node => { if (node.isMesh) node.material = secondMaterial; });
+            palletForkJewel2.traverse(node => { if (node.isMesh) node.material = secondMaterial; });
+
+            const pivotCenter = palletFork.position;
+
+            palletFork.add(palletForkJewel);
+            palletForkJewel.position.sub(pivotCenter);
+
+            palletFork.add(palletForkJewel2);
+            palletForkJewel2.position.sub(pivotCenter);
+        }
+
+        clockUnit.add(clockModel);
+
+        const oldFace = clockUnit.getObjectByName('clock_face');
+        if (oldFace) {
+            clockUnit.remove(oldFace);
+            oldFace.geometry.dispose();
+        }
+
+        const holeRadius = 6.25;
+        const outerRadius = markerRadius + borderThickness / 2;
+        const segments = 64;
+        const shape = new THREE.Shape();
+        shape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
+        const hole = new THREE.Path();
+        hole.absarc(0, 0, holeRadius, 0, Math.PI * 2, true);
+        shape.holes.push(hole);
+        const faceGeom = new THREE.ShapeGeometry(shape, segments);
+        const faceMat = new THREE.MeshStandardMaterial({
+            color: 0xFFFDD0,
+            metalness: 0.1,
+            roughness: 0.9
+        });
+        const newFace = new THREE.Mesh(faceGeom, faceMat);
+        newFace.name = 'clock_face';
+        newFace.receiveShadow = true;
+        newFace.position.z = -3.4 + zShift;
+        clockUnit.add(newFace);
+    },
+    undefined,
+    (err) => {
+        console.error('Failed to load OBJ:', err);
+    }
+);
+Step 2: Final Implementation
+After running the code above and finding the correct names and types in the console, you can use the final version of the code below. I have built it to be more robust. It finds the jewels by name first, regardless of their type, and then applies their materials and attaches them to the pivot.
+
+Remember to replace the placeholder names with the actual names you discovered. You can then remove the extra diagnostic traverse block from Step 1.
+
+JavaScript
+
+// Final, complete javascript_testing.js file
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -414,84 +555,66 @@ mtlLoader.load(
         ];
 
         clockModel.traverse(child => {
-          if (child.isMesh) {
-            // You can add console.log(child.name) here to find the correct names
-            
-            child.receiveShadow = true;
-            child.castShadow = true;
-            
-            if (wheelNames.includes(child.name)) {
-                child.material = brassMaterial;
-            }
-
-            // MODIFICATION: Replace these placeholder names with the correct ones
+            // Find jewels by name first, regardless of their type
             if (child.name === 'PUT_CORRECT_JEWEL_NAME_1_HERE') {
                 palletForkJewel = child;
-                child.material = secondMaterial;
             }
             if (child.name === 'PUT_CORRECT_JEWEL_NAME_2_HERE') {
                 palletForkJewel2 = child;
-                child.material = secondMaterial;
             }
 
-            if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
-                child.material = child.material.clone();
-                child.material.transparent = true;
-                child.material.opacity = 0.5;
-                child.castShadow = false;
-            }
+            // Continue with mesh-specific logic
+            if (child.isMesh) {
+                child.receiveShadow = true;
+                child.castShadow = true;
+                
+                if (wheelNames.includes(child.name)) {
+                    child.material = brassMaterial;
+                }
+
+                if (child.name === 'TrainWheelBridgeBody' || child.name === 'PalletBridgeBody') {
+                    child.material = child.material.clone();
+                    child.material.transparent = true;
+                    child.material.opacity = 0.5;
+                    child.castShadow = false;
+                }
+                
+                const partsToPivot = [
+                    'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
+                    'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalletForkBody', 'HairSpringBody'
+                ];
+
+                if (partsToPivot.includes(child.name)) {
+                  const center = new THREE.Vector3();
+                  new THREE.Box3().setFromObject(child).getCenter(center);
             
-            const partsToPivot = [
-                'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
-                'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'PalletForkBody', 'HairSpringBody'
-            ];
-
-            if (partsToPivot.includes(child.name)) {
-              const center = new THREE.Vector3();
-              new THREE.Box3().setFromObject(child).getCenter(center);
-        
-              const pivot = new THREE.Group();
-              child.parent.add(pivot);
-              pivot.position.copy(center);
-        
-              pivot.add(child);
-              child.position.sub(center);
-        
-              switch (child.name) {
-                case 'SecondsWheel':
-                  secondWheel = pivot;
-                  break;
-                case 'Minute_Wheel_Body':
-                  minuteWheel = pivot;
-                  break;
-                case 'HourWheel_Body':
-                  hourWheel = pivot;
-                  break;
-                case 'BalanceWheelBody':
-                  balanceWheel = pivot;
-                  break;
-                case 'EscapeWheel':
-                  escapeWheel = pivot;
-                  break;
-                case 'CenterWheelBody':
-                  centerWheel = pivot;
-                  break;
-                case 'ThirdWheel':
-                  thirdWheel = pivot;
-                  break;
-                case 'PalletForkBody':
-                  palletFork = pivot;
-                  break;
-                case 'HairSpringBody':
-                  hairSpring = pivot;
-                  break;
-              }
+                  const pivot = new THREE.Group();
+                  child.parent.add(pivot);
+                  pivot.position.copy(center);
+            
+                  pivot.add(child);
+                  child.position.sub(center);
+            
+                  switch (child.name) {
+                    case 'SecondsWheel': secondWheel = pivot; break;
+                    case 'Minute_Wheel_Body': minuteWheel = pivot; break;
+                    case 'HourWheel_Body': hourWheel = pivot; break;
+                    case 'BalanceWheelBody': balanceWheel = pivot; break;
+                    case 'EscapeWheel': escapeWheel = pivot; break;
+                    case 'CenterWheelBody': centerWheel = pivot; break;
+                    case 'ThirdWheel': thirdWheel = pivot; break;
+                    case 'PalletForkBody': palletFork = pivot; break;
+                    case 'HairSpringBody': hairSpring = pivot; break;
+                  }
+                }
             }
-          }
         });
 
-        // MODIFICATION: After traversal, attach the correctly-named jewels to the pallet fork's pivot
         if (palletFork && palletForkJewel && palletForkJewel2) {
+            // Safely apply material to the jewel objects, even if they are groups
+            palletForkJewel.traverse(node => { if (node.isMesh) node.material = secondMaterial; });
+            palletForkJewel2.traverse(node => { if (node.isMesh) node.material = secondMaterial; });
+            
             const pivotCenter = palletFork.position;
 
             palletFork.add(palletForkJewel);
@@ -603,7 +726,6 @@ function animate() {
     balanceWheel.rotation.z = amplitude * sineValue;
 
     if (hairSpring) {
-        // --- MODIFICATION: Updated hairspring scale to pulse from 0.6x to 1.3x ---
         const currentScale = 0.95 + 0.35 * sineValue;
         hairSpring.scale.set(currentScale, currentScale, 1);
     }
@@ -649,4 +771,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
