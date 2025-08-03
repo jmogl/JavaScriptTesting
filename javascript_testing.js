@@ -567,7 +567,7 @@ function animate() {
   if (palletFork) {
     const time = now.getTime() / 1000;
     const amplitude = THREE.MathUtils.degToRad(22);
-    const frequency = 3;
+    const frequency = 4;
     palletFork.rotation.z = amplitude * Math.sin(time * Math.PI * 2 * frequency);
   }
   
@@ -626,6 +626,7 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
 
 
 
