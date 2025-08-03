@@ -1,12 +1,3 @@
-Of course. The issue with the hairspring not pulsing is almost certainly the same root cause as the pallet fork problem: the code is looking for a mesh with a specific name ('HairSpringBody'), but the actual name in the 3D model file is likely different.
-
-The animation logic that links the hairspring's scale to the balance wheel's rotation is correct, but it only runs if the hairSpring variable has been successfully assigned. To fix this, you must find the correct mesh name by using console.log(child.name) within the model traversal loop, as we did for the pallet fork.
-
-Below is the complete, updated listing with the previous pallet fork fix and the correct structure for the hairspring animation. You will still need to verify the mesh name for 'HairSpringBody' and correct it if necessary.
-
-Full Corrected Code
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -683,3 +674,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
