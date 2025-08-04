@@ -1,5 +1,4 @@
 ttt
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -228,7 +227,7 @@ const markerRadius = 10.0;
 
 // --- Border Wall ---
 const borderThickness = 1.0;
-const borderHeight    = 1.1;
+const borderHeight    = 1.2;
 const outerRadius     = markerRadius + borderThickness;
 const innerRadius     = markerRadius;
 
