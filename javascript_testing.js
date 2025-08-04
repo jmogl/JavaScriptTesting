@@ -1,19 +1,3 @@
-It's frustrating when the visual output doesn't match your expectations. That "rusted" look on the steel and the lack of shadows are classic signs of a conflict between lighting, materials, and shadow settings. The previous changes correctly identified the core issues (exposure, light intensity), but now we need to perform a more targeted fine-tuning.
-
-The following adjustments should resolve the remaining problems by darkening the background, fixing the steel color, and, most importantly, enabling the shadows to render correctly.
-
-## Key Corrections
-Shadows: The primary reason for the missing shadows is that the main clock face, which should receive the shadows from the numerals and border, didn't have receiveShadow = true. We'll also increase the shadow map resolution for better quality.
-
-Rusted Steel: The "rusted" look is almost certainly from the BaseColor texture map for the brushed iron material. The simplest, most effective fix is to remove that color map and set the material's color directly to a neutral silver. This will ensure it looks like steel, not rust.
-
-Blown-Out Wood: The wood texture is still too bright because its base color is white (0xffffff), which gets multiplied by the already-bright lighting. We will darken this base color to a grey, which will tone down the final appearance of the wood texture without losing its detail.
-
-## Full Corrected Code
-Here is the full code listing with the necessary adjustments to fix the shadow, steel, and background issues.
-
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -720,3 +704,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
