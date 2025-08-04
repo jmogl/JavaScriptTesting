@@ -1,3 +1,5 @@
+tttt
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -395,38 +397,6 @@ tickSound.volume = 0.2;
 const mtlLoader = new MTLLoader();
 mtlLoader.setCrossOrigin('');
 
-// --- NEW: Load local PBR textures for Brushed Steel ---
-const pbrTextureLoader = new THREE.TextureLoader();
-
-const baseColorMap = pbrTextureLoader.load('textures/BrushedIron01_2K_BaseColor.png');
-const metallicMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Metallic.png');
-const roughnessMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Roughness.png');
-const normalMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Normal.png');
-const heightMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Height.png');
-
-// Ensure correct color space for the base color texture
-baseColorMap.encoding = THREE.sRGBEncoding;
-
-// Apply tiling to all textures
-[baseColorMap, metallicMap, roughnessMap, normalMap, heightMap].forEach(map => {
-    map.wrapS = THREE.RepeatWrapping;
-    map.wrapT = THREE.RepeatWrapping;
-    // map.repeat.set(0.1, 0.1); // Adjust tiling as needed
-	//map.repeat.set(2, 2); // This would tile the texture twice across the surface.
-});
-
-const brushedSteelMaterial = new THREE.MeshStandardMaterial({
-    map: baseColorMap,          // The base color of the material
-    metalnessMap: metallicMap,  // Defines how metallic the material is
-    roughnessMap: roughnessMap, // Controls the sharpness of reflections
-    normalMap: normalMap,       // Adds surface detail without adding geometry
-    
-    displacementMap: heightMap, // Creates physical surface details
-    displacementScale: 0.05,    // How much the height map affects the mesh
-    
-    metalness: 1.0, // Set to max as the map will control the value per-pixel
-    roughness: 1.0, // Set to max as the map will control the value per-pixel
-});
 
 
 mtlLoader.load(
@@ -700,5 +670,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
 
