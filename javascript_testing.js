@@ -1,3 +1,5 @@
+TTTTT
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -411,7 +413,8 @@ baseColorMap.encoding = THREE.sRGBEncoding;
 [baseColorMap, metallicMap, roughnessMap, normalMap, heightMap].forEach(map => {
     map.wrapS = THREE.RepeatWrapping;
     map.wrapT = THREE.RepeatWrapping;
-    map.repeat.set(0.1, 0.1); // Adjust tiling as needed
+    // map.repeat.set(0.1, 0.1); // Adjust tiling as needed
+	//map.repeat.set(2, 2); // This would tile the texture twice across the surface.
 });
 
 const brushedSteelMaterial = new THREE.MeshStandardMaterial({
