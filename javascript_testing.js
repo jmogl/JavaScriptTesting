@@ -1,3 +1,4 @@
+TTTT
 
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
@@ -396,22 +397,36 @@ tickSound.volume = 0.2;
 const mtlLoader = new MTLLoader();
 mtlLoader.setCrossOrigin('');
 
-// --- NEW: Texture Loader for Brushed Steel ---
-const brushedTextureLoader = new THREE.TextureLoader();
-const brushedSteelTexture = brushedTextureLoader.load(
-    'https://www.cgbookcase.com/textures/downloads/Brushed_Metal_1/Brushed_Metal_1_2K_BaseColor.png',
-    (texture) => {
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(0.1, 0.1); // Adjust tiling as needed
-    }
-);
+// --- NEW: Load local PBR textures for Brushed Steel ---
+const pbrTextureLoader = new THREE.TextureLoader();
+
+const baseColorMap = pbrTextureLoader.load('textures/BrushedIron01_2K_BaseColor.png');
+const metallicMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Metallic.png');
+const roughnessMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Roughness.png');
+const normalMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Normal.png');
+const heightMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Height.png');
+
+// Ensure correct color space for the base color texture
+baseColorMap.encoding = THREE.sRGBEncoding;
+
+// Apply tiling to all textures
+[baseColorMap, metallicMap, roughnessMap, normalMap, heightMap].forEach(map => {
+    map.wrapS = THREE.RepeatWrapping;
+    map.wrapT = THREE.RepeatWrapping;
+    map.repeat.set(0.1, 0.1); // Adjust tiling as needed
+});
 
 const brushedSteelMaterial = new THREE.MeshStandardMaterial({
-    map: brushedSteelTexture,
-    metalness: 0.8,
-    roughness: 0.4,
-    color: 0xaaaaaa, // Base color for the steel
+    map: baseColorMap,          // The base color of the material
+    metalnessMap: metallicMap,  // Defines how metallic the material is
+    roughnessMap: roughnessMap, // Controls the sharpness of reflections
+    normalMap: normalMap,       // Adds surface detail without adding geometry
+    
+    displacementMap: heightMap, // Creates physical surface details
+    displacementScale: 0.05,    // How much the height map affects the mesh
+    
+    metalness: 1.0, // Set to max as the map will control the value per-pixel
+    roughness: 1.0, // Set to max as the map will control the value per-pixel
 });
 
 
@@ -686,5 +701,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
-
