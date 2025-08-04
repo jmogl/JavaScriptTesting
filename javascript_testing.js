@@ -1,3 +1,5 @@
+tttt
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -398,7 +400,7 @@ mtlLoader.setCrossOrigin('');
 // --- NEW: Texture Loader for Brushed Steel ---
 const brushedTextureLoader = new THREE.TextureLoader();
 const brushedSteelTexture = brushedTextureLoader.load(
-    'https://cdn-3d.ambientcg.com/media/texture/2k/Metal009/Metal009_2K_Color.jpg',
+    'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brushed_tin/brushed_tin_diff_2k.jpg',
     (texture) => {
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
@@ -685,5 +687,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
 
