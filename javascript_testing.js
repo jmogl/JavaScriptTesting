@@ -1,10 +1,3 @@
-Yes, that's correct. The entire model uses a single HDR map for all environment reflections: peppermint_powerplant_2_1k.hdr.
-
-Complete Code Listing
-Here is the full listing of ClockSimNewV1.js with all the latest revisions for the material properties.
-
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -714,3 +707,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
