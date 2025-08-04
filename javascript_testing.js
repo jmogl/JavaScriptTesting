@@ -1,8 +1,10 @@
+TTTT
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/3/25
-// MODIFIED: Corrected traversal logic to be order-independent.
+// MODIFIED: Corrected traversal logic and material loading order.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -390,12 +392,44 @@ function setupTiltControls() {
 const tickSound = new Audio('https://cdn.jsdelivr.net/gh/freebiesupply/sounds/tick.mp3');
 tickSound.volume = 0.2;
 
+// --- Load local PBR textures for Brushed Steel ---
+const pbrTextureLoader = new THREE.TextureLoader();
+
+const baseColorMap = pbrTextureLoader.load('textures/BrushedIron01_2K_BaseColor.png');
+const metallicMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Metallic.png');
+const roughnessMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Roughness.png');
+const normalMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Normal.png');
+const heightMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Height.png');
+
+// Ensure correct color space for the base color texture
+baseColorMap.encoding = THREE.sRGBEncoding;
+
+// Ensure textures repeat correctly and set tiling
+[baseColorMap, metallicMap, roughnessMap, normalMap, heightMap].forEach(map => {
+    map.wrapS = THREE.RepeatWrapping;
+    map.wrapT = THREE.RepeatWrapping;
+    map.repeat.set(2, 2); // Makes the brushed pattern finer
+});
+
+const brushedSteelMaterial = new THREE.MeshStandardMaterial({
+    map: baseColorMap,
+    metalnessMap: metallicMap,
+    roughnessMap: roughnessMap,
+    normalMap: normalMap,
+    
+    displacementMap: heightMap,
+    displacementScale: 0.05,
+    
+    metalness: 1.0, 
+    
+    // Lower this value to make the material shinier
+    roughness: 0.4, 
+});
+
 
 // --- Load the ETA6497 model ---
 const mtlLoader = new MTLLoader();
 mtlLoader.setCrossOrigin('');
-
-
 
 mtlLoader.load(
   'textures/ETA6497-1_OBJ.mtl',
@@ -668,5 +702,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
-
