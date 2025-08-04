@@ -1,3 +1,5 @@
+ttttt
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -57,7 +59,10 @@ renderer.toneMappingExposure = 0.5;
 document.body.appendChild(renderer.domElement);
 
 // --- Lighting ---
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+// const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+// To something much stronger:
+const dirLight = new THREE.DirectionalLight(0xffffff, 3.0); // Try a value between 2.0 and 5.0
+
 dirLight.castShadow = true;
 dirLight.position.set(10, 15, 36);
 dirLight.shadow.mapSize.set(4096, 4096); // MODIFIED: Increased shadow resolution
@@ -164,7 +169,8 @@ const brushedSteelMaterial = new THREE.MeshStandardMaterial({
     metalness: 1.0,
     roughness: 0.4, // MODIFIED: Adjusted for a cleaner brushed look
     
-    envMapIntensity: 0.9
+    //envMapIntensity: 0.9
+	envMapIntensity: 0.5 // Default is 1, try reducing it
 });
 
 const rgbeLoader = new RGBELoader();
