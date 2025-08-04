@@ -2,7 +2,7 @@
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/3/25
-// MODIFIED: Reverted scaling, fixed border geometry, and re-balanced lighting to fix shadows.
+// MODIFIED: Switched to neutral HDR and re-balanced lighting.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -17,7 +17,7 @@ let digitalDate, digitalClock;
 // --- 3D Model Variables ---
 let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
-let modelScale = 3.5; // Reverted to original scale
+let modelScale = 3.5;
 let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring;
 const balanceWheelSpeedMultiplier = 1.0;
 
@@ -53,7 +53,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.4; // Lowered significantly to prevent blow-out
+renderer.toneMappingExposure = 0.8;
 document.body.appendChild(renderer.domElement);
 
 // --- Lighting ---
@@ -165,8 +165,10 @@ const brushedSteelMaterial = new THREE.MeshStandardMaterial({
     displacementScale: 0.05,
     
     metalness: 1.0,
-    roughness: 0.15,
-    envMapIntensity: 3.0
+    roughness: 0.25,
+    
+    // Adjust for the new HDR's brightness
+    envMapIntensity: 1.5 
 });
 
 const rgbeLoader = new RGBELoader();
@@ -175,6 +177,7 @@ rgbeLoader.load(
     (texture) => { // onLoad callback
         const envMap = pmremGenerator.fromEquirectangular(texture).texture;
 
+        // Use the HDR for the entire scene's lighting
         scene.environment = envMap;
 
         silverMaterial.envMap = envMap;
@@ -194,11 +197,11 @@ rgbeLoader.load(
 
 
 // --- Tick Marks ---
-const markerRadius = 10.0; // Reverted to original radius
+const markerRadius = 10.0;
 
 // --- Border Wall ---
-const borderThickness = 5.0; // Increased to widen the border
-const borderHeight    = 1.1; // Reverted to original depth
+const borderThickness = 1.0;
+const borderHeight    = 1.1;
 const outerRadius     = markerRadius + borderThickness;
 const innerRadius     = markerRadius;
 
@@ -284,7 +287,7 @@ for (let i = 0; i < 60; i++) {
 
 const fontLoader = new FontLoader();
 const fontURL = 'https://cdn.jsdelivr.net/npm/three@0.166.0/examples/fonts/helvetiker_regular.typeface.json';
-const numeralRadius = 8.075; // Reverted to original value
+const numeralRadius = 8.075;
 
 fontLoader.load(fontURL, (font) => {
     const numeralSize = 1.5;
@@ -316,7 +319,7 @@ fontLoader.load(fontURL, (font) => {
 
 // --- Clock Hands ---
 const hourHandShape = new THREE.Shape();
-const hourHandLength = 4.0; // Reverted to original value
+const hourHandLength = 4.0;
 const hourHandWidth = 0.6;
 const hourHandDepth = 0.4;
 hourHandShape.moveTo(-hourHandWidth / 2, 0);
@@ -335,7 +338,7 @@ hourHand.castShadow = true;
 watchGroup.add(hourHand);
 
 const minuteHandShape = new THREE.Shape();
-const minuteHandLength = 6.0; // Reverted to original value
+const minuteHandLength = 6.0;
 const minuteHandWidth = 0.4;
 const minuteHandDepth = 0.3;
 minuteHandShape.moveTo(-minuteHandWidth / 2, 0);
@@ -353,7 +356,7 @@ minuteHand.position.z = -2.03 + zShift;
 minuteHand.castShadow = true;
 watchGroup.add(minuteHand);
 
-const secondGeometry = new THREE.BoxGeometry(0.1, 7.0, 0.3); // Reverted to original value
+const secondGeometry = new THREE.BoxGeometry(0.1, 7.0, 0.3);
 secondGeometry.translate(0, 3.5, 0);
 const secondHand = new THREE.Mesh(secondGeometry, secondMaterial);
 secondHand.position.z = -2.02 + zShift;
@@ -363,7 +366,7 @@ watchGroup.add(secondHand);
 
 // --- Utility Functions ---
 function updateCameraPosition() {
-    const clockSize = 22; // Reverted to original value
+    const clockSize = 22;
     const fovInRadians = THREE.MathUtils.degToRad(camera.fov);
 
     const distanceForHeight = (clockSize / 2) / Math.tan(fovInRadians / 2);
@@ -567,11 +570,11 @@ mtlLoader.load(
             oldFace.geometry.dispose();
         }
         
-        const holeRadius = 6.25; // Reverted to original
-        const outerFaceRadius = markerRadius + borderThickness / 2;
+        const holeRadius = 6.25;
+        const outerRadius = markerRadius + borderThickness / 2;
         const segments = 64;
         const shape = new THREE.Shape();
-        shape.absarc(0, 0, outerFaceRadius, 0, Math.PI * 2, false);
+        shape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
         const hole = new THREE.Path();
         hole.absarc(0, 0, holeRadius, 0, Math.PI * 2, true);
         shape.holes.push(hole);
