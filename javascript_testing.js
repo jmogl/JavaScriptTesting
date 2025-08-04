@@ -1,8 +1,10 @@
+TTTTT
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/3/25
-// MODIFIED: Final material and reflection adjustments.
+// MODIFIED: Final lighting model using Image-Based Lighting.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -53,13 +55,10 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+renderer.toneMappingExposure = 1.2;
 document.body.appendChild(renderer.domElement);
 
 // --- Lighting ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
-scene.add(ambientLight);
-
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
 dirLight.castShadow = true;
 dirLight.position.set(10, 15, 36);
@@ -168,20 +167,23 @@ const brushedSteelMaterial = new THREE.MeshStandardMaterial({
     displacementScale: 0.05,
     
     // Set a neutral grey base color to reduce the blue tint from the HDR
-    color: 0xaaaaaa, 
+    color: 0xaaaaaa,
     
-    metalness: 1.0, 
+    metalness: 1.0,
     
     // Lower the roughness to make reflections sharper and shinier
-    roughness: 0.25, 
+    roughness: 0.25,
     
     // Increase intensity to make reflections pop
-    envMapIntensity: 2.5 
+    envMapIntensity: 2.5
 });
 
 const rgbeLoader = new RGBELoader();
 rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint_powerplant_2_1k.hdr', (texture) => {
     const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+
+    // Use the HDR for the entire scene's lighting
+    scene.environment = envMap;
 
     silverMaterial.envMap = envMap;
     brightSilverMaterial.envMap = envMap;
@@ -707,4 +709,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
