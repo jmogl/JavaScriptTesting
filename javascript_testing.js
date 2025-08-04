@@ -1,28 +1,3 @@
-Based on your feedback, I've made several adjustments to the lighting, materials, and geometry to enhance realism and meet your specifications.
-
-The primary issue with the lighting is creating a balance where diffuse surfaces like wood aren't "blown out" while metallic surfaces remain bright and reflective. To achieve this, I've lowered the scene's overall exposure while significantly increasing the reflection intensity specifically for the brushed steel material. This creates a greater, more realistic contrast between the two surface types.
-
-Here are the specific updates:
-
-Lighting: The master toneMappingExposure was lowered to 0.7 to prevent the wood from looking washed out.
-
-Brushed Steel Material:
-
-envMapIntensity was increased to 3.0 to make the steel's reflections much brighter.
-
-roughness was decreased to 0.15 to make those reflections sharper and shinier.
-
-Clock Model Scale: The modelScale has been increased by 10% from 3.5 to 3.85.
-
-Border Wall Geometry:
-
-The markerRadius, which defines the clock's size, was increased by 5 units (from 10 to 15) to expand the border.
-
-The borderHeight was increased by 1 unit (from 1.1 to 2.1) to add depth.
-
-Complete Code Listing
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -732,3 +707,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
