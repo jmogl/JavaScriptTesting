@@ -1,8 +1,15 @@
+Yes, that's correct. The entire model uses a single HDR map for all environment reflections: peppermint_powerplant_2_1k.hdr.
+
+Complete Code Listing
+Here is the full listing of ClockSimNewV1.js with all the latest revisions for the material properties.
+
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/3/25
-// MODIFIED: Corrected material properties and animation logic.
+// MODIFIED: Final material and reflection adjustments.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -167,9 +174,16 @@ const brushedSteelMaterial = new THREE.MeshStandardMaterial({
     displacementMap: heightMap,
     displacementScale: 0.05,
     
-    metalness: 1.0,
-    roughness: 0.4,
-    envMapIntensity: 1.5
+    // Set a neutral grey base color to reduce the blue tint from the HDR
+    color: 0xaaaaaa, 
+    
+    metalness: 1.0, 
+    
+    // Lower the roughness to make reflections sharper and shinier
+    roughness: 0.25, 
+    
+    // Increase intensity to make reflections pop
+    envMapIntensity: 2.5 
 });
 
 const rgbeLoader = new RGBELoader();
@@ -700,4 +714,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
