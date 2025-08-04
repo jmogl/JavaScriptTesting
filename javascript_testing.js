@@ -1,8 +1,10 @@
+TTTT
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/3/25
-// MODIFIED: Corrected traversal logic and material loading order.
+// MODIFIED: Corrected material properties and animation logic.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -111,7 +113,7 @@ textureLoader.load(
 
 const wallGeometry = new THREE.PlaneGeometry(1, 1);
 const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-wall.position.z = -4; 
+wall.position.z = -4;
 wall.receiveShadow = true;
 clockUnit.add(wall);
 
@@ -139,6 +141,39 @@ const brassMaterial = new THREE.MeshStandardMaterial({
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 pmremGenerator.compileEquirectangularShader();
 
+// --- Load local PBR textures for Brushed Steel ---
+const pbrTextureLoader = new THREE.TextureLoader();
+
+const baseColorMap = pbrTextureLoader.load('textures/BrushedIron01_2K_BaseColor.png');
+const metallicMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Metallic.png');
+const roughnessMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Roughness.png');
+const normalMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Normal.png');
+const heightMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Height.png');
+
+// Ensure correct color space for the base color texture
+baseColorMap.encoding = THREE.sRGBEncoding;
+
+// Ensure textures repeat correctly and set tiling
+[baseColorMap, metallicMap, roughnessMap, normalMap, heightMap].forEach(map => {
+    map.wrapS = THREE.RepeatWrapping;
+    map.wrapT = THREE.RepeatWrapping;
+    map.repeat.set(2, 2); // Makes the brushed pattern finer
+});
+
+const brushedSteelMaterial = new THREE.MeshStandardMaterial({
+    map: baseColorMap,
+    metalnessMap: metallicMap,
+    roughnessMap: roughnessMap,
+    normalMap: normalMap,
+    
+    displacementMap: heightMap,
+    displacementScale: 0.05,
+    
+    metalness: 1.0,
+    roughness: 0.4,
+    envMapIntensity: 1.5
+});
+
 const rgbeLoader = new RGBELoader();
 rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint_powerplant_2_1k.hdr', (texture) => {
     const envMap = pmremGenerator.fromEquirectangular(texture).texture;
@@ -147,6 +182,7 @@ rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint
     brightSilverMaterial.envMap = envMap;
     secondMaterial.envMap = envMap;
     brassMaterial.envMap = envMap;
+    brushedSteelMaterial.envMap = envMap;
     
     texture.dispose();
     pmremGenerator.dispose();
@@ -390,41 +426,6 @@ function setupTiltControls() {
 const tickSound = new Audio('https://cdn.jsdelivr.net/gh/freebiesupply/sounds/tick.mp3');
 tickSound.volume = 0.2;
 
-// --- Load local PBR textures for Brushed Steel ---
-const pbrTextureLoader = new THREE.TextureLoader();
-
-const baseColorMap = pbrTextureLoader.load('textures/BrushedIron01_2K_BaseColor.png');
-const metallicMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Metallic.png');
-const roughnessMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Roughness.png');
-const normalMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Normal.png');
-const heightMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Height.png');
-
-// Ensure correct color space for the base color texture
-baseColorMap.encoding = THREE.sRGBEncoding;
-
-// Ensure textures repeat correctly and set tiling
-[baseColorMap, metallicMap, roughnessMap, normalMap, heightMap].forEach(map => {
-    map.wrapS = THREE.RepeatWrapping;
-    map.wrapT = THREE.RepeatWrapping;
-    map.repeat.set(2, 2); // Makes the brushed pattern finer
-});
-
-const brushedSteelMaterial = new THREE.MeshStandardMaterial({
-    map: baseColorMap,
-    metalnessMap: metallicMap,
-    roughnessMap: roughnessMap,
-    normalMap: normalMap,
-    
-    displacementMap: heightMap,
-    displacementScale: 0.05,
-    
-    metalness: 1.0, 
-    
-    // Lower this value to make the material shinier
-    roughness: 0.4, 
-});
-
-
 // --- Load the ETA6497 model ---
 const mtlLoader = new MTLLoader();
 mtlLoader.setCrossOrigin('');
@@ -637,7 +638,8 @@ function animate() {
     centerWheel.rotation.z = (minutes / 60) * Math.PI * 2;
   }
   if (thirdWheel) {
-    thirdWheel.rotation.z = -((minutes % 7.5) / 7.5) * Math.PI * 2;
+    // Rotates counter-clockwise
+    thirdWheel.rotation.z = ((minutes % 7.5) / 7.5) * Math.PI * 2;
   }
   if (palletFork) {
     const time = now.getTime() / 1000;
@@ -700,4 +702,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
