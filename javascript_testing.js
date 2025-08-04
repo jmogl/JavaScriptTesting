@@ -1,8 +1,33 @@
+Based on your feedback, I've made several adjustments to the lighting, materials, and geometry to enhance realism and meet your specifications.
+
+The primary issue with the lighting is creating a balance where diffuse surfaces like wood aren't "blown out" while metallic surfaces remain bright and reflective. To achieve this, I've lowered the scene's overall exposure while significantly increasing the reflection intensity specifically for the brushed steel material. This creates a greater, more realistic contrast between the two surface types.
+
+Here are the specific updates:
+
+Lighting: The master toneMappingExposure was lowered to 0.7 to prevent the wood from looking washed out.
+
+Brushed Steel Material:
+
+envMapIntensity was increased to 3.0 to make the steel's reflections much brighter.
+
+roughness was decreased to 0.15 to make those reflections sharper and shinier.
+
+Clock Model Scale: The modelScale has been increased by 10% from 3.5 to 3.85.
+
+Border Wall Geometry:
+
+The markerRadius, which defines the clock's size, was increased by 5 units (from 10 to 15) to expand the border.
+
+The borderHeight was increased by 1 unit (from 1.1 to 2.1) to add depth.
+
+Complete Code Listing
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/3/25
-// MODIFIED: Switched to neutral HDR and re-balanced lighting.
+// MODIFIED: Final lighting, material, and geometry adjustments.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -17,7 +42,7 @@ let digitalDate, digitalClock;
 // --- 3D Model Variables ---
 let clockModel;
 let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
-let modelScale = 3.5;
+let modelScale = 3.85; // Increased by 10%
 let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring;
 const balanceWheelSpeedMultiplier = 1.0;
 
@@ -53,7 +78,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.8;
+renderer.toneMappingExposure = 0.7; // Lowered to prevent blown-out diffuse surfaces
 document.body.appendChild(renderer.domElement);
 
 // --- Lighting ---
@@ -165,10 +190,8 @@ const brushedSteelMaterial = new THREE.MeshStandardMaterial({
     displacementScale: 0.05,
     
     metalness: 1.0,
-    roughness: 0.25,
-    
-    // Adjust for the new HDR's brightness
-    envMapIntensity: 1.5 
+    roughness: 0.15, // Lowered for sharper reflections
+    envMapIntensity: 3.0 // Increased to make reflections brighter
 });
 
 const rgbeLoader = new RGBELoader();
@@ -197,11 +220,11 @@ rgbeLoader.load(
 
 
 // --- Tick Marks ---
-const markerRadius = 10.0;
+const markerRadius = 15.0; // Increased radius
 
 // --- Border Wall ---
 const borderThickness = 1.0;
-const borderHeight    = 1.1;
+const borderHeight    = 2.1; // Increased depth
 const outerRadius     = markerRadius + borderThickness;
 const innerRadius     = markerRadius;
 
@@ -287,7 +310,7 @@ for (let i = 0; i < 60; i++) {
 
 const fontLoader = new FontLoader();
 const fontURL = 'https://cdn.jsdelivr.net/npm/three@0.166.0/examples/fonts/helvetiker_regular.typeface.json';
-const numeralRadius = 8.075;
+const numeralRadius = markerRadius - 2; // Adjusted to be relative to markerRadius
 
 fontLoader.load(fontURL, (font) => {
     const numeralSize = 1.5;
@@ -319,7 +342,7 @@ fontLoader.load(fontURL, (font) => {
 
 // --- Clock Hands ---
 const hourHandShape = new THREE.Shape();
-const hourHandLength = 4.0;
+const hourHandLength = markerRadius * 0.4; // Scaled to new radius
 const hourHandWidth = 0.6;
 const hourHandDepth = 0.4;
 hourHandShape.moveTo(-hourHandWidth / 2, 0);
@@ -338,7 +361,7 @@ hourHand.castShadow = true;
 watchGroup.add(hourHand);
 
 const minuteHandShape = new THREE.Shape();
-const minuteHandLength = 6.0;
+const minuteHandLength = markerRadius * 0.6; // Scaled to new radius
 const minuteHandWidth = 0.4;
 const minuteHandDepth = 0.3;
 minuteHandShape.moveTo(-minuteHandWidth / 2, 0);
@@ -356,8 +379,8 @@ minuteHand.position.z = -2.03 + zShift;
 minuteHand.castShadow = true;
 watchGroup.add(minuteHand);
 
-const secondGeometry = new THREE.BoxGeometry(0.1, 7.0, 0.3);
-secondGeometry.translate(0, 3.5, 0);
+const secondGeometry = new THREE.BoxGeometry(0.1, markerRadius * 0.7, 0.3); // Scaled to new radius
+secondGeometry.translate(0, (markerRadius * 0.7) / 2, 0);
 const secondHand = new THREE.Mesh(secondGeometry, secondMaterial);
 secondHand.position.z = -2.02 + zShift;
 secondHand.castShadow = true;
@@ -366,7 +389,7 @@ watchGroup.add(secondHand);
 
 // --- Utility Functions ---
 function updateCameraPosition() {
-    const clockSize = 22;
+    const clockSize = (markerRadius + borderThickness) * 2.2; // Adjusted for new radius
     const fovInRadians = THREE.MathUtils.degToRad(camera.fov);
 
     const distanceForHeight = (clockSize / 2) / Math.tan(fovInRadians / 2);
@@ -570,11 +593,11 @@ mtlLoader.load(
             oldFace.geometry.dispose();
         }
         
-        const holeRadius = 6.25;
-        const outerRadius = markerRadius + borderThickness / 2;
+        const holeRadius = markerRadius - 0.75; // Scaled to new radius
+        const outerFaceRadius = markerRadius + borderThickness / 2;
         const segments = 64;
         const shape = new THREE.Shape();
-        shape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
+        shape.absarc(0, 0, outerFaceRadius, 0, Math.PI * 2, false);
         const hole = new THREE.Path();
         hole.absarc(0, 0, holeRadius, 0, Math.PI * 2, true);
         shape.holes.push(hole);
@@ -709,4 +732,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
