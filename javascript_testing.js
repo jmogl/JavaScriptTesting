@@ -1,8 +1,37 @@
+ttt
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/3/25
 // MODIFIED: Switched to neutral HDR and re-balanced lighting.
+
+/*
+Great! That confirms the issue was the light balance between the ambient HDR environment and the direct light source.
+
+Lowering the envMapIntensity reduces the "fill" light in the scene, which allows the shadows cast by your DirectionalLight to become visible again.
+
+Fine-Tuning Your Shadows
+Now that the shadows are visible, you can artistically control their appearance by adjusting the DirectionalLight:
+
+Shadow Darkness: Change the intensity of the DirectionalLight. A higher intensity will create brighter highlights and darker, more defined shadows.
+
+JavaScript
+
+// javascript_testing.js
+const dirLight = new THREE.DirectionalLight(0xffffff, 4.0); // Try values between 2.0 and 5.0
+Shadow Direction & Length: Change the position of the DirectionalLight. The light points from its position towards the center of the scene (0,0,0). Changing its position will change the angle and length of the shadows, just like the sun moving across the sky.
+
+JavaScript
+
+// For longer, afternoon-style shadows, lower the Y value:
+dirLight.position.set(10, 5, 36);
+
+// For shadows coming from the left, change the X value:
+dirLight.position.set(-20, 15, 36);
+Balancing these light sources is key to achieving a realistic look in 3D rendering.
+*/
+
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -59,7 +88,7 @@ document.body.appendChild(renderer.domElement);
 // --- Lighting ---
 // const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
 // To something much stronger:
-const dirLight = new THREE.DirectionalLight(0xffffff, 3.0); // Try a value between 2.0 and 5.0
+const dirLight = new THREE.DirectionalLight(0xffffff, 4.0); // Try a value between 2.0 and 5.0
 
 dirLight.castShadow = true;
 dirLight.position.set(10, 15, 36);
@@ -168,7 +197,7 @@ const brushedSteelMaterial = new THREE.MeshStandardMaterial({
     roughness: 0.4, // MODIFIED: Adjusted for a cleaner brushed look
     
     //envMapIntensity: 0.9
-	envMapIntensity: 0.2 // Default is 1, try reducing it
+	envMapIntensity: 0.1 // Default is 1, try reducing it
 });
 
 const rgbeLoader = new RGBELoader();
