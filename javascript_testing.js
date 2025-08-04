@@ -1,3 +1,5 @@
+tttt
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -53,11 +55,11 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.8;
+renderer.toneMappingExposure = 0.5; // MODIFIED
 document.body.appendChild(renderer.domElement);
 
 // --- Lighting ---
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.5); // MODIFIED
 dirLight.castShadow = true;
 dirLight.position.set(10, 15, 36);
 dirLight.shadow.mapSize.set(2048, 2048);
@@ -81,8 +83,8 @@ const zShift = 1.0;
 // --- Background Plane (Wood) ---
 const wallMaterial = new THREE.MeshStandardMaterial({
   color: 0xffffff,
-  metalness: 0.1,
-  roughness: 0.7
+  metalness: 0.0, // MODIFIED
+  roughness: 0.8  // MODIFIED
 });
 
 const textureLoader = new THREE.TextureLoader();
@@ -126,9 +128,8 @@ const secondMaterial = new THREE.MeshStandardMaterial({
 const brassMaterial = new THREE.MeshStandardMaterial({
     color: 0xED9149,
     metalness: 0.8,
-    roughness: 0.2,
-    emissive: 0xED9149,
-    emissiveIntensity: 0.5
+    roughness: 0.2
+    // emissive and emissiveIntensity removed
 });
 
 
@@ -167,8 +168,7 @@ const brushedSteelMaterial = new THREE.MeshStandardMaterial({
     metalness: 1.0,
     roughness: 0.25,
     
-    // Adjust for the new HDR's brightness
-    envMapIntensity: 1.5 
+    envMapIntensity: 0.9 // MODIFIED
 });
 
 const rgbeLoader = new RGBELoader();
@@ -709,6 +709,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
-
-
