@@ -3,8 +3,7 @@
 // MIT License. - Jeff Miller / Gemini
 // 8/4/25
 //
-// This file is a complete reset focusing on a clean, correct PBR workflow.
-// LATEST: Fixed a ReferenceError bug caused by an out-of-scope LoadingManager.
+// LATEST: Added a diagnostic test to check for missing UV coordinates in the OBJ model.
 
 import * as THREE from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
@@ -36,7 +35,6 @@ function init() {
     const loadingManager = new THREE.LoadingManager();
 
     // --- Asset Loaders ---
-    // Pass the manager to each loader.
     const rgbeLoader = new RGBELoader(loadingManager);
     const textureLoader = new THREE.TextureLoader(loadingManager).setPath('textures/');
     const objLoader = new OBJLoader(loadingManager).setPath('textures/');
@@ -121,13 +119,28 @@ function init() {
             transmission: 0.5
         });
 
+        // --- DIAGNOSTIC TEST SPHERE ---
+        // Create a test sphere with guaranteed UVs and apply the PBR material.
+        console.log("Creating diagnostic test sphere with brushedSteelMaterial...");
+        const testSphereGeo = new THREE.SphereGeometry(4, 64, 64);
+        const testSphere = new THREE.Mesh(testSphereGeo, brushedSteelMaterial);
+        testSphere.position.set(12, 0, 0); // Position it off to the side for comparison
+        testSphere.castShadow = true;
+        testSphere.receiveShadow = true;
+        scene.add(testSphere);
+
         // --- Model Processing ---
-        // The `clockModel` variable is ready to be used here.
         clockModel.scale.set(3.5, 3.5, 3.5);
         clockModel.position.set(0, 0, 0);
 
         clockModel.traverse((child) => {
             if (child.isMesh) {
+                // --- DIAGNOSTIC CHECK ---
+                // Check if the geometry attribute for UVs exists.
+                if (!child.geometry.attributes.uv) {
+                    console.warn(`WARNING: Mesh "${child.name}" is missing UV coordinates! Textures will not render correctly on this part.`);
+                }
+                
                 child.castShadow = true;
                 child.receiveShadow = true;
 
@@ -140,13 +153,10 @@ function init() {
         });
         
         scene.add(clockModel);
-
-        // Start the animation loop only after everything is built.
         animate();
     };
 
     // --- Start Loading The Model ---
-    // The objLoader will store its result in the global `clockModel` variable.
     objLoader.load('ETA6497-1_OBJ.obj', (object) => {
         clockModel = object;
     });
@@ -163,18 +173,10 @@ function onWindowResize() {
 }
 
 // --- Animation Loop ---
-// This function is now correctly called only by the LoadingManager
 function animate() {
     requestAnimationFrame(animate);
-
-    if (clockModel) {
-        clockModel.rotation.y += 0.002;
-    }
-
     renderer.render(scene, camera);
 }
 
-
 // --- Run ---
 init();
-
