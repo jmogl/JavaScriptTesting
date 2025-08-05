@@ -1,18 +1,3 @@
-Of course. Thank you for providing the exact list of files. That immediately clarifies the issue. My apologies for the typo and for including a texture that wasn't in your specific download package.
-
-You have encountered two separate issues:
-
-A Typo: I incorrectly named the metallic map Metalness.png when it should have been Metallic.png.
-
-Missing AO Map: The AmbientOcclusion.png map is not included in the standard Metalness/Roughness download from that source. The Height.png map is for displacement, which we are not currently using, but the AO map is simply not present.
-
-The fix is straightforward: we will correct the filename for the metallic map and completely remove the code that attempts to load and use the non-existent Ambient Occlusion (AO) map. Since the AO map was the only one that required the second set of UVs (uv2), we can remove that code as well.
-
-Here is the fully corrected code listing.
-
-Updated and Corrected Code Listing
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -716,3 +701,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
