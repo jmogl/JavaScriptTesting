@@ -66,7 +66,7 @@ rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
 
 // MODIFICATION: Adjusted light position and intensity for softer, shorter shadows.
 const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
-dirLight.position.set(5, 40, 5);
+dirLight.position.set(10, 30, 10);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
@@ -464,6 +464,7 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
 
 
 
