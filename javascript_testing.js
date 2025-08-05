@@ -1,7 +1,68 @@
+Of course. Thank you for the detailed screenshots and excellent description of the issues. This is exactly the information needed to solve these final platform-specific and fine-tuning problems.
+
+Here is a breakdown of each issue and the corresponding fix.
+
+1. Blue Jittering Artifact on Mobile
+This is a classic rendering issue known as Z-Fighting. It happens when two surfaces are extremely close together. Mobile GPUs sometimes use a lower level of depth precision than desktop GPUs, so they struggle to decide which surface is in front. On each frame, the decision might change, causing the pixels of the blue border wall behind the clock face to flicker through, creating the "jittering" effect you see.
+
+Solution: We can fix this by introducing a tiny, visually unnoticeable separation between the blue border and the clock face. We will push the blue border slightly further back.
+
+In the code for the borderMesh, change its z position:
+
+JavaScript
+
+// Change this line:
+borderMesh.position.z = -4 + zShift;
+
+// To this (pushing it back by a small amount):
+borderMesh.position.z = -4.05 + zShift;
+2. Scaling on Mobile Devices
+The previous function for positioning the camera did not correctly account for both portrait and landscape orientations, causing the clock to be clipped.
+
+Solution: I have rewritten the updateCameraPosition function to be more robust. It now calculates the necessary camera distance to fit the clock's width and the distance to fit its height, and then uses the larger of the two. This guarantees the entire clock will be visible regardless of the screen's aspect ratio.
+
+The new function is:
+
+JavaScript
+
+function updateCameraPosition() {
+    const clockSize = 22; // The diameter of the clock to fit in the view
+    const fov = camera.fov * (Math.PI / 180); // FOV in radians
+
+    // Calculate the distance required to fit the clock's height
+    const distanceForHeight = (clockSize / 2) / Math.tan(fov / 2);
+
+    // Calculate the distance required to fit the clock's width
+    const distanceForWidth = (clockSize / 2) / Math.tan(fov / 2) / camera.aspect;
+
+    // Use the greater of the two distances to ensure the clock is always fully visible
+    camera.position.z = Math.max(distanceForHeight, distanceForWidth) + 2; // Add a small buffer
+}
+3. Lighting and Shadow Adjustment
+You asked to raise the light closer to overhead to make the shadows less pronounced.
+
+Solution: I have adjusted the DirectionalLight's position to be more directly above the clock and slightly reduced its intensity. This will shorten the shadows and make them a bit softer.
+
+The new lighting definition is:
+
+JavaScript
+
+// Change this line:
+const dirLight = new THREE.DirectionalLight(0xffffff, 3.0);
+dirLight.position.set(10, 20, 10);
+
+// To this:
+const dirLight = new THREE.DirectionalLight(0xffffff, 2.5); // Slightly softer
+dirLight.position.set(5, 20, 5); // More directly overhead
+I have integrated all of these changes into a new, complete code listing for you.
+
+Full Code Listing with All Fixes
+JavaScript
+
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
-
+// MODIFIED: Fixed mobile z-fighting, scaling, and adjusted lighting.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -59,14 +120,14 @@ document.body.appendChild(renderer.domElement);
 // --- PBR Correct Lighting Setup ---
 const rgbeLoader = new RGBELoader();
 rgbeLoader.setPath('textures/');
-// MODIFICATION: Corrected HDRI filename
 rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
     texture.mapping = THREE.EquirectangularReflectionMapping;
     scene.environment = texture;
 });
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 3.0);
-dirLight.position.set(10, 20, 10);
+// MODIFICATION: Adjusted light position and intensity for softer, shorter shadows.
+const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
+dirLight.position.set(5, 20, 5);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
@@ -134,7 +195,7 @@ const brushedSteelMaterial = new THREE.MeshStandardMaterial({
     normalMap: steelNormal
 });
 
-// 3. Original Materials (will reflect the new environment)
+// 3. Original Materials
 const silverMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff, metalness: 1.0, roughness: 0.1
 });
@@ -147,14 +208,12 @@ const secondMaterial = new THREE.MeshStandardMaterial({
 const brassMaterial = new THREE.MeshStandardMaterial({
     color: 0xED9149, metalness: 0.8, roughness: 0.2
 });
-// A placeholder for other parts of the mechanism
 const placeholderMaterial = new THREE.MeshPhysicalMaterial({
     color: 0x555555, roughness: 0.5, metalness: 1.0, envMapIntensity: 0.5
 });
 
 
-// Apply the new HDRI environment map to all relevant materials
-// MODIFICATION: Corrected HDRI filename
+// Apply the HDRI environment map to all relevant materials
 rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
     const envMap = new THREE.PMREMGenerator(renderer).fromEquirectangular(texture).texture;
     scene.environment = envMap; 
@@ -168,7 +227,7 @@ rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
 });
 
 
-// --- Tick Marks, Numerals, Hands, etc. (Original Code) ---
+// --- Tick Marks, Numerals, Hands, etc. ---
 const markerRadius = 10.0;
 const borderThickness = 1.0;
 const borderHeight = 1.2;
@@ -186,7 +245,8 @@ const borderMaterial = new THREE.MeshStandardMaterial({ color: 0x000040 });
 const borderMesh = new THREE.Mesh(borderGeom, borderMaterial);
 borderMesh.castShadow = true;
 borderMesh.receiveShadow = true;
-borderMesh.position.z = -4 + zShift;
+// MODIFICATION: Pushed border back slightly to prevent Z-fighting on mobile.
+borderMesh.position.z = -4.05 + zShift;
 clockUnit.add(borderMesh);
 
 
@@ -257,7 +317,7 @@ secondHand.castShadow = true;
 watchGroup.add(secondHand);
 
 
-// --- NEW: Refactored Model Loader ---
+// --- Refactored Model Loader ---
 const objLoader = new OBJLoader().setPath('textures/');
 objLoader.load('ETA6497-1_OBJ.obj', (object) => {
     clockModel = object;
@@ -271,19 +331,16 @@ objLoader.load('ETA6497-1_OBJ.obj', (object) => {
             child.castShadow = true;
             child.receiveShadow = true;
             
-            // Assign materials programmatically
             switch (child.name) {
                 case 'BarrelBridge_Body':
                 case 'TrainWheelBridgeBody':
                     child.material = brushedSteelMaterial;
                     break;
-                
                 case 'SecondsWheel': case 'Minute_Wheel_Body': case 'HourWheel_Body':
                 case 'EscapeWheel': case 'CenterWheelBody': case 'ThirdWheel':
                 case 'BalanceWheelBody':
                     child.material = brassMaterial;
                     break;
-
                 case 'MovementBarrel2_Body':
                 case 'PalletBridgeBody':
                     child.material = placeholderMaterial.clone();
@@ -291,20 +348,15 @@ objLoader.load('ETA6497-1_OBJ.obj', (object) => {
                     child.material.opacity = 0.5;
                     child.castShadow = false;
                     break;
-
                 default:
-                    child.material = silverMaterial.clone(); // Default to silver for other parts
+                    child.material = silverMaterial.clone();
                     break;
             }
             collectedParts[child.name] = child;
         }
     });
 
-    // --- Restore Pivot and Animation Logic ---
-    const partsToPivot = [
-        'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
-        'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
-    ];
+    const partsToPivot = [ 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody', 'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody' ];
     partsToPivot.forEach(name => {
         const part = collectedParts[name];
         if (part) {
@@ -357,12 +409,19 @@ objLoader.load('ETA6497-1_OBJ.obj', (object) => {
 });
 
 
-// --- Utility and Control Functions (Original Code) ---
+// --- MODIFICATION: Rewritten function for robust scaling on all devices ---
 function updateCameraPosition() {
-    const clockSize = 22;
-    const fovInRadians = THREE.MathUtils.degToRad(camera.fov);
-    const distance = (clockSize / 2) / Math.tan(fovInRadians / 2) / (1/camera.aspect > 1 ? 1 : 1/camera.aspect);
-    camera.position.z = distance;
+    const clockSize = 22; // The diameter of the clock to fit in the view
+    const fov = camera.fov * (Math.PI / 180); // FOV in radians
+
+    // Calculate the distance required to fit the clock's height
+    const distanceForHeight = (clockSize / 2) / Math.tan(fov / 2);
+
+    // Calculate the distance required to fit the clock's width
+    const distanceForWidth = (clockSize / 2) / Math.tan(fov / 2) / camera.aspect;
+
+    // Use the greater of the two distances to ensure the clock is always fully visible
+    camera.position.z = Math.max(distanceForHeight, distanceForWidth) + 2; // Add a small buffer
 }
 
 function updateBackgroundSize() {
@@ -466,4 +525,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
