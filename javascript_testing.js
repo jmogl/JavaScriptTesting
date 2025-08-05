@@ -1,3 +1,5 @@
+ttttt
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -155,10 +157,14 @@ const brushedSteelMaterial = new THREE.MeshStandardMaterial({
     metalnessMap: metallicMap,
     roughnessMap: roughnessMap,
     normalMap: normalMap,
-    // MODIFICATION: Reduce envMapIntensity to prevent washed-out, blown-out reflections.
+    
+    // MODIFICATION: Add a roughness multiplier.
+    // This scales the values from the roughnessMap, making the surface less mirror-like
+    // and preventing the "washed-out" blowout. Try values between 2.0 and 3.0.
+    roughness: 2.5,
+
     envMapIntensity: 0.5
 });
-
 
 // Environment Map is applied selectively
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
@@ -702,4 +708,5 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
 
