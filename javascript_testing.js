@@ -1,35 +1,10 @@
+RRRRR
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
-// MODIFIED: Increased lighting contrast, reduced material roughness, and fine-tuned shadow bias.
-
-/*
-Great! That confirms the issue was the light balance between the ambient HDR environment and the direct light source.
-
-Lowering the envMapIntensity reduces the "fill" light in the scene, which allows the shadows cast by your DirectionalLight to become visible again.
-
-Fine-Tuning Your Shadows
-Now that the shadows are visible, you can artistically control their appearance by adjusting the DirectionalLight:
-
-Shadow Darkness: Change the intensity of the DirectionalLight. A higher intensity will create brighter highlights and darker, more defined shadows.
-
-JavaScript
-
-// javascript_testing.js
-const dirLight = new THREE.DirectionalLight(0xffffff, 4.0); // Try values between 2.0 and 5.0
-Shadow Direction & Length: Change the position of the DirectionalLight. The light points from its position towards the center of the scene (0,0,0). Changing its position will change the angle and length of the shadows, just like the sun moving across the sky.
-
-JavaScript
-
-// For longer, afternoon-style shadows, lower the Y value:
-dirLight.position.set(10, 5, 36);
-
-// For shadows coming from the left, change the X value:
-dirLight.position.set(-20, 15, 36);
-Balancing these light sources is key to achieving a realistic look in 3D rendering.
-*/
-
+// MODIFIED: Implemented correct PBR workflow for Brushed Iron texture.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -80,13 +55,13 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-// MODIFICATION: Reduce exposure to compensate for stronger light
-renderer.toneMappingExposure = 0.4;
+// MODIFICATION: Revert exposure to a neutral baseline
+renderer.toneMappingExposure = 0.8;
 document.body.appendChild(renderer.domElement);
 
 // --- Lighting ---
-// MODIFICATION: Increase intensity for higher contrast and more pronounced shadows
-const dirLight = new THREE.DirectionalLight(0xffffff, 10.0); 
+// MODIFICATION: Revert light intensity to a neutral baseline
+const dirLight = new THREE.DirectionalLight(0xffffff, 5.0); 
 
 dirLight.castShadow = true;
 dirLight.position.set(10, 15, 36);
@@ -100,15 +75,10 @@ dirLight.shadow.camera.bottom = -shadowCamSize;
 dirLight.shadow.camera.near = 10;
 dirLight.shadow.camera.far = 60;
 
-// MODIFICATION: Adjust bias again for small gaps
 dirLight.shadow.bias = -0.0005;
 dirLight.shadow.normalBias = 0.01;
 
 scene.add(dirLight);
-
-// MODIFICATION: Add a helper to visualize the shadow camera for debugging
-const shadowHelper = new THREE.CameraHelper(dirLight.shadow.camera);
-scene.add(shadowHelper);
 
 
 // --- Create a master "clockUnit" group ---
@@ -171,43 +141,39 @@ const brassMaterial = new THREE.MeshStandardMaterial({
     roughness: 0.2
 });
 
+// --- MODIFICATION: Correct PBR Texture Loading ---
+const pbrTextureLoader = new THREE.TextureLoader();
+// NOTE: Using "BrushedIron02" as specified.
+const baseColorMap = pbrTextureLoader.load('textures/BrushedIron02_2K_BaseColor.png');
+const metallicMap = pbrTextureLoader.load('textures/BrushedIron02_2K_Metalness.png');
+const roughnessMap = pbrTextureLoader.load('textures/BrushedIron02_2K_Roughness.png');
+const normalMap = pbrTextureLoader.load('textures/BrushedIron02_2K_Normal.png');
+// Load the Ambient Occlusion (AO) map for added realism
+const aoMap = pbrTextureLoader.load('textures/BrushedIron02_2K_AmbientOcclusion.png');
+
+// Color textures must have sRGBEncoding
+baseColorMap.encoding = THREE.sRGBEncoding;
+
+// --- MODIFICATION: Correct PBR Material Definition ---
+const brushedSteelMaterial = new THREE.MeshStandardMaterial({
+    // Use the maps to define the material properties
+    map: baseColorMap,
+    metalnessMap: metallicMap,
+    roughnessMap: roughnessMap,
+    normalMap: normalMap,
+    // Add the aoMap for contact shadows
+    aoMap: aoMap,
+    aoMapIntensity: 1.0,
+
+    // Do NOT include .color, .metalness, or .roughness here,
+    // as they will override the maps. Let the maps do the work.
+    envMapIntensity: 1.0
+});
+
 
 // Environment Map is applied selectively
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 pmremGenerator.compileEquirectangularShader();
-
-// --- Load local PBR textures for Brushed Steel ---
-const pbrTextureLoader = new THREE.TextureLoader();
-
-const baseColorMap = pbrTextureLoader.load('textures/BrushedIron01_2K_BaseColor.png');
-const metallicMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Metallic.png');
-const roughnessMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Roughness.png');
-const normalMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Normal.png');
-const heightMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Height.png');
-
-baseColorMap.encoding = THREE.sRGBEncoding;
-
-[baseColorMap, metallicMap, roughnessMap, normalMap, heightMap].forEach(map => {
-    map.wrapS = THREE.RepeatWrapping;
-    map.wrapT = THREE.RepeatWrapping;
-    map.repeat.set(2, 2);
-});
-
-const brushedSteelMaterial = new THREE.MeshStandardMaterial({
-    map: baseColorMap, 
-    metalnessMap: metallicMap,
-    roughnessMap: roughnessMap,
-    normalMap: normalMap,
-    
-    displacementMap: heightMap,
-    displacementScale: 0.05,
-    
-    metalness: 1.0,
-    // MODIFICATION: Lower roughness for cleaner, sharper reflections
-    roughness: 0.2,
-    
-    envMapIntensity: 0.9 
-});
 
 const rgbeLoader = new RGBELoader();
 rgbeLoader.load(
@@ -216,6 +182,7 @@ rgbeLoader.load(
         const envMap = pmremGenerator.fromEquirectangular(texture).texture;
         scene.environment = envMap;
 
+        // Apply environment map to all metallic surfaces
         silverMaterial.envMap = envMap;
         brightSilverMaterial.envMap = envMap;
         secondMaterial.envMap = envMap;
@@ -492,6 +459,11 @@ mtlLoader.load(
             if (child.isMesh) {
                 child.receiveShadow = true;
                 child.castShadow = true;
+                
+                // For aoMap to work, the geometry needs a second set of UVs.
+                // The OBJ loader does not create these by default. We add them here.
+                child.geometry.setAttribute('uv2', new THREE.BufferAttribute(child.geometry.attributes.uv.array, 2));
+
                 collectedParts[child.name] = child;
             }
         });
@@ -746,4 +718,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
