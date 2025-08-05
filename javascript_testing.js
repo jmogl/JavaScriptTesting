@@ -1,8 +1,10 @@
+TTTT
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
-// MODIFIED: Corrected PBR texture filenames and removed non-existent AO map.
+// MODIFIED: Balanced lighting contrast and PBR material reflection intensity.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -53,11 +55,13 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.8;
+// MODIFICATION: Set exposure to a moderate value to balance the new light intensity.
+renderer.toneMappingExposure = 0.6;
 document.body.appendChild(renderer.domElement);
 
 // --- Lighting ---
-const dirLight = new THREE.DirectionalLight(0xffffff, 5.0); 
+// MODIFICATION: Set light intensity to a moderate value for shadow contrast.
+const dirLight = new THREE.DirectionalLight(0xffffff, 10.0); 
 
 dirLight.castShadow = true;
 dirLight.position.set(10, 15, 36);
@@ -140,7 +144,6 @@ const brassMaterial = new THREE.MeshStandardMaterial({
 // --- PBR Texture Loading ---
 const pbrTextureLoader = new THREE.TextureLoader();
 const baseColorMap = pbrTextureLoader.load('textures/BrushedIron02_2K_BaseColor.png');
-// MODIFICATION: Corrected filename from Metalness to Metallic
 const metallicMap = pbrTextureLoader.load('textures/BrushedIron02_2K_Metallic.png');
 const roughnessMap = pbrTextureLoader.load('textures/BrushedIron02_2K_Roughness.png');
 const normalMap = pbrTextureLoader.load('textures/BrushedIron02_2K_Normal.png');
@@ -154,8 +157,8 @@ const brushedSteelMaterial = new THREE.MeshStandardMaterial({
     metalnessMap: metallicMap,
     roughnessMap: roughnessMap,
     normalMap: normalMap,
-    // MODIFICATION: Removed aoMap properties as the file is not available
-    envMapIntensity: 1.0
+    // MODIFICATION: Reduce envMapIntensity to prevent washed-out, blown-out reflections.
+    envMapIntensity: 0.5
 });
 
 
@@ -548,7 +551,7 @@ mtlLoader.load(
             }
             palletFork = pivot;
         } else {
-            if (!palletForkBodyMesh) console.error("Could not find 'PalletForkBody' mesh in the model.");
+            if (!palletforkBodyMesh) console.error("Could not find 'PalletForkBody' mesh in the model.");
             if (!palletJewelBodyMesh) console.error("Could not find 'Plate_Jewel_Body' mesh in the model.");
         }
 
@@ -701,4 +704,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
