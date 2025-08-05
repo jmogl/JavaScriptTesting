@@ -1,8 +1,10 @@
+tttt
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
-// MODIFIED: Balanced lighting contrast and PBR material reflection intensity.
+// MODIFIED: Refactored model loading to remove MTL dependency and fix PBR material assignment.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -53,13 +55,11 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-// MODIFICATION: Set exposure to a moderate value to balance the new light intensity.
-renderer.toneMappingExposure = 0.6;
+renderer.toneMappingExposure = 0.7;
 document.body.appendChild(renderer.domElement);
 
 // --- Lighting ---
-// MODIFICATION: Set light intensity to a moderate value for shadow contrast.
-const dirLight = new THREE.DirectionalLight(0xffffff, 10.0); 
+const dirLight = new THREE.DirectionalLight(0xffffff, 8.0); 
 
 dirLight.castShadow = true;
 dirLight.position.set(10, 15, 36);
@@ -123,7 +123,24 @@ wall.receiveShadow = true;
 clockUnit.add(wall);
 
 
-// --- Metallic Materials ---
+// --- Define All Materials Programmatically ---
+const pbrTextureLoader = new THREE.TextureLoader();
+const baseColorMap = pbrTextureLoader.load('textures/BrushedIron02_2K_BaseColor.png');
+const metallicMap = pbrTextureLoader.load('textures/BrushedIron02_2K_Metallic.png');
+const roughnessMap = pbrTextureLoader.load('textures/BrushedIron02_2K_Roughness.png');
+const normalMap = pbrTextureLoader.load('textures/BrushedIron02_2K_Normal.png');
+baseColorMap.encoding = THREE.sRGBEncoding;
+
+const brushedSteelMaterial = new THREE.MeshStandardMaterial({
+    map: baseColorMap,
+    metalnessMap: metallicMap,
+    roughnessMap: roughnessMap,
+    normalMap: normalMap,
+    // Add a roughness multiplier to soften the mirror-like reflections.
+    roughness: 2.5,
+    envMapIntensity: 0.8
+});
+
 const silverMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff, metalness: 1.0, roughness: 0.1
 });
@@ -138,33 +155,11 @@ const brassMaterial = new THREE.MeshStandardMaterial({
     metalness: 0.8,
     roughness: 0.2
 });
+// A default material for parts we don't explicitly assign
+const defaultCaseMaterial = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.9, roughness: 0.4 });
 
-// --- PBR Texture Loading ---
-const pbrTextureLoader = new THREE.TextureLoader();
-const baseColorMap = pbrTextureLoader.load('textures/BrushedIron02_2K_BaseColor.png');
-const metallicMap = pbrTextureLoader.load('textures/BrushedIron02_2K_Metallic.png');
-const roughnessMap = pbrTextureLoader.load('textures/BrushedIron02_2K_Roughness.png');
-const normalMap = pbrTextureLoader.load('textures/BrushedIron02_2K_Normal.png');
 
-// Color textures must have sRGBEncoding
-baseColorMap.encoding = THREE.sRGBEncoding;
-
-// --- PBR Material Definition ---
-const brushedSteelMaterial = new THREE.MeshStandardMaterial({
-    map: baseColorMap,
-    metalnessMap: metallicMap,
-    roughnessMap: roughnessMap,
-    normalMap: normalMap,
-    
-    // MODIFICATION: Add a roughness multiplier.
-    // This scales the values from the roughnessMap, making the surface less mirror-like
-    // and preventing the "washed-out" blowout. Try values between 2.0 and 3.0.
-    roughness: 2.5,
-
-    envMapIntensity: 0.5
-});
-
-// Environment Map is applied selectively
+// --- Environment Map Setup ---
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 pmremGenerator.compileEquirectangularShader();
 
@@ -176,11 +171,12 @@ rgbeLoader.load(
         scene.environment = envMap;
 
         // Apply environment map to all metallic surfaces
+        brushedSteelMaterial.envMap = envMap;
         silverMaterial.envMap = envMap;
         brightSilverMaterial.envMap = envMap;
         secondMaterial.envMap = envMap;
         brassMaterial.envMap = envMap;
-        brushedSteelMaterial.envMap = envMap;
+        defaultCaseMaterial.envMap = envMap;
         
         texture.dispose();
         pmremGenerator.dispose();
@@ -194,7 +190,6 @@ rgbeLoader.load(
 
 // --- Tick Marks ---
 const markerRadius = 10.0;
-
 // --- Border Wall ---
 const borderThickness = 1.0;
 const borderHeight    = 1.2;
@@ -429,70 +424,63 @@ function setupTiltControls() {
 const tickSound = new Audio('https://cdn.jsdelivr.net/gh/freebiesupply/sounds/tick.mp3');
 tickSound.volume = 0.2;
 
-// --- Load the ETA6497 model ---
-const mtlLoader = new MTLLoader();
-mtlLoader.setCrossOrigin('');
 
-mtlLoader.load(
-  'textures/ETA6497-1_OBJ.mtl',
-  (materials) => {
-    materials.preload();
-    const objLoader = new OBJLoader();
-    objLoader.setMaterials(materials);
-    objLoader.load(
-      'textures/ETA6497-1_OBJ.obj',
-      (object) => {
+// --- REFACTORED MODEL LOADER ---
+// We now load the OBJ directly and assign our own materials, ignoring the MTL file.
+const objLoader = new OBJLoader();
+objLoader.load(
+    'textures/ETA6497-1_OBJ.obj',
+    (object) => {
         clockModel = object;
         clockModel.position.set(0, 0, -4.0 + zShift);
         clockModel.rotation.set(modelRotationX, modelRotationY, modelRotationZ);
         clockModel.scale.set(modelScale, modelScale, modelScale);
 
         const collectedParts = {};
+        
+        // --- Explicit Material Assignment ---
+        // Loop through all meshes in the loaded model
         clockModel.traverse(child => {
             if (child.isMesh) {
-                child.receiveShadow = true;
                 child.castShadow = true;
+                child.receiveShadow = true;
+
+                // Assign materials based on the mesh's name from the OBJ file
+                switch (child.name) {
+                    case 'BarrelBridge_Body':
+                        child.material = brushedSteelMaterial;
+                        break;
+                    
+                    case 'SecondsWheel':
+                    case 'Minute_Wheel_Body':
+                    case 'HourWheel_Body':
+                    case 'EscapeWheel':
+                    case 'CenterWheelBody':
+                    case 'ThirdWheel':
+                    case 'BalanceWheelBody':
+                        child.material = brassMaterial;
+                        break;
+
+                    // Make these parts semi-transparent
+                    case 'MovementBarrel2_Body':
+                    case 'TrainWheelBridgeBody':
+                    case 'PalletBridgeBody':
+                        child.material = defaultCaseMaterial.clone(); // Clone to give it a unique material instance
+                        child.material.transparent = true;
+                        child.material.opacity = 0.5;
+                        child.castShadow = false; // Transparent objects often shouldn't cast shadows
+                        break;
+
+                    // For everything else, assign a default metallic material
+                    default:
+                        child.material = defaultCaseMaterial;
+                        break;
+                }
                 collectedParts[child.name] = child;
             }
         });
-
-        // --- MODIFICATION: Apply transparency to MovementBarrel2_Body ---
-        if (collectedParts['MovementBarrel2_Body']) {
-            const part = collectedParts['MovementBarrel2_Body'];
-            part.material = part.material.clone();
-            part.material.transparent = true;
-            part.material.opacity = 0.5;
-        }
-
-        // --- MODIFICATION: Apply brushed steel texture to BarrelBridge_Body ---
-        if (collectedParts['BarrelBridge_Body']) {
-            collectedParts['BarrelBridge_Body'].material = brushedSteelMaterial;
-        }
-
-
-        // Apply materials
-        const wheelNames = [
-            'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body',
-            'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'BalanceWheelBody'
-        ];
-        wheelNames.forEach(name => {
-            if (collectedParts[name]) {
-                collectedParts[name].material = brassMaterial;
-            }
-        });
-
-        const bridgeNames = ['TrainWheelBridgeBody', 'PalletBridgeBody'];
-        bridgeNames.forEach(name => {
-            if (collectedParts[name]) {
-                const part = collectedParts[name];
-                part.material = part.material.clone();
-                part.material.transparent = true;
-                part.material.opacity = 0.5;
-                part.castShadow = false;
-            }
-        });
         
-        // Create pivots for wheels
+        // --- Create pivots for wheels (this logic remains the same) ---
         const partsToPivot = [
             'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody',
             'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody'
@@ -553,7 +541,7 @@ mtlLoader.load(
             }
             palletFork = pivot;
         } else {
-            if (!palletforkBodyMesh) console.error("Could not find 'PalletForkBody' mesh in the model.");
+            if (!palletForkBodyMesh) console.error("Could not find 'PalletForkBody' mesh in the model.");
             if (!palletJewelBodyMesh) console.error("Could not find 'Plate_Jewel_Body' mesh in the model.");
         }
 
@@ -586,17 +574,11 @@ mtlLoader.load(
         newFace.receiveShadow = true;
         newFace.position.z = -3.4 + zShift;
         clockUnit.add(newFace);
-      },
-      undefined,
-      (err) => {
+    },
+    undefined,
+    (err) => {
         console.error('Failed to load OBJ:', err);
-      }
-    );
-  },
-  undefined,
-  (err) => {
-    console.error('Failed to load MTL:', err);
-  }
+    }
 );
 
 // --- End Model Loader ---
@@ -706,6 +688,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
-
-
