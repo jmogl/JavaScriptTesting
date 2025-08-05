@@ -1,8 +1,10 @@
+TTTT
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
-// MODIFIED: Corrected PBR map usage and tightened shadow camera for precision.
+// MODIFIED: Increased lighting contrast, reduced material roughness, and fine-tuned shadow bias.
 
 /*
 Great! That confirms the issue was the light balance between the ambient HDR environment and the direct light source.
@@ -80,19 +82,18 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.5;
+// MODIFICATION: Reduce exposure to compensate for stronger light
+renderer.toneMappingExposure = 0.4;
 document.body.appendChild(renderer.domElement);
 
 // --- Lighting ---
-const dirLight = new THREE.DirectionalLight(0xffffff, 4.0); 
+// MODIFICATION: Increase intensity for higher contrast and more pronounced shadows
+const dirLight = new THREE.DirectionalLight(0xffffff, 10.0); 
 
 dirLight.castShadow = true;
 dirLight.position.set(10, 15, 36);
 dirLight.shadow.mapSize.set(4096, 4096);
 
-// --- MODIFICATION: TIGHTEN SHADOW CAMERA FRUSTUM ---
-// This focuses the high-resolution shadow map on the clock area,
-// fixing both the missing numeral shadows and the missing main shadow.
 const shadowCamSize = 12;
 dirLight.shadow.camera.left = -shadowCamSize;
 dirLight.shadow.camera.right = shadowCamSize;
@@ -101,11 +102,15 @@ dirLight.shadow.camera.bottom = -shadowCamSize;
 dirLight.shadow.camera.near = 10;
 dirLight.shadow.camera.far = 60;
 
-// Use a combination of bias and normalBias for best results
-dirLight.shadow.bias = -0.0001;
-dirLight.shadow.normalBias = 0.02;
+// MODIFICATION: Adjust bias again for small gaps
+dirLight.shadow.bias = -0.0005;
+dirLight.shadow.normalBias = 0.01;
 
 scene.add(dirLight);
+
+// MODIFICATION: Add a helper to visualize the shadow camera for debugging
+const shadowHelper = new THREE.CameraHelper(dirLight.shadow.camera);
+scene.add(shadowHelper);
 
 
 // --- Create a master "clockUnit" group ---
@@ -119,7 +124,7 @@ const zShift = 1.0;
 
 // --- Background Plane (Wood) ---
 const wallMaterial = new THREE.MeshStandardMaterial({
-  color: 0x808080, // Darken base color for a richer wood and better contrast
+  color: 0x808080,
   metalness: 0.0,
   roughness: 0.8
 });
@@ -176,15 +181,12 @@ pmremGenerator.compileEquirectangularShader();
 // --- Load local PBR textures for Brushed Steel ---
 const pbrTextureLoader = new THREE.TextureLoader();
 
-// --- MODIFICATION: RESTORE BASE COLOR MAP FOR PBR ---
 const baseColorMap = pbrTextureLoader.load('textures/BrushedIron01_2K_BaseColor.png');
 const metallicMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Metallic.png');
 const roughnessMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Roughness.png');
 const normalMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Normal.png');
 const heightMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Height.png');
 
-// --- MODIFICATION: SET sRGB ENCODING FOR COLOR TEXTURE ---
-// This is crucial for correct color representation and avoids the "rust" look.
 baseColorMap.encoding = THREE.sRGBEncoding;
 
 [baseColorMap, metallicMap, roughnessMap, normalMap, heightMap].forEach(map => {
@@ -194,7 +196,6 @@ baseColorMap.encoding = THREE.sRGBEncoding;
 });
 
 const brushedSteelMaterial = new THREE.MeshStandardMaterial({
-    // MODIFICATION: Use the texture map for color instead of a flat color.
     map: baseColorMap, 
     metalnessMap: metallicMap,
     roughnessMap: roughnessMap,
@@ -204,7 +205,8 @@ const brushedSteelMaterial = new THREE.MeshStandardMaterial({
     displacementScale: 0.05,
     
     metalness: 1.0,
-    roughness: 0.4,
+    // MODIFICATION: Lower roughness for cleaner, sharper reflections
+    roughness: 0.2,
     
     envMapIntensity: 0.9 
 });
@@ -746,4 +748,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
