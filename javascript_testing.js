@@ -1,7 +1,7 @@
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
-// MODIFIED: Changed wood texture repeat value to 5 for a larger grain.
+// MODIFIED: Fixed TypeError and corrected HDRI filename.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -59,7 +59,8 @@ document.body.appendChild(renderer.domElement);
 // --- PBR Correct Lighting Setup ---
 const rgbeLoader = new RGBELoader();
 rgbeLoader.setPath('textures/');
-rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
+// MODIFICATION: Corrected HDRI filename
+rgbeLoader.load('colorful_studio_2k.hdr', (texture) => {
     texture.mapping = THREE.EquirectangularReflectionMapping;
     scene.environment = texture;
 });
@@ -106,7 +107,6 @@ const wallMaterial = new THREE.MeshStandardMaterial({
     displacementScale: 0.05
 });
 
-// MODIFICATION: Changed from 10 to 5 to make the wood grain larger.
 const woodTextureRepeat = 5;
 [woodBaseColor, woodNormal, woodRoughness, woodHeight].forEach( texture => {
     texture.wrapS = THREE.RepeatWrapping;
@@ -115,7 +115,8 @@ const woodTextureRepeat = 5;
 });
 
 const wallGeometry = new THREE.PlaneGeometry(1, 1, 100, 100);
-const wall = new THREE.Mesh(wallMaterial, wallMaterial);
+// MODIFICATION: Corrected typo here, was (wallMaterial, wallMaterial)
+const wall = new THREE.Mesh(wallGeometry, wallMaterial);
 wall.position.z = -4;
 wall.receiveShadow = true;
 clockUnit.add(wall);
@@ -154,7 +155,8 @@ const placeholderMaterial = new THREE.MeshPhysicalMaterial({
 
 
 // Apply the new HDRI environment map to all relevant materials
-rgbeLoader.load('textures/PolyHaven_colorful_studio_2k.hdr', (texture) => {
+// MODIFICATION: Corrected HDRI filename
+rgbeLoader.load('colorful_studio_2k.hdr', (texture) => {
     const envMap = new THREE.PMREMGenerator(renderer).fromEquirectangular(texture).texture;
     scene.environment = envMap; 
     
