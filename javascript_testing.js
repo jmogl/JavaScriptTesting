@@ -1,21 +1,3 @@
-Of course. Thank you for providing the updated screenshot and detailed feedback. It's very helpful. The issues you're seeing are common when fine-tuning PBR lighting and shadows. The "dark blue" appearance of the steel and the complete disappearance of the main shadow are key clues.
-
-Based on my analysis of the new image and your notes, I've prepared a new set of revisions that addresses the root cause of these problems.
-
-Analysis and Solutions
-Brushed Steel Texture: The problem is that we are defining a static base color (color: 0xafb8c5) instead of using the color texture map (BrushedIron01_2K_BaseColor.png) that came with the PBR set. This makes the material look like it's painted a flat blue-gray color instead of having the detailed color variations of real brushed iron. The "rust" look you were trying to avoid previously was likely due to a color space issue.
-
-Solution: We will re-enable the base color texture map and, critically, set its encoding to THREE.sRGBEncoding. This tells the renderer to interpret the colors correctly, giving you the intended look of the PBR texture without the unwanted "rust" tint. We will remove the static color override.
-
-Missing Numeral and Main Clock Shadows: Both the missing shadows on the clock face and the disappeared shadow on the background wall are caused by the same underlying issue: shadow camera configuration. The DirectionalLight's shadow camera was trying to cover too large an area, which spreads the shadow map's resolution too thin to render fine details (like the numeral shadows). This can also cause larger shadows to fail to render correctly.
-
-Solution: We will significantly tighten the bounds of the shadow camera's view (left, right, top, bottom) to focus its high-resolution texture only on the clock. We will also explicitly set its near and far clipping planes and use a normalBias for a more stable and precise result. This will restore the main shadow and make the small shadows on the clock face appear.
-
-Here is the updated code with these fixes integrated.
-
-Updated Code Listing
-JavaScript
-
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -764,3 +746,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
