@@ -1,8 +1,23 @@
+Of course. Thank you for providing the exact list of files. That immediately clarifies the issue. My apologies for the typo and for including a texture that wasn't in your specific download package.
+
+You have encountered two separate issues:
+
+A Typo: I incorrectly named the metallic map Metalness.png when it should have been Metallic.png.
+
+Missing AO Map: The AmbientOcclusion.png map is not included in the standard Metalness/Roughness download from that source. The Height.png map is for displacement, which we are not currently using, but the AO map is simply not present.
+
+The fix is straightforward: we will correct the filename for the metallic map and completely remove the code that attempts to load and use the non-existent Ambient Occlusion (AO) map. Since the AO map was the only one that required the second set of UVs (uv2), we can remove that code as well.
+
+Here is the fully corrected code listing.
+
+Updated and Corrected Code Listing
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
-// MODIFIED: Implemented correct PBR workflow for Brushed Iron texture.
+// MODIFIED: Corrected PBR texture filenames and removed non-existent AO map.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -53,12 +68,10 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-// MODIFICATION: Revert exposure to a neutral baseline
 renderer.toneMappingExposure = 0.8;
 document.body.appendChild(renderer.domElement);
 
 // --- Lighting ---
-// MODIFICATION: Revert light intensity to a neutral baseline
 const dirLight = new THREE.DirectionalLight(0xffffff, 5.0); 
 
 dirLight.castShadow = true;
@@ -139,32 +152,24 @@ const brassMaterial = new THREE.MeshStandardMaterial({
     roughness: 0.2
 });
 
-// --- MODIFICATION: Correct PBR Texture Loading ---
+// --- PBR Texture Loading ---
 const pbrTextureLoader = new THREE.TextureLoader();
-// NOTE: Using "BrushedIron02" as specified.
 const baseColorMap = pbrTextureLoader.load('textures/BrushedIron02_2K_BaseColor.png');
-const metallicMap = pbrTextureLoader.load('textures/BrushedIron02_2K_Metalness.png');
+// MODIFICATION: Corrected filename from Metalness to Metallic
+const metallicMap = pbrTextureLoader.load('textures/BrushedIron02_2K_Metallic.png');
 const roughnessMap = pbrTextureLoader.load('textures/BrushedIron02_2K_Roughness.png');
 const normalMap = pbrTextureLoader.load('textures/BrushedIron02_2K_Normal.png');
-// Load the Ambient Occlusion (AO) map for added realism
-const aoMap = pbrTextureLoader.load('textures/BrushedIron02_2K_AmbientOcclusion.png');
 
 // Color textures must have sRGBEncoding
 baseColorMap.encoding = THREE.sRGBEncoding;
 
-// --- MODIFICATION: Correct PBR Material Definition ---
+// --- PBR Material Definition ---
 const brushedSteelMaterial = new THREE.MeshStandardMaterial({
-    // Use the maps to define the material properties
     map: baseColorMap,
     metalnessMap: metallicMap,
     roughnessMap: roughnessMap,
     normalMap: normalMap,
-    // Add the aoMap for contact shadows
-    aoMap: aoMap,
-    aoMapIntensity: 1.0,
-
-    // Do NOT include .color, .metalness, or .roughness here,
-    // as they will override the maps. Let the maps do the work.
+    // MODIFICATION: Removed aoMap properties as the file is not available
     envMapIntensity: 1.0
 });
 
@@ -457,11 +462,6 @@ mtlLoader.load(
             if (child.isMesh) {
                 child.receiveShadow = true;
                 child.castShadow = true;
-                
-                // For aoMap to work, the geometry needs a second set of UVs.
-                // The OBJ loader does not create these by default. We add them here.
-                child.geometry.setAttribute('uv2', new THREE.BufferAttribute(child.geometry.attributes.uv.array, 2));
-
                 collectedParts[child.name] = child;
             }
         });
@@ -716,4 +716,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
