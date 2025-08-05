@@ -1,10 +1,21 @@
+My apologies. That is a clear and simple bug that I introduced in the last refactor. You are absolutely correct, and thank you for providing the error message.
+
+The error Uncaught ReferenceError: loadingManager is not defined is happening because I incorrectly defined a second loadingManager.onLoad function in the global scope, where the loadingManager variable (which was created inside the init function) does not exist.
+
+The solution is to remove the redundant, incorrect code block and rely on the single, correct onLoad handler that is already inside the init function.
+
+I have corrected this mistake in the full code listing below.
+
+Corrected Code Listing
+JavaScript
+
 // 3D Javacript Clock using three.js
 // PBR Rendering Engine - From Scratch
 // MIT License. - Jeff Miller / Gemini
 // 8/4/25
 //
 // This file is a complete reset focusing on a clean, correct PBR workflow.
-// LATEST: Implemented a LoadingManager for robust, synchronous asset handling.
+// LATEST: Fixed a ReferenceError bug caused by an out-of-scope LoadingManager.
 
 import * as THREE from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
@@ -12,6 +23,7 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 
 // --- Core Scene Variables ---
 let scene, camera, renderer;
+let clockModel;
 
 // --- Initialize the Scene ---
 function init() {
@@ -31,18 +43,9 @@ function init() {
     camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 0, 40);
 
-    // --- MODIFICATION: Use a LoadingManager ---
-    // This will ensure all assets are loaded before we build the scene.
+    // --- LoadingManager Setup ---
     const loadingManager = new THREE.LoadingManager();
 
-    // The function to run once everything is loaded.
-    loadingManager.onLoad = () => {
-        console.log("All assets loaded successfully. Building scene...");
-        // The animate function is called here to start the render loop
-        // only after the scene is fully constructed.
-        animate();
-    };
-    
     // --- Asset Loaders ---
     // Pass the manager to each loader.
     const rgbeLoader = new RGBELoader(loadingManager);
@@ -83,9 +86,9 @@ function init() {
     const steelRoughness = textureLoader.load('BrushedIron02_2K_Roughness.png');
     steelBaseColor.colorSpace = THREE.SRGBColorSpace;
     
-    // --- Create Materials and Geometry INSIDE the onLoad callback of the manager ---
+    // --- This function runs once ALL assets from the manager are loaded ---
     loadingManager.onLoad = () => {
-        console.log("All assets loaded, now creating materials and scene objects.");
+        console.log("All assets loaded, now building the scene...");
 
         // 1. Wood Wall Material & Mesh
         const wallMaterial = new THREE.MeshStandardMaterial({
@@ -130,7 +133,7 @@ function init() {
         });
 
         // --- Model Processing ---
-        // The model is already loaded, we just need to process it.
+        // The `clockModel` variable is ready to be used here.
         clockModel.scale.set(3.5, 3.5, 3.5);
         clockModel.position.set(0, 0, 0);
 
@@ -154,7 +157,7 @@ function init() {
     };
 
     // --- Start Loading The Model ---
-    // The result will be stored in the `clockModel` variable for the `onLoad` function to use.
+    // The objLoader will store its result in the global `clockModel` variable.
     objLoader.load('ETA6497-1_OBJ.obj', (object) => {
         clockModel = object;
     });
@@ -171,18 +174,12 @@ function onWindowResize() {
 }
 
 // --- Animation Loop ---
-// The loop is now separate and will be started by the LoadingManager
-let clockModelProxy; // A proxy to hold the model for animation
-loadingManager.onLoad = () => {
-    clockModelProxy = scene.getObjectByProperty('type', 'Group'); // Find the loaded model group
-    animate();
-};
-
+// This function is now correctly called only by the LoadingManager
 function animate() {
     requestAnimationFrame(animate);
 
-    if (clockModelProxy) {
-        clockModelProxy.rotation.y += 0.002;
+    if (clockModel) {
+        clockModel.rotation.y += 0.002;
     }
 
     renderer.render(scene, camera);
