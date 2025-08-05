@@ -3,7 +3,7 @@
 // MIT License. - Jeff Miller / Gemini
 // 8/4/25
 //
-// LATEST: Added a diagnostic test to check for missing UV coordinates in the OBJ model.
+// LATEST: Implementing Test 1 - Removing the roughness multiplier to debug the PBR material.
 
 import * as THREE from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
@@ -104,8 +104,8 @@ function init() {
             map: steelBaseColor,
             metalnessMap: steelMetallic,
             roughnessMap: steelRoughness,
-            normalMap: steelNormal,
-            roughness: 10.0
+            normalMap: steelNormal
+            // The "roughness: 10.0" line is removed for this test.
         });
         
         // 3. Placeholder material for other clock parts
@@ -120,7 +120,6 @@ function init() {
         });
 
         // --- DIAGNOSTIC TEST SPHERE ---
-        // Create a test sphere with guaranteed UVs and apply the PBR material.
         console.log("Creating diagnostic test sphere with brushedSteelMaterial...");
         const testSphereGeo = new THREE.SphereGeometry(4, 64, 64);
         const testSphere = new THREE.Mesh(testSphereGeo, brushedSteelMaterial);
@@ -135,8 +134,7 @@ function init() {
 
         clockModel.traverse((child) => {
             if (child.isMesh) {
-                // --- DIAGNOSTIC CHECK ---
-                // Check if the geometry attribute for UVs exists.
+                // Check for UV attributes
                 if (!child.geometry.attributes.uv) {
                     console.warn(`WARNING: Mesh "${child.name}" is missing UV coordinates! Textures will not render correctly on this part.`);
                 }
@@ -177,6 +175,7 @@ function animate() {
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
 }
+
 
 // --- Run ---
 init();
