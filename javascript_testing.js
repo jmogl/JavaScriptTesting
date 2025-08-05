@@ -1,3 +1,5 @@
+ttttt
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
@@ -79,9 +81,8 @@ renderer.setClearColor(0xcccccc);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+renderer.toneMappingExposure = 0.5;
 document.body.appendChild(renderer.domElement);
 
 // --- Lighting ---
@@ -146,28 +147,18 @@ clockUnit.add(wall);
 
 // --- Metallic Materials ---
 const silverMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    metalness: 1.0,
-    roughness: 0.1,
-    envMapIntensity: 0.1
+    color: 0xffffff, metalness: 1.0, roughness: 0.1
 });
 const brightSilverMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    metalness: 1.0,
-    roughness: 0.1,
-    envMapIntensity: 0.1
+    color: 0xffffff, metalness: 1.0, roughness: 0.1
 });
 const secondMaterial = new THREE.MeshStandardMaterial({
-    color: 0xff0000,
-    metalness: 0.5,
-    roughness: 0.4,
-    envMapIntensity: 0.1
+    color: 0xff0000, metalness: 0.5, roughness: 0.4
 });
 const brassMaterial = new THREE.MeshStandardMaterial({
     color: 0xED9149,
     metalness: 0.8,
-    roughness: 0.2,
-    envMapIntensity: 0.1
+    roughness: 0.2
 });
 
 
@@ -178,11 +169,7 @@ pmremGenerator.compileEquirectangularShader();
 // --- Load local PBR textures for Brushed Steel ---
 const pbrTextureLoader = new THREE.TextureLoader();
 
-const baseColorMap = pbrTextureLoader.load('textures/BrushedIron01_2K_BaseColor.png', map => {
-    map.encoding = THREE.sRGBEncoding;
-    map.wrapS = map.wrapT = THREE.RepeatWrapping;
-    map.repeat.set(2, 2);
-});
+// const baseColorMap = pbrTextureLoader.load('textures/BrushedIron01_2K_BaseColor.png'); // REMOVED
 const metallicMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Metallic.png');
 const roughnessMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Roughness.png');
 const normalMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Normal.png');
@@ -190,22 +177,27 @@ const heightMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Height.png');
 
 // baseColorMap.encoding = THREE.sRGBEncoding; // REMOVED
 
-[baseColorMap, metallicMap, roughnessMap, normalMap, heightMap].forEach(map => { // MODIFIED: Removed baseColorMap from this list
+[metallicMap, roughnessMap, normalMap, heightMap].forEach(map => { // MODIFIED: Removed baseColorMap from this list
     map.wrapS = THREE.RepeatWrapping;
     map.wrapT = THREE.RepeatWrapping;
     map.repeat.set(2, 2);
 });
 
 const brushedSteelMaterial = new THREE.MeshStandardMaterial({
-    map: baseColorMap,
+    color: 0xafb8c5, // MODIFIED: Set a direct color to avoid "rust" look
+    // map: baseColorMap, // REMOVED
     metalnessMap: metallicMap,
     roughnessMap: roughnessMap,
     normalMap: normalMap,
+    
     displacementMap: heightMap,
     displacementScale: 0.05,
+    
     metalness: 1.0,
-    roughness: 0.4,
-    envMapIntensity: 1.0
+    roughness: 0.4, // MODIFIED: Adjusted for a cleaner brushed look
+    
+    //envMapIntensity: 0.9
+	envMapIntensity: 0.05// Default is 1, try reducing it
 });
 
 const rgbeLoader = new RGBELoader();
@@ -745,7 +737,5 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
-
 
 
