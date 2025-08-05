@@ -4,8 +4,7 @@
 // 8/4/25
 //
 // This file is a complete reset focusing on a clean, correct PBR workflow.
-// It removes all legacy code, UI, and animation to isolate the rendering.
-// LATEST: Corrected HDRI filename typo.
+// LATEST: Implemented a LoadingManager for robust, synchronous asset handling.
 
 import * as THREE from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
@@ -13,7 +12,6 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 
 // --- Core Scene Variables ---
 let scene, camera, renderer;
-let clockModel;
 
 // --- Initialize the Scene ---
 function init() {
@@ -33,10 +31,26 @@ function init() {
     camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 0, 40);
 
+    // --- MODIFICATION: Use a LoadingManager ---
+    // This will ensure all assets are loaded before we build the scene.
+    const loadingManager = new THREE.LoadingManager();
+
+    // The function to run once everything is loaded.
+    loadingManager.onLoad = () => {
+        console.log("All assets loaded successfully. Building scene...");
+        // The animate function is called here to start the render loop
+        // only after the scene is fully constructed.
+        animate();
+    };
+    
+    // --- Asset Loaders ---
+    // Pass the manager to each loader.
+    const rgbeLoader = new RGBELoader(loadingManager);
+    const textureLoader = new THREE.TextureLoader(loadingManager).setPath('textures/');
+    const objLoader = new OBJLoader(loadingManager).setPath('textures/');
+
     // --- Lighting Setup ---
-    const rgbeLoader = new RGBELoader();
     rgbeLoader.setPath('textures/');
-    // MODIFICATION: Corrected filename typo from "Studio" to "studio"
     rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
         texture.mapping = THREE.EquirectangularReflectionMapping;
         scene.environment = texture;
@@ -56,68 +70,67 @@ function init() {
     dirLight.shadow.bias = -0.0005;
     scene.add(dirLight);
 
-    // --- PBR Material Definitions ---
-    const textureLoader = new THREE.TextureLoader().setPath('textures/');
-
-    // 1. Wood Wall PBR Material
+    // --- PBR Texture Loading ---
     const woodBaseColor = textureLoader.load('Wood03_2K_BaseColor.png');
     const woodNormal = textureLoader.load('Wood03_2K_Normal.png');
     const woodRoughness = textureLoader.load('Wood03_2K_Roughness.png');
     const woodHeight = textureLoader.load('Wood03_2K_Height.png');
     woodBaseColor.colorSpace = THREE.SRGBColorSpace;
-    
-    const wallMaterial = new THREE.MeshStandardMaterial({
-        map: woodBaseColor,
-        normalMap: woodNormal,
-        roughnessMap: woodRoughness,
-        displacementMap: woodHeight,
-        displacementScale: 0.05
-    });
 
-    const woodTextureRepeat = 10;
-    [woodBaseColor, woodNormal, woodRoughness, woodHeight].forEach( texture => {
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(woodTextureRepeat, woodTextureRepeat);
-    });
-
-    const wallGeometry = new THREE.PlaneGeometry(50, 50, 100, 100); 
-    const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-    wall.position.z = -5;
-    wall.receiveShadow = true;
-    scene.add(wall);
-
-    // 2. Brushed Steel PBR Material
     const steelBaseColor = textureLoader.load('BrushedIron02_2K_BaseColor.png');
     const steelMetallic = textureLoader.load('BrushedIron02_2K_Metallic.png');
     const steelNormal = textureLoader.load('BrushedIron02_2K_Normal.png');
     const steelRoughness = textureLoader.load('BrushedIron02_2K_Roughness.png');
     steelBaseColor.colorSpace = THREE.SRGBColorSpace;
-
-    const brushedSteelMaterial = new THREE.MeshStandardMaterial({
-        map: steelBaseColor,
-        metalnessMap: steelMetallic,
-        roughnessMap: steelRoughness,
-        normalMap: steelNormal,
-        roughness: 10.0
-    });
     
-    // 3. Placeholder material for other clock parts
-    const placeholderMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x555555,
-        roughness: 0.5,
-        metalness: 1.0,
-        transparent: true,
-        opacity: 0.3,
-        ior: 1.5,
-        transmission: 0.5
-    });
+    // --- Create Materials and Geometry INSIDE the onLoad callback of the manager ---
+    loadingManager.onLoad = () => {
+        console.log("All assets loaded, now creating materials and scene objects.");
 
+        // 1. Wood Wall Material & Mesh
+        const wallMaterial = new THREE.MeshStandardMaterial({
+            map: woodBaseColor,
+            normalMap: woodNormal,
+            roughnessMap: woodRoughness,
+            displacementMap: woodHeight,
+            displacementScale: 0.05
+        });
 
-    // --- Model Loading ---
-    const objLoader = new OBJLoader().setPath('textures/');
-    objLoader.load('ETA6497-1_OBJ.obj', (object) => {
-        clockModel = object;
+        const woodTextureRepeat = 10;
+        [woodBaseColor, woodNormal, woodRoughness, woodHeight].forEach( texture => {
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(woodTextureRepeat, woodTextureRepeat);
+        });
+
+        const wallGeometry = new THREE.PlaneGeometry(50, 50, 100, 100); 
+        const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+        wall.position.z = -5;
+        wall.receiveShadow = true;
+        scene.add(wall);
+
+        // 2. Brushed Steel PBR Material
+        const brushedSteelMaterial = new THREE.MeshStandardMaterial({
+            map: steelBaseColor,
+            metalnessMap: steelMetallic,
+            roughnessMap: steelRoughness,
+            normalMap: steelNormal,
+            roughness: 10.0
+        });
+        
+        // 3. Placeholder material for other clock parts
+        const placeholderMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x555555,
+            roughness: 0.5,
+            metalness: 1.0,
+            transparent: true,
+            opacity: 0.3,
+            ior: 1.5,
+            transmission: 0.5
+        });
+
+        // --- Model Processing ---
+        // The model is already loaded, we just need to process it.
         clockModel.scale.set(3.5, 3.5, 3.5);
         clockModel.position.set(0, 0, 0);
 
@@ -135,6 +148,15 @@ function init() {
         });
         
         scene.add(clockModel);
+
+        // Start the animation loop only after everything is built.
+        animate();
+    };
+
+    // --- Start Loading The Model ---
+    // The result will be stored in the `clockModel` variable for the `onLoad` function to use.
+    objLoader.load('ETA6497-1_OBJ.obj', (object) => {
+        clockModel = object;
     });
     
     // --- Event Listeners ---
@@ -148,16 +170,24 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+// --- Animation Loop ---
+// The loop is now separate and will be started by the LoadingManager
+let clockModelProxy; // A proxy to hold the model for animation
+loadingManager.onLoad = () => {
+    clockModelProxy = scene.getObjectByProperty('type', 'Group'); // Find the loaded model group
+    animate();
+};
+
 function animate() {
     requestAnimationFrame(animate);
 
-    if (clockModel) {
-        clockModel.rotation.y += 0.002;
+    if (clockModelProxy) {
+        clockModelProxy.rotation.y += 0.002;
     }
 
     renderer.render(scene, camera);
 }
 
+
 // --- Run ---
 init();
-animate();
