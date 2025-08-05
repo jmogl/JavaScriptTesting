@@ -1,7 +1,7 @@
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
-// MODIFIED: Corrected HDRI filename based on user feedback.
+
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -466,3 +466,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
