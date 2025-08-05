@@ -1,7 +1,7 @@
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
-// MODIFIED: Integrated the final, working PBR engine into the full application.
+// MODIFIED: Changed wood texture repeat value to 5 for a larger grain.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -46,7 +46,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(20, window.innerWidth / window.innerHeight, 1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 
-// --- NEW: PBR Correct Renderer Setup ---
+// --- PBR Correct Renderer Setup ---
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -56,13 +56,12 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-// --- NEW: PBR Correct Lighting Setup ---
+// --- PBR Correct Lighting Setup ---
 const rgbeLoader = new RGBELoader();
 rgbeLoader.setPath('textures/');
 rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
     texture.mapping = THREE.EquirectangularReflectionMapping;
     scene.environment = texture;
-    scene.background = texture;
 });
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 3.0);
@@ -70,12 +69,14 @@ dirLight.position.set(10, 20, 10);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
-const d = 15; // Increased shadow camera size to cover the whole clock
+const d = 15;
 dirLight.shadow.camera.left = -d;
 dirLight.shadow.camera.right = d;
 dirLight.shadow.camera.top = d;
 dirLight.shadow.camera.bottom = -d;
-dirLight.shadow.bias = -0.001;
+dirLight.shadow.bias = -0.0001;
+dirLight.shadow.normalBias = 0.005;
+
 scene.add(dirLight);
 
 // --- Create a master "clockUnit" group ---
@@ -87,7 +88,7 @@ clockUnit.add(watchGroup);
 
 const zShift = 1.0;
 
-// --- NEW: PBR Material Definitions ---
+// --- PBR Material Definitions ---
 const textureLoader = new THREE.TextureLoader().setPath('textures/');
 
 // 1. Wood Wall PBR Material
@@ -105,15 +106,16 @@ const wallMaterial = new THREE.MeshStandardMaterial({
     displacementScale: 0.05
 });
 
-const woodTextureRepeat = 10;
+// MODIFICATION: Changed from 10 to 5 to make the wood grain larger.
+const woodTextureRepeat = 5;
 [woodBaseColor, woodNormal, woodRoughness, woodHeight].forEach( texture => {
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(woodTextureRepeat, woodTextureRepeat);
 });
 
-const wallGeometry = new THREE.PlaneGeometry(1, 1, 100, 100); // Add segments for displacement
-const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+const wallGeometry = new THREE.PlaneGeometry(1, 1, 100, 100);
+const wall = new THREE.Mesh(wallMaterial, wallMaterial);
 wall.position.z = -4;
 wall.receiveShadow = true;
 clockUnit.add(wall);
@@ -127,7 +129,7 @@ steelBaseColor.colorSpace = THREE.SRGBColorSpace;
 
 const brushedSteelMaterial = new THREE.MeshStandardMaterial({
     map: steelBaseColor,
-    metalness: 1.0, // Set directly, ignoring the problematic metallic.png
+    metalness: 1.0,
     roughnessMap: steelRoughness,
     normalMap: steelNormal
 });
@@ -154,10 +156,8 @@ const placeholderMaterial = new THREE.MeshPhysicalMaterial({
 // Apply the new HDRI environment map to all relevant materials
 rgbeLoader.load('textures/PolyHaven_colorful_studio_2k.hdr', (texture) => {
     const envMap = new THREE.PMREMGenerator(renderer).fromEquirectangular(texture).texture;
-    scene.environment = envMap; // Affects all materials
-    // No need to set scene.background here if we want the wood wall visible
+    scene.environment = envMap; 
     
-    // Explicitly update envMap for materials that use it
     silverMaterial.envMap = envMap;
     brightSilverMaterial.envMap = envMap;
     secondMaterial.envMap = envMap;
