@@ -1,4 +1,3 @@
-ttttt
 
 // 3D Javacript Clock using three.js
 // PBR Rendering Engine - From Scratch
@@ -181,4 +180,5 @@ function animate() {
 
 // --- Run ---
 init();
+
 
