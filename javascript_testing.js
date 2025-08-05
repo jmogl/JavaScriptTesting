@@ -1,14 +1,3 @@
-My apologies. That is a clear and simple bug that I introduced in the last refactor. You are absolutely correct, and thank you for providing the error message.
-
-The error Uncaught ReferenceError: loadingManager is not defined is happening because I incorrectly defined a second loadingManager.onLoad function in the global scope, where the loadingManager variable (which was created inside the init function) does not exist.
-
-The solution is to remove the redundant, incorrect code block and rely on the single, correct onLoad handler that is already inside the init function.
-
-I have corrected this mistake in the full code listing below.
-
-Corrected Code Listing
-JavaScript
-
 // 3D Javacript Clock using three.js
 // PBR Rendering Engine - From Scratch
 // MIT License. - Jeff Miller / Gemini
@@ -188,3 +177,4 @@ function animate() {
 
 // --- Run ---
 init();
+
