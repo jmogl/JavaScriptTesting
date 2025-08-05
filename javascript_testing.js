@@ -5,6 +5,7 @@
 //
 // This file is a complete reset focusing on a clean, correct PBR workflow.
 // It removes all legacy code, UI, and animation to isolate the rendering.
+// LATEST: Adjusted texture tiling and PBR material properties for realism.
 
 import * as THREE from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
@@ -17,16 +18,12 @@ let clockModel;
 // --- Initialize the Scene ---
 function init() {
     // --- Renderer Setup ---
-    // This is the foundation. We set up the renderer for physically correct output.
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
-    // CRITICAL: 1. Set the output color space for correct display on monitors.
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    // CRITICAL: 2. Use ACES Filmic tone mapping for realistic contrast and highlight handling.
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.8;
-    // Enable shadows
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild(renderer.domElement);
@@ -37,18 +34,16 @@ function init() {
     camera.position.set(0, 0, 40);
 
     // --- Lighting Setup ---
-    // CRITICAL: 3. Use an HDRI for environment/reflections AND a DirectionalLight for shadows.
     const rgbeLoader = new RGBELoader();
     rgbeLoader.setPath('textures/');
     rgbeLoader.load('PolyHaven_colorful_Studio_2k.hdr', (texture) => {
         texture.mapping = THREE.EquirectangularReflectionMapping;
         scene.environment = texture;
-        // Also set the background to the HDRI for a cohesive look.
         scene.background = texture;
     });
 
-    // Add a DirectionalLight to cast sharp shadows.
-    const dirLight = new THREE.DirectionalLight(0xffffff, 4.0);
+    // MODIFICATION: Reduce intensity slightly to prevent blowout on reflective surfaces
+    const dirLight = new THREE.DirectionalLight(0xffffff, 3.0);
     dirLight.position.set(10, 20, 10);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 2048;
@@ -69,7 +64,6 @@ function init() {
     const woodNormal = textureLoader.load('Wood03_2K_Normal.png');
     const woodRoughness = textureLoader.load('Wood03_2K_Roughness.png');
     const woodHeight = textureLoader.load('Wood03_2K_Height.png');
-    // CRITICAL: Tag the color texture with the correct color space.
     woodBaseColor.colorSpace = THREE.SRGBColorSpace;
     
     const wallMaterial = new THREE.MeshStandardMaterial({
@@ -77,11 +71,18 @@ function init() {
         normalMap: woodNormal,
         roughnessMap: woodRoughness,
         displacementMap: woodHeight,
-        displacementScale: 0.05 // A small value for subtle depth
+        displacementScale: 0.05
+    });
+
+    // MODIFICATION: Apply repeating (tiling) to all wood textures to fix scaling.
+    const woodTextureRepeat = 10;
+    [woodBaseColor, woodNormal, woodRoughness, woodHeight].forEach( texture => {
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(woodTextureRepeat, woodTextureRepeat);
     });
 
     // Add the wall to the scene
-    // Increase segments for displacement map to work correctly.
     const wallGeometry = new THREE.PlaneGeometry(50, 50, 100, 100); 
     const wall = new THREE.Mesh(wallGeometry, wallMaterial);
     wall.position.z = -5;
@@ -93,7 +94,6 @@ function init() {
     const steelMetallic = textureLoader.load('BrushedIron02_2K_Metallic.png');
     const steelNormal = textureLoader.load('BrushedIron02_2K_Normal.png');
     const steelRoughness = textureLoader.load('BrushedIron02_2K_Roughness.png');
-    // CRITICAL: Tag the color texture.
     steelBaseColor.colorSpace = THREE.SRGBColorSpace;
 
     const brushedSteelMaterial = new THREE.MeshStandardMaterial({
@@ -101,8 +101,8 @@ function init() {
         metalnessMap: steelMetallic,
         roughnessMap: steelRoughness,
         normalMap: steelNormal,
-        // Use the roughness property to scale the map, making it less mirror-like.
-        roughness: 2.5
+        // MODIFICATION: Drastically increase roughness multiplier to diffuse reflections.
+        roughness: 10.0
     });
     
     // 3. Placeholder material for other clock parts
@@ -118,24 +118,20 @@ function init() {
 
 
     // --- Model Loading ---
-    // Load the OBJ directly, without the problematic MTL file.
     const objLoader = new OBJLoader().setPath('textures/');
     objLoader.load('ETA6497-1_OBJ.obj', (object) => {
         clockModel = object;
         clockModel.scale.set(3.5, 3.5, 3.5);
         clockModel.position.set(0, 0, 0);
 
-        // Loop through the model and assign our new PBR materials.
         clockModel.traverse((child) => {
             if (child.isMesh) {
                 child.castShadow = true;
                 child.receiveShadow = true;
 
-                // Apply materials based on mesh name
                 if (child.name === 'BarrelBridge_Body' || child.name === 'TrainWheelBridgeBody') {
                     child.material = brushedSteelMaterial;
                 } else {
-                    // All other parts get the placeholder material for now.
                     child.material = placeholderMaterial;
                 }
             }
@@ -158,7 +154,6 @@ function onWindowResize() {
 function animate() {
     requestAnimationFrame(animate);
 
-    // Simple rotation for viewing the model
     if (clockModel) {
         clockModel.rotation.y += 0.002;
     }
