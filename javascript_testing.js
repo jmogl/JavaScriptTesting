@@ -5,7 +5,7 @@
 //
 // This file is a complete reset focusing on a clean, correct PBR workflow.
 // It removes all legacy code, UI, and animation to isolate the rendering.
-// LATEST: Adjusted texture tiling and PBR material properties for realism.
+// LATEST: Corrected HDRI filename typo.
 
 import * as THREE from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
@@ -36,13 +36,13 @@ function init() {
     // --- Lighting Setup ---
     const rgbeLoader = new RGBELoader();
     rgbeLoader.setPath('textures/');
-    rgbeLoader.load('PolyHaven_colorful_Studio_2k.hdr', (texture) => {
+    // MODIFICATION: Corrected filename typo from "Studio" to "studio"
+    rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
         texture.mapping = THREE.EquirectangularReflectionMapping;
         scene.environment = texture;
         scene.background = texture;
     });
 
-    // MODIFICATION: Reduce intensity slightly to prevent blowout on reflective surfaces
     const dirLight = new THREE.DirectionalLight(0xffffff, 3.0);
     dirLight.position.set(10, 20, 10);
     dirLight.castShadow = true;
@@ -74,7 +74,6 @@ function init() {
         displacementScale: 0.05
     });
 
-    // MODIFICATION: Apply repeating (tiling) to all wood textures to fix scaling.
     const woodTextureRepeat = 10;
     [woodBaseColor, woodNormal, woodRoughness, woodHeight].forEach( texture => {
         texture.wrapS = THREE.RepeatWrapping;
@@ -82,7 +81,6 @@ function init() {
         texture.repeat.set(woodTextureRepeat, woodTextureRepeat);
     });
 
-    // Add the wall to the scene
     const wallGeometry = new THREE.PlaneGeometry(50, 50, 100, 100); 
     const wall = new THREE.Mesh(wallGeometry, wallMaterial);
     wall.position.z = -5;
@@ -101,7 +99,6 @@ function init() {
         metalnessMap: steelMetallic,
         roughnessMap: steelRoughness,
         normalMap: steelNormal,
-        // MODIFICATION: Drastically increase roughness multiplier to diffuse reflections.
         roughness: 10.0
     });
     
