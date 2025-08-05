@@ -1,7 +1,7 @@
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
-// MODIFIED: Fixed TypeError and corrected HDRI filename.
+// MODIFIED: Corrected HDRI filename based on user feedback.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -60,7 +60,7 @@ document.body.appendChild(renderer.domElement);
 const rgbeLoader = new RGBELoader();
 rgbeLoader.setPath('textures/');
 // MODIFICATION: Corrected HDRI filename
-rgbeLoader.load('colorful_studio_2k.hdr', (texture) => {
+rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
     texture.mapping = THREE.EquirectangularReflectionMapping;
     scene.environment = texture;
 });
@@ -115,7 +115,6 @@ const woodTextureRepeat = 5;
 });
 
 const wallGeometry = new THREE.PlaneGeometry(1, 1, 100, 100);
-// MODIFICATION: Corrected typo here, was (wallMaterial, wallMaterial)
 const wall = new THREE.Mesh(wallGeometry, wallMaterial);
 wall.position.z = -4;
 wall.receiveShadow = true;
@@ -156,7 +155,7 @@ const placeholderMaterial = new THREE.MeshPhysicalMaterial({
 
 // Apply the new HDRI environment map to all relevant materials
 // MODIFICATION: Corrected HDRI filename
-rgbeLoader.load('colorful_studio_2k.hdr', (texture) => {
+rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
     const envMap = new THREE.PMREMGenerator(renderer).fromEquirectangular(texture).texture;
     scene.environment = envMap; 
     
