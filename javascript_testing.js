@@ -1,8 +1,10 @@
+TTTT
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
-// Jeff Miller 2025. 8/3/25
-// MODIFIED: Switched to neutral HDR and re-balanced lighting.
+// Jeff Miller 2025. 8/4/25
+// MODIFIED: Balanced PBR materials, lighting, and shadow settings for realism.
 
 /*
 Great! That confirms the issue was the light balance between the ambient HDR environment and the direct light source.
@@ -95,7 +97,8 @@ dirLight.shadow.camera.left = -15;
 dirLight.shadow.camera.right = 15;
 dirLight.shadow.camera.top = 15;
 dirLight.shadow.camera.bottom = -15;
-dirLight.shadow.bias = -0.001; // MODIFIED: Adjusted bias
+// A more negative bias helps resolve shadows for objects very close to a surface.
+dirLight.shadow.bias = -0.005; 
 scene.add(dirLight);
 
 
@@ -110,7 +113,7 @@ const zShift = 1.0;
 
 // --- Background Plane (Wood) ---
 const wallMaterial = new THREE.MeshStandardMaterial({
-  color: 0xaaaaaa, // MODIFIED: Darkened base color to prevent blowout
+  color: 0x808080, // Darken base color for a richer wood and better contrast
   metalness: 0.0,
   roughness: 0.8
 });
@@ -194,8 +197,7 @@ const brushedSteelMaterial = new THREE.MeshStandardMaterial({
     metalness: 1.0,
     roughness: 0.4, // MODIFIED: Adjusted for a cleaner brushed look
     
-    //envMapIntensity: 0.9
-	envMapIntensity: 0.05// Default is 1, try reducing it
+    envMapIntensity: 0.9 // RESTORED: Let the material reflect the environment.
 });
 
 const rgbeLoader = new RGBELoader();
@@ -735,6 +737,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
-
-
