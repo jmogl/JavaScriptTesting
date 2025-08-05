@@ -1,8 +1,26 @@
+Of course. Thank you for providing the updated screenshot and detailed feedback. It's very helpful. The issues you're seeing are common when fine-tuning PBR lighting and shadows. The "dark blue" appearance of the steel and the complete disappearance of the main shadow are key clues.
+
+Based on my analysis of the new image and your notes, I've prepared a new set of revisions that addresses the root cause of these problems.
+
+Analysis and Solutions
+Brushed Steel Texture: The problem is that we are defining a static base color (color: 0xafb8c5) instead of using the color texture map (BrushedIron01_2K_BaseColor.png) that came with the PBR set. This makes the material look like it's painted a flat blue-gray color instead of having the detailed color variations of real brushed iron. The "rust" look you were trying to avoid previously was likely due to a color space issue.
+
+Solution: We will re-enable the base color texture map and, critically, set its encoding to THREE.sRGBEncoding. This tells the renderer to interpret the colors correctly, giving you the intended look of the PBR texture without the unwanted "rust" tint. We will remove the static color override.
+
+Missing Numeral and Main Clock Shadows: Both the missing shadows on the clock face and the disappeared shadow on the background wall are caused by the same underlying issue: shadow camera configuration. The DirectionalLight's shadow camera was trying to cover too large an area, which spreads the shadow map's resolution too thin to render fine details (like the numeral shadows). This can also cause larger shadows to fail to render correctly.
+
+Solution: We will significantly tighten the bounds of the shadow camera's view (left, right, top, bottom) to focus its high-resolution texture only on the clock. We will also explicitly set its near and far clipping planes and use a normalBias for a more stable and precise result. This will restore the main shadow and make the small shadows on the clock face appear.
+
+Here is the updated code with these fixes integrated.
+
+Updated Code Listing
+JavaScript
+
 // 3D Javacript Clock using three.js
 // Goal is to have a realistic 3D depth with tilt on mobile devices
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
-// MODIFIED: Balanced PBR materials, lighting, and shadow settings for realism.
+// MODIFIED: Corrected PBR map usage and tightened shadow camera for precision.
 
 /*
 Great! That confirms the issue was the light balance between the ambient HDR environment and the direct light source.
@@ -84,19 +102,27 @@ renderer.toneMappingExposure = 0.5;
 document.body.appendChild(renderer.domElement);
 
 // --- Lighting ---
-// const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
-// To something much stronger:
-const dirLight = new THREE.DirectionalLight(0xffffff, 4.0); // Try a value between 2.0 and 5.0
+const dirLight = new THREE.DirectionalLight(0xffffff, 4.0); 
 
 dirLight.castShadow = true;
 dirLight.position.set(10, 15, 36);
-dirLight.shadow.mapSize.set(4096, 4096); // MODIFIED: Increased shadow resolution
-dirLight.shadow.camera.left = -15;
-dirLight.shadow.camera.right = 15;
-dirLight.shadow.camera.top = 15;
-dirLight.shadow.camera.bottom = -15;
-// A more negative bias helps resolve shadows for objects very close to a surface.
-dirLight.shadow.bias = -0.005; 
+dirLight.shadow.mapSize.set(4096, 4096);
+
+// --- MODIFICATION: TIGHTEN SHADOW CAMERA FRUSTUM ---
+// This focuses the high-resolution shadow map on the clock area,
+// fixing both the missing numeral shadows and the missing main shadow.
+const shadowCamSize = 12;
+dirLight.shadow.camera.left = -shadowCamSize;
+dirLight.shadow.camera.right = shadowCamSize;
+dirLight.shadow.camera.top = shadowCamSize;
+dirLight.shadow.camera.bottom = -shadowCamSize;
+dirLight.shadow.camera.near = 10;
+dirLight.shadow.camera.far = 60;
+
+// Use a combination of bias and normalBias for best results
+dirLight.shadow.bias = -0.0001;
+dirLight.shadow.normalBias = 0.02;
+
 scene.add(dirLight);
 
 
@@ -168,23 +194,26 @@ pmremGenerator.compileEquirectangularShader();
 // --- Load local PBR textures for Brushed Steel ---
 const pbrTextureLoader = new THREE.TextureLoader();
 
-// const baseColorMap = pbrTextureLoader.load('textures/BrushedIron01_2K_BaseColor.png'); // REMOVED
+// --- MODIFICATION: RESTORE BASE COLOR MAP FOR PBR ---
+const baseColorMap = pbrTextureLoader.load('textures/BrushedIron01_2K_BaseColor.png');
 const metallicMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Metallic.png');
 const roughnessMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Roughness.png');
 const normalMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Normal.png');
 const heightMap = pbrTextureLoader.load('textures/BrushedIron01_2K_Height.png');
 
-// baseColorMap.encoding = THREE.sRGBEncoding; // REMOVED
+// --- MODIFICATION: SET sRGB ENCODING FOR COLOR TEXTURE ---
+// This is crucial for correct color representation and avoids the "rust" look.
+baseColorMap.encoding = THREE.sRGBEncoding;
 
-[metallicMap, roughnessMap, normalMap, heightMap].forEach(map => { // MODIFIED: Removed baseColorMap from this list
+[baseColorMap, metallicMap, roughnessMap, normalMap, heightMap].forEach(map => {
     map.wrapS = THREE.RepeatWrapping;
     map.wrapT = THREE.RepeatWrapping;
     map.repeat.set(2, 2);
 });
 
 const brushedSteelMaterial = new THREE.MeshStandardMaterial({
-    color: 0xafb8c5, // MODIFIED: Set a direct color to avoid "rust" look
-    // map: baseColorMap, // REMOVED
+    // MODIFICATION: Use the texture map for color instead of a flat color.
+    map: baseColorMap, 
     metalnessMap: metallicMap,
     roughnessMap: roughnessMap,
     normalMap: normalMap,
@@ -193,9 +222,9 @@ const brushedSteelMaterial = new THREE.MeshStandardMaterial({
     displacementScale: 0.05,
     
     metalness: 1.0,
-    roughness: 0.4, // MODIFIED: Adjusted for a cleaner brushed look
+    roughness: 0.4,
     
-    envMapIntensity: 0.9 // RESTORED: Let the material reflect the environment.
+    envMapIntensity: 0.9 
 });
 
 const rgbeLoader = new RGBELoader();
@@ -259,7 +288,7 @@ const faceMaterial = new THREE.MeshStandardMaterial({
 });
 const faceMesh = new THREE.Mesh(faceGeometry, faceMaterial);
 faceMesh.name = 'clock_face';
-faceMesh.receiveShadow = true; // MODIFIED: MUST receive shadows
+faceMesh.receiveShadow = true;
 faceMesh.castShadow = false;
 faceMesh.position.z = -3.4 + zShift;
 clockUnit.add(faceMesh);
@@ -304,7 +333,7 @@ for (let i = 0; i < 60; i++) {
     marker.position.set(markerRadius * Math.sin(angle), markerRadius * Math.cos(angle), markerZ);
 
     marker.rotation.z = -angle;
-    marker.castShadow = true; // This will cast a shadow on the clock face
+    marker.castShadow = true; 
     watchGroup.add(marker);
 }
 
@@ -336,7 +365,7 @@ fontLoader.load(fontURL, (font) => {
 
         const numeralZ = -3.34 + zShift;
         numeral.position.set(numeralRadius * Math.sin(angle), numeralRadius * Math.cos(angle), numeralZ);
-        numeral.castShadow = true; // This will cast a shadow on the clock face
+        numeral.castShadow = true; 
         numeral.receiveShadow = true;
         watchGroup.add(numeral);
     }
@@ -612,7 +641,7 @@ mtlLoader.load(
         });
         const newFace = new THREE.Mesh(faceGeom, faceMat);
         newFace.name = 'clock_face';
-        newFace.receiveShadow = true; // MODIFIED: MUST receive shadows
+        newFace.receiveShadow = true;
         newFace.position.z = -3.4 + zShift;
         clockUnit.add(newFace);
       },
@@ -735,4 +764,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
