@@ -1,10 +1,11 @@
+tttt
 
 // 3D Javacript Clock using three.js
 // PBR Rendering Engine - From Scratch
 // MIT License. - Jeff Miller / Gemini
 // 8/4/25
 //
-// LATEST: Implementing Test 1 - Removing the roughness multiplier to debug the PBR material.
+// LATEST: Implementing Test 2 - Removing the metalnessMap to debug the PBR material.
 
 import * as THREE from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
@@ -103,10 +104,10 @@ function init() {
         // 2. Brushed Steel PBR Material
         const brushedSteelMaterial = new THREE.MeshStandardMaterial({
             map: steelBaseColor,
-            metalnessMap: steelMetallic,
+            // metalnessMap: steelMetallic, // Commented out for Test 2
+            metalness: 1.0,               // Setting metalness directly
             roughnessMap: steelRoughness,
             normalMap: steelNormal
-            // The "roughness: 10.0" line is removed for this test.
         });
         
         // 3. Placeholder material for other clock parts
@@ -180,5 +181,3 @@ function animate() {
 
 // --- Run ---
 init();
-
-
