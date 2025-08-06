@@ -1,9 +1,26 @@
+Understood. My apologies for the misunderstanding. The goal is to have the clock positioned inside the box, with its back resting against the box's base, creating a true shadow box effect.
+
+I have adjusted the code to reflect this proper configuration. The key changes are:
+
+Parenting: The clockUnit is now a child of the boxGroup, so they move and tilt together as a single unit.
+
+Positioning: The clockUnit has been moved to the correct local z position within the boxGroup so that its back is flush with the base.
+
+Rotation: The tilt controls now rotate the entire boxGroup, giving the correct parallax effect of looking into a display case.
+
+Internal Spacing: The zShift variable has been reverted to its original value to restore the clock's intended internal depth.
+
+These corrections will place the clock inside the box as you intended. Here is the full, updated code listing.
+
+JavaScript
+
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
 // MODIFIED: Fixed mobile z-fighting, scaling, and adjusted lighting.
 // MODIFIED: Added an enclosing box to create a depth effect, with walls starting at the window edge.
 // MODIFIED: Corrected box and clock positioning to create a recessed "display case" effect.
+// MODIFIED: Placed clock inside the box, resting on the back wall, and corrected tilt rotation.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -66,9 +83,9 @@ rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
     scene.environment = texture;
 });
 
-// MODIFICATION: Adjusted light position for shorter shadows.
+// MODIFICATION: Repositioned light for better shadows inside the box.
 const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
-dirLight.position.set(7, 15, 10);
+dirLight.position.set(10, 40, 20);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
@@ -84,12 +101,12 @@ scene.add(dirLight);
 
 // --- Create a master "clockUnit" group ---
 const clockUnit = new THREE.Group();
-scene.add(clockUnit);
+clockUnit.position.z = 3.05; // Position clock assembly within the box group
 
 const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
 
-const zShift = 4.05;
+const zShift = 1.0; // Reverted to original value
 
 // --- PBR Material Definitions ---
 const textureLoader = new THREE.TextureLoader().setPath('textures/');
@@ -123,8 +140,8 @@ wall.receiveShadow = true;
 // --- Box Creation ---
 const boxGroup = new THREE.Group();
 scene.add(boxGroup);
-boxGroup.position.z = -4;
 boxGroup.add(wall); // Use existing wall as the back of the box
+boxGroup.add(clockUnit); // Place the clock unit inside the box group
 
 const topWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), wallMaterial);
 const bottomWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), wallMaterial);
@@ -381,19 +398,15 @@ function layoutScene() {
 
     // --- 2. Build the box to fit the new viewport ---
     const boxDepth = 4.0; 
-    // The world Z position of the back wall is the group's Z position.
     const backWallWorldZ = boxGroup.position.z; 
 
-    // Calculate the size of the viewport at the z-position of the back wall
     const viewPlaneDistance = camera.position.z - backWallWorldZ;
     const viewPlaneHeight = 2 * Math.tan(fov / 2) * viewPlaneDistance;
     const viewPlaneWidth = viewPlaneHeight * camera.aspect;
     
-    // Z center of walls is now calculated locally within the group
     const wallCenterZ = boxDepth / 2;
 
-    // Reposition and resize all 5 walls of the box using local coordinates
-    wall.position.z = 0; // Back wall is at the group's origin
+    wall.position.z = 0;
     wall.scale.set(viewPlaneWidth, viewPlaneHeight, 1);
 
     topWall.scale.set(viewPlaneWidth, boxDepth, 1);
@@ -411,6 +424,13 @@ function layoutScene() {
     rightWall.scale.set(boxDepth, viewPlaneHeight, 1);
     rightWall.position.set(viewPlaneWidth / 2, 0, wallCenterZ);
     rightWall.rotation.set(0, -Math.PI / 2, 0);
+
+    // --- 3. Update shadow camera to match box size ---
+    dirLight.shadow.camera.left = -viewPlaneWidth / 2;
+    dirLight.shadow.camera.right = viewPlaneWidth / 2;
+    dirLight.shadow.camera.top = viewPlaneHeight / 2;
+    dirLight.shadow.camera.bottom = -viewPlaneHeight / 2;
+    dirLight.shadow.camera.updateProjectionMatrix();
 }
 
 let tiltX = 0, tiltY = 0;
@@ -444,8 +464,10 @@ function animate() {
   const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
   const rotY = THREE.MathUtils.degToRad(x) * 0.5;
   const rotX = THREE.MathUtils.degToRad(y) * 0.5;
-  clockUnit.rotation.y = rotY;
-  clockUnit.rotation.x = rotX;
+  
+  // Rotate the entire box for a parallax effect
+  boxGroup.rotation.y = rotY;
+  boxGroup.rotation.x = rotX;
   
   camera.lookAt(scene.position); // Look at the center of the scene
 
@@ -502,4 +524,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
