@@ -1,3 +1,4 @@
+tttt
 // Import the main three.js library
 import * as THREE from 'three'; // Core 3D engine
 // Import helper loaders and controls
@@ -272,3 +273,4 @@ window.addEventListener('resize', () => {
 // --- Start animation ---
 resetView(); // Ensure default view
 animate(); // Begin loop
+
