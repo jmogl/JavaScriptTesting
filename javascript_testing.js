@@ -1,18 +1,3 @@
-Excellent question. That warning message is very common and indicates a "race condition" in the code.
-
-The Cause of the Warning
-The warning Texture marked for update but no image data found appears because the code attempts to modify the properties of the wood textures (like their repetition/scale in the layoutScene function) before the image files for those textures have finished downloading from the network.
-
-Even though the textures appear to load correctly in the end, the initial attempt to manipulate them happens too early, which generates the warnings in the console.
-
-The Solution
-The correct way to solve this is to use a LoadingManager. This is a Three.js utility that tracks the loading progress of all assets. We can tell it to only run the layoutScene() function after all the textures, fonts, and models are fully loaded and ready to be used.
-
-I have updated the code below to implement a LoadingManager. This will resolve all the warnings and ensure the scene is built correctly every time.
-
-Here is the complete and final code listing.
-
-JavaScript
 
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
@@ -598,3 +583,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
