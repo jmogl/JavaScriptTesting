@@ -1,14 +1,3 @@
-Of course. I have made the requested adjustments to the code.
-
-Here is a summary of the changes:
-
-Audio Disabled: All code related to the ticking sound has been commented out. This will resolve the "Forbidden" error and stop the sound from trying to load until you find a new audio file.
-
-Box Depth Adjusted: The boxDepth has been changed from 12.0 to 10.5. This moves the back wall 1.5 units closer to the clock in the positive Z-axis, which should reduce the shadow gap as you requested.
-
-Here is the complete and updated code listing.
-
-JavaScript
 
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
@@ -600,3 +589,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
