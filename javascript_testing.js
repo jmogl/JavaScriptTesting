@@ -1,7 +1,3 @@
-// 3D Javacript Clock using three.js
-// MIT License. - Work in Progress using Gemini
-// Jeff Miller 2025. 8/6/25
-
 // Import the main three.js library
 import * as THREE from 'three'; // Core 3D engine
 // Import helper loaders and controls
