@@ -1,3 +1,9 @@
+Of course. Here is the complete, up-to-date code listing.
+
+I have modified the layoutScene function as you requested. The logic for sizing the box now calculates the dimensions based on the camera's view at the front opening of the box (boxFrontZ), not the back wall. This change will align the top edges of the box walls with the web page window, creating the desired perspective.
+
+JavaScript
+
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -11,6 +17,7 @@
 // MODIFIED: Corrected the 90-degree rotation of the new lathe bezel.
 // MODIFIED: Adjusted bezel thickness and box depth to prevent clipping.
 // MODIFIED: Corrected box depth and back wall positioning to fully contain the clock.
+// MODIFIED: Scaled view to align with the top of the box walls instead of the back wall.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -402,22 +409,27 @@ function layoutScene() {
     camera.updateProjectionMatrix();
 
     // --- 2. Build the box to fit the viewport and contain the clock ---
-    const boxDepth = 8.0; 
+    const boxDepth = 12.0; 
     const backWallZ = -boxDepth;
     const wallCenterZ = -boxDepth / 2;
+    const boxFrontZ = 0.0;
 
     const fov = camera.fov * (Math.PI / 180);
-    // Calculate view plane size at the back wall so it fills the screen
-    const viewPlaneDistance = camera.position.z - backWallZ;
+    // Calculate view plane size at the FRONT of the box so it aligns with the screen edge
+    const viewPlaneDistance = camera.position.z - boxFrontZ;
     const viewPlaneHeight = 2 * Math.tan(fov / 2) * viewPlaneDistance;
     const viewPlaneWidth = viewPlaneHeight * camera.aspect;
     
     // Position the back wall
     wall.position.z = backWallZ;
-    wall.scale.set(viewPlaneWidth, viewPlaneHeight, 1);
+    // The back wall must be scaled larger to appear the same size as the front opening
+    const backPlaneDistance = camera.position.z - backWallZ;
+    const backPlaneHeight = 2 * Math.tan(fov / 2) * backPlaneDistance;
+    const backPlaneWidth = backPlaneHeight * camera.aspect;
+    wall.scale.set(backPlaneWidth, backPlaneHeight, 1);
 
     // Position the side walls
-    topWall.scale.set(viewPlaneWidth, boxDepth, 1);
+    topWall.scale.set(viewPlaneWidth, boxDepth, 1); // Width is based on front opening
     topWall.position.set(0, viewPlaneHeight / 2, wallCenterZ);
     topWall.rotation.set(Math.PI / 2, 0, 0);
 
@@ -425,7 +437,7 @@ function layoutScene() {
     bottomWall.position.set(0, -viewPlaneHeight / 2, wallCenterZ);
     bottomWall.rotation.set(-Math.PI / 2, 0, 0);
 
-    leftWall.scale.set(boxDepth, viewPlaneHeight, 1);
+    leftWall.scale.set(boxDepth, viewPlaneHeight, 1); // Height is based on front opening
     leftWall.position.set(-viewPlaneWidth / 2, 0, wallCenterZ);
     leftWall.rotation.set(0, Math.PI / 2, 0);
 
@@ -444,10 +456,10 @@ function layoutScene() {
 
 
     // --- 4. Update shadow camera to match box size ---
-    dirLight.shadow.camera.left = -viewPlaneWidth / 2;
-    dirLight.shadow.camera.right = viewPlaneWidth / 2;
-    dirLight.shadow.camera.top = viewPlaneHeight / 2;
-    dirLight.shadow.camera.bottom = -viewPlaneHeight / 2;
+    dirLight.shadow.camera.left = -backPlaneWidth / 2;
+    dirLight.shadow.camera.right = backPlaneWidth / 2;
+    dirLight.shadow.camera.top = backPlaneHeight / 2;
+    dirLight.shadow.camera.bottom = -backPlaneHeight / 2;
     dirLight.shadow.camera.updateProjectionMatrix();
 }
 
@@ -541,4 +553,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
