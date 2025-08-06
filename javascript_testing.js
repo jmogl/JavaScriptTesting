@@ -1,3 +1,5 @@
+TTTT
+
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -409,7 +411,7 @@ function layoutScene() {
 
     const fov = camera.fov * (Math.PI / 180);
     // Calculate view plane size at the back wall so it fills the screen
-    const viewPlaneDistance = camera.position.z - backWallZ;
+    const viewPlaneDistance = camera.position.z - boxFrontZ;
     const viewPlaneHeight = 2 * Math.tan(fov / 2) * viewPlaneDistance;
     const viewPlaneWidth = viewPlaneHeight * camera.aspect;
     
