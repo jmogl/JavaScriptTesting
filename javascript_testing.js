@@ -1,5 +1,3 @@
-tt
-
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -504,3 +502,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
