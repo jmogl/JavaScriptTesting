@@ -1,17 +1,3 @@
-Of course. To allow for examining the clock's alignment with a mouse or touch, I will integrate OrbitControls into the scene. I will also add a simple yellow sphere and a line to represent the position and direction of the main light source without affecting the overall render.
-
-Here are the key modifications:
-
-OrbitControls Added: The OrbitControls script is imported and instantiated to allow you to rotate the camera around the scene using a mouse (click and drag) or touch gestures.
-
-Tilt Controls Disabled: The code that rotates the box based on device tilt has been commented out to prevent it from conflicting with the new mouse/touch controls.
-
-Light Source Visualized: A yellow sphere has been placed at the light's position, and a yellow line is drawn from the sphere to the center of the scene to indicate the light's direction. These helpers use a basic material so they do not cast shadows or otherwise interfere with the scene's lighting.
-
-Here is the complete updated code listing.
-
-JavaScript
-
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -547,3 +533,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
