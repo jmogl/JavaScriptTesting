@@ -1,13 +1,3 @@
-You are right, the repeating texture on the side walls doesn't look realistic because it's being stretched instead of scaled proportionally.
-
-To fix this, I have updated the code to create separate material instances for the side walls. This allows for dynamic control over the texture scaling for each wall independently. The layoutScene function will now calculate the appropriate texture repetition based on the actual size of each wall in the scene.
-
-This change will make the wood grain on the side walls scale proportionally and appear much more realistic, matching the appearance of the back wall.
-
-Here is the complete, updated code listing.
-
-JavaScript
-
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -582,3 +572,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
