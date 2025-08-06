@@ -1,3 +1,4 @@
+TTT
 
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
@@ -10,6 +11,7 @@
 // MODIFIED: Added OrbitControls for mouse/touch rotation and a helper to visualize the light source.
 // MODIFIED: Redesigned bezel with LatheGeometry, implemented dynamic clock scaling, and repositioned light.
 // MODIFIED: Corrected the 90-degree rotation of the new lathe bezel.
+// MODIFIED: Adjusted bezel thickness and box depth to prevent clipping.
 // MODIFIED: Corrected box depth and back wall positioning to fully contain the clock.
 // MODIFIED: Scaled view to align with the top of the box walls instead of the back wall.
 // MODIFIED: Implemented dynamic texture scaling on box walls for realistic appearance.
@@ -430,7 +432,7 @@ function layoutScene() {
     camera.updateProjectionMatrix();
 
     // --- 2. Build the box to fit the viewport and contain the clock ---
-    const boxDepth = 10.5; // Adjusted depth
+    const boxDepth = 9; 
     const backWallZ = -boxDepth;
     const wallCenterZ = -boxDepth / 2;
     const boxFrontZ = 0.0;
@@ -441,6 +443,7 @@ function layoutScene() {
     const viewPlaneHeight = 2 * Math.tan(fov / 2) * viewPlaneDistance;
     const viewPlaneWidth = viewPlaneHeight * camera.aspect;
     
+    // The back wall must be scaled larger to appear the same size as the front opening
     const backPlaneDistance = camera.position.z - backWallZ;
     const backPlaneHeight = 2 * Math.tan(fov / 2) * backPlaneDistance;
     const backPlaneWidth = backPlaneHeight * camera.aspect;
@@ -589,4 +592,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
