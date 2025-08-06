@@ -1,3 +1,5 @@
+ttt
+
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -217,7 +219,7 @@ const outerRadius = markerRadius + borderThickness;
 const innerRadius = markerRadius;
 
 const points2D = [];
-const bezelBackZ = -7.0;
+const bezelBackZ = -4.8;
 const markerFrontZ = -3.35 + zShift;
 const bezelFrontZ = markerFrontZ;
 
@@ -394,22 +396,21 @@ objLoader.load('ETA6497-1_OBJ.obj', (object) => {
     clockUnit.add(newFace);
 });
 
-
-// --- MODIFICATION: Rewritten function for dynamic scaling and layout ---
 function layoutScene() {
     // --- 1. Set a fixed camera Z position ---
     camera.position.z = 60;
     camera.updateProjectionMatrix();
 
     // --- 2. Build the box to fit the viewport and contain the clock ---
-    const backWallZ = bezelBackZ; 
+    // MODIFICATION: Set the back wall position directly to -4.8 to match the bezel's back.
+    const backWallZ = -4.8; 
     const boxFrontZ = 1.0; 
     const boxDepth = boxFrontZ - backWallZ;
     const wallCenterZ = (backWallZ + boxFrontZ) / 2;
 
     const fov = camera.fov * (Math.PI / 180);
     // Calculate view plane size at the back wall so it fills the screen
-    const viewPlaneDistance = camera.position.z - boxFrontZ;
+    const viewPlaneDistance = camera.position.z - backWallZ;
     const viewPlaneHeight = 2 * Math.tan(fov / 2) * viewPlaneDistance;
     const viewPlaneWidth = viewPlaneHeight * camera.aspect;
     
@@ -451,6 +452,7 @@ function layoutScene() {
     dirLight.shadow.camera.bottom = -viewPlaneHeight / 2;
     dirLight.shadow.camera.updateProjectionMatrix();
 }
+
 
 let tiltX = 0, tiltY = 0;
 function handleOrientation(event) {
@@ -542,5 +544,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
 
