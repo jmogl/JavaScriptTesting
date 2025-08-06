@@ -1,18 +1,3 @@
-You are correct, the previous version did not have the box deep enough and incorrectly positioned the back wall. The screenshot made the issue very clear. My apologies for the error.
-
-I have refactored the layout logic to fix this. The following changes have been made:
-
-Correct Box Depth: The box's depth is now calculated to be deep enough to contain the entire clock assembly, from the back of the bezel to the front of the hands.
-
-Back Wall Repositioned: The back wall of the box has been moved to the very rear of this new, deeper volume, aligning with the back of the bezel as you requested.
-
-Clock Alignment: The clock assembly is now correctly positioned inside this new volume.
-
-This ensures the entire clock fits inside the box on all axes and that the back of the box is correctly positioned behind the entire mechanism.
-
-Here is the full, updated code listing:
-
-JavaScript
 
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
@@ -558,3 +543,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
