@@ -1,13 +1,3 @@
-I sincerely apologize that the last update did not resolve the issue. Thank you for providing the clear screenshot and instructions again; it shows exactly where the logic was failing. The box was not being positioned correctly in the negative Z-axis.
-
-I have located and corrected the error in the layout logic. The layoutScene function is now fixed to ensure the back wall of the box moves to the correct depth to align with the back of the blue bezel, and the side walls are extended to match.
-
-As per your instructions, the positions of the clock and the bezel have not been modified. This fix only adjusts the box walls to correctly contain the clock assembly.
-
-Here is the complete and corrected code.
-
-JavaScript
-
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -552,3 +542,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
