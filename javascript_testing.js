@@ -1,11 +1,3 @@
-You are absolutely correct. The blue bezel was inadvertently rotated 90 degrees due to the way the LatheGeometry was constructed. My apologies for that error. The geometry was created "standing up" and needed to be rotated to lay flat.
-
-I have now applied the necessary rotation to the bezel, which orients it correctly so it is parallel with the clock face. This change also resolves the issue of the clock being obstructed, as the bezel is no longer cutting through the middle of the assembly. The back of this newly-oriented bezel now correctly extends to touch the base of the box as intended.
-
-Here is the complete, corrected code listing.
-
-JavaScript
-
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -548,3 +540,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
