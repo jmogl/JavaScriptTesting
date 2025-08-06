@@ -1,8 +1,11 @@
+tt
+
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
 // MODIFIED: Fixed mobile z-fighting, scaling, and adjusted lighting.
 // MODIFIED: Added an enclosing box to create a depth effect, with walls starting at the window edge.
+// MODIFIED: Corrected box and clock positioning to create a recessed "display case" effect.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -88,7 +91,7 @@ scene.add(clockUnit);
 const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
 
-const zShift = 1.0;
+const zShift = 4.05;
 
 // --- PBR Material Definitions ---
 const textureLoader = new THREE.TextureLoader().setPath('textures/');
@@ -122,6 +125,7 @@ wall.receiveShadow = true;
 // --- Box Creation ---
 const boxGroup = new THREE.Group();
 scene.add(boxGroup);
+boxGroup.position.z = -4;
 boxGroup.add(wall); // Use existing wall as the back of the box
 
 const topWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), wallMaterial);
@@ -374,22 +378,24 @@ function layoutScene() {
     const distanceForHeight = (effectiveFovDiameter / 2) / Math.tan(fov / 2);
     const distanceForWidth = ((effectiveFovDiameter / 2) / Math.tan(fov / 2)) / camera.aspect;
 
-    // Use the greater distance to ensure the padded view is always maintained
-    camera.position.z = Math.max(distanceForHeight, distanceForWidth) + 2; // Add a small buffer
+    camera.position.z = Math.max(distanceForHeight, distanceForWidth) + 2;
     camera.updateProjectionMatrix();
 
     // --- 2. Build the box to fit the new viewport ---
-    const backWallZ = -4;
-    const boxDepth = 4.0; // Extend from z=-4 to z=0
-    const wallCenterZ = backWallZ + (boxDepth / 2);
+    const boxDepth = 4.0; 
+    // The world Z position of the back wall is the group's Z position.
+    const backWallWorldZ = boxGroup.position.z; 
 
     // Calculate the size of the viewport at the z-position of the back wall
-    const viewPlaneDistance = camera.position.z - backWallZ;
+    const viewPlaneDistance = camera.position.z - backWallWorldZ;
     const viewPlaneHeight = 2 * Math.tan(fov / 2) * viewPlaneDistance;
     const viewPlaneWidth = viewPlaneHeight * camera.aspect;
+    
+    // Z center of walls is now calculated locally within the group
+    const wallCenterZ = boxDepth / 2;
 
-    // Reposition and resize all 5 walls of the box
-    wall.position.z = backWallZ;
+    // Reposition and resize all 5 walls of the box using local coordinates
+    wall.position.z = 0; // Back wall is at the group's origin
     wall.scale.set(viewPlaneWidth, viewPlaneHeight, 1);
 
     topWall.scale.set(viewPlaneWidth, boxDepth, 1);
@@ -498,4 +504,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
