@@ -1,3 +1,11 @@
+You are absolutely correct. The blue bezel was inadvertently rotated 90 degrees due to the way the LatheGeometry was constructed. My apologies for that error. The geometry was created "standing up" and needed to be rotated to lay flat.
+
+I have now applied the necessary rotation to the bezel, which orients it correctly so it is parallel with the clock face. This change also resolves the issue of the clock being obstructed, as the bezel is no longer cutting through the middle of the assembly. The back of this newly-oriented bezel now correctly extends to touch the base of the box as intended.
+
+Here is the complete, corrected code listing.
+
+JavaScript
+
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -8,6 +16,7 @@
 // MODIFIED: Increased FOV for more perspective, adjusted box depth, and commented out digital display.
 // MODIFIED: Added OrbitControls for mouse/touch rotation and a helper to visualize the light source.
 // MODIFIED: Redesigned bezel with LatheGeometry, implemented dynamic clock scaling, and repositioned light.
+// MODIFIED: Corrected the 90-degree rotation of the new lathe bezel.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -215,24 +224,22 @@ const innerRadius = markerRadius; // 10.0
 
 // --- MODIFICATION: Replaced bezel with LatheGeometry for custom extrusion ---
 const points2D = [];
-// Profile points are defined in XY plane for LatheGeometry, where X is radius and Y is depth (z-axis)
-// Back of box is at z=0 locally. Clock unit is at z=4.8. So back of box is at z=-4.8 relative to clockUnit
 const bezelBackZ = -4.8; 
-// Midpoint of tick marks
-const markerFrontZ = -3.35 + zShift; // -2.35
+const markerFrontZ = -3.35 + zShift;
 const markerDepth = 0.5;
-const markerBackZ = markerFrontZ - markerDepth; // -2.85
-const bezelFrontZ = (markerFrontZ + markerBackZ) / 2; // -2.6
+const markerBackZ = markerFrontZ - markerDepth;
+const bezelFrontZ = (markerFrontZ + markerBackZ) / 2;
 
-points2D.push(new THREE.Vector2(outerRadius, bezelBackZ)); // Bottom-outer edge
-points2D.push(new THREE.Vector2(outerRadius, bezelFrontZ)); // Top-outer edge
-points2D.push(new THREE.Vector2(innerRadius, bezelFrontZ)); // Top-inner edge
-points2D.push(new THREE.Vector2(innerRadius, bezelBackZ)); // Bottom-inner edge
-points2D.push(new THREE.Vector2(outerRadius, bezelBackZ)); // Close path
+points2D.push(new THREE.Vector2(outerRadius, bezelBackZ));
+points2D.push(new THREE.Vector2(outerRadius, bezelFrontZ));
+points2D.push(new THREE.Vector2(innerRadius, bezelFrontZ));
+points2D.push(new THREE.Vector2(innerRadius, bezelBackZ));
+points2D.push(new THREE.Vector2(outerRadius, bezelBackZ));
 
 const borderGeom = new THREE.LatheGeometry(points2D, 64);
 const borderMaterial = new THREE.MeshStandardMaterial({ color: 0x000040 });
 const borderMesh = new THREE.Mesh(borderGeom, borderMaterial);
+borderMesh.rotation.x = Math.PI / 2; // Correct the orientation of the lathe
 borderMesh.castShadow = true;
 borderMesh.receiveShadow = true;
 clockUnit.add(borderMesh);
@@ -541,4 +548,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
