@@ -1,9 +1,6 @@
-ttttt
-
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/6/25
-
 
 // Import the main three.js library
 import * as THREE from 'three'; // Core 3D engine
@@ -92,6 +89,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     }
                 })
                 .catch(error => console.error('Error requesting tilt permission:', error)); // Log errors
+        }); // Close permissionButton click listener // Log errors
     } else {
         // Non-iOS or permission not required: enable tilt by default
         window.addEventListener('deviceorientation', handleOrientation); // Always listen
