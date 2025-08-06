@@ -1,19 +1,3 @@
-Understood. My apologies for the misunderstanding. The goal is to have the clock positioned inside the box, with its back resting against the box's base, creating a true shadow box effect.
-
-I have adjusted the code to reflect this proper configuration. The key changes are:
-
-Parenting: The clockUnit is now a child of the boxGroup, so they move and tilt together as a single unit.
-
-Positioning: The clockUnit has been moved to the correct local z position within the boxGroup so that its back is flush with the base.
-
-Rotation: The tilt controls now rotate the entire boxGroup, giving the correct parallax effect of looking into a display case.
-
-Internal Spacing: The zShift variable has been reverted to its original value to restore the clock's intended internal depth.
-
-These corrections will place the clock inside the box as you intended. Here is the full, updated code listing.
-
-JavaScript
-
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -524,3 +508,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
