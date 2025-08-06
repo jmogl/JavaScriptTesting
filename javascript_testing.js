@@ -1,8 +1,3 @@
-Of course. Here is the complete, up-to-date code listing.
-
-I have modified the layoutScene function as you requested. The logic for sizing the box now calculates the dimensions based on the camera's view at the front opening of the box (boxFrontZ), not the back wall. This change will align the top edges of the box walls with the web page window, creating the desired perspective.
-
-JavaScript
 
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
@@ -553,3 +548,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
