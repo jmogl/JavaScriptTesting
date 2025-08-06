@@ -1,3 +1,15 @@
+Based on the detailed notes on your screenshot, I have made three adjustments to the code to match your intent.
+
+Perspective Effect: To create a more dramatic perspective effect as shown by the blue lines, the camera's Field of View (FOV) has been increased from 20 to 50. A wider FOV makes objects appear to have more depth.
+
+Clock Position: To fix the issue where the clock was embedded in the box, the box's depth has been increased, and the entire clock assembly has been moved forward along the Z-axis so it sits just inside the front edge of the case. This ensures no parts are hidden by the box walls.
+
+Digital Display: The lines of code that update the digital clock and date have been commented out, so they no longer appear on the screen but can be easily re-enabled later.
+
+Here is the full, updated code listing with these changes incorporated.
+
+JavaScript
+
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -5,6 +17,7 @@
 // MODIFIED: Added an enclosing box to create a depth effect, with walls starting at the window edge.
 // MODIFIED: Corrected box and clock positioning to create a recessed "display case" effect.
 // MODIFIED: Placed clock inside the box, resting on the back wall, and corrected tilt rotation.
+// MODIFIED: Increased FOV for more perspective, adjusted box depth, and commented out digital display.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -46,7 +59,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // --- Scene Setup ---
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(20, window.innerWidth / window.innerHeight, 1, 1000);
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 
 // --- PBR Correct Renderer Setup ---
@@ -85,7 +98,7 @@ scene.add(dirLight);
 
 // --- Create a master "clockUnit" group ---
 const clockUnit = new THREE.Group();
-clockUnit.position.z = 3.05; // Position clock assembly within the box group
+clockUnit.position.z = 4.8; // Position clock assembly within the box group
 
 const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
@@ -381,7 +394,7 @@ function layoutScene() {
     camera.updateProjectionMatrix();
 
     // --- 2. Build the box to fit the new viewport ---
-    const boxDepth = 4.0; 
+    const boxDepth = 5.0; 
     const backWallWorldZ = boxGroup.position.z; 
 
     const viewPlaneDistance = camera.position.z - backWallWorldZ;
@@ -484,8 +497,8 @@ function animate() {
 
   const pad = (n) => n.toString().padStart(2, '0');
   const spanStyles = `background-color: rgba(0, 0, 0, 0.5); padding: 0.1em 0.3em; border-radius: 4px;`;
-  if (digitalClock) digitalClock.innerHTML = `<span style="${spanStyles}">${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(Math.floor(now.getSeconds()))}</span>`;
-  if (digitalDate) digitalDate.innerHTML = `<span style="${spanStyles}">${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear().toString().slice(-2)}</span>`;
+  // if (digitalClock) digitalClock.innerHTML = `<span style="${spanStyles}">${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(Math.floor(now.getSeconds()))}</span>`;
+  // if (digitalDate) digitalDate.innerHTML = `<span style="${spanStyles}">${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear().toString().slice(-2)}</span>`;
 
   const currentSecond = Math.floor(now.getSeconds());
   if (animate.lastSecond !== currentSecond) {
@@ -508,4 +521,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
