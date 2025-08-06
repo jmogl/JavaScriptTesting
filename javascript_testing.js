@@ -1,3 +1,17 @@
+Of course. I have updated the code to incorporate all six of the changes requested in your annotated screenshots.
+
+Here is a summary of the adjustments:
+
+Bezel Redesign: The simple blue bezel ring has been completely replaced with a new custom 3D shape. Using LatheGeometry, the new bezel is now extruded back to meet the base of the box and forward to the midpoint of the tick marks, as specified in your side-view image.
+
+Dynamic Scaling: The layoutScene function has been updated. The box walls are automatically sized to fit the browser window. The clock is now dynamically scaled to fit within those walls, always maintaining a margin of at least 5 units from the nearest edge. This ensures the layout is correct in both landscape and portrait orientations.
+
+Light Repositioning: The directional light has been moved 3 units up in the Z-axis and 2 units down in the Y-axis. The light's visual representation has also been updated to reflect this new position.
+
+These changes should result in a final render that matches your design specifications. Here is the full, updated code listing:
+
+JavaScript
+
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -7,6 +21,7 @@
 // MODIFIED: Placed clock inside the box, resting on the back wall, and corrected tilt rotation.
 // MODIFIED: Increased FOV for more perspective, adjusted box depth, and commented out digital display.
 // MODIFIED: Added OrbitControls for mouse/touch rotation and a helper to visualize the light source.
+// MODIFIED: Redesigned bezel with LatheGeometry, implemented dynamic clock scaling, and repositioned light.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -76,7 +91,7 @@ rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
 
 // MODIFICATION: Repositioned light for better shadows inside the box.
 const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
-dirLight.position.set(10, 40, 20);
+dirLight.position.set(10, 38, 23); //
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
@@ -112,7 +127,7 @@ clockUnit.position.z = 4.8; // Position clock assembly within the box group
 const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
 
-const zShift = 1.0; // Reverted to original value
+const zShift = 1.0; 
 
 // --- PBR Material Definitions ---
 const textureLoader = new THREE.TextureLoader().setPath('textures/');
@@ -146,8 +161,8 @@ wall.receiveShadow = true;
 // --- Box Creation ---
 const boxGroup = new THREE.Group();
 scene.add(boxGroup);
-boxGroup.add(wall); // Use existing wall as the back of the box
-boxGroup.add(clockUnit); // Place the clock unit inside the box group
+boxGroup.add(wall); 
+boxGroup.add(clockUnit); 
 
 const topWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), wallMaterial);
 const bottomWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), wallMaterial);
@@ -209,23 +224,31 @@ rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
 // --- Tick Marks, Numerals, Hands, etc. ---
 const markerRadius = 10.0;
 const borderThickness = 1.0;
-const borderHeight = 1.2;
-const outerRadius = markerRadius + borderThickness;
-const innerRadius = markerRadius;
-const borderShape = new THREE.Shape();
-borderShape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
-const holePath = new THREE.Path();
-holePath.absarc(0, 0, innerRadius, 0, Math.PI * 2, true);
-borderShape.holes.push(holePath);
-const borderExtrudeSettings = { depth: borderHeight, bevelEnabled: false, curveSegments: 256 };
-const borderGeom = new THREE.ExtrudeGeometry(borderShape, borderExtrudeSettings);
-borderGeom.translate(0, 0, -borderHeight / 2);
+const outerRadius = markerRadius + borderThickness; // 11.0
+const innerRadius = markerRadius; // 10.0
+
+// --- MODIFICATION: Replaced bezel with LatheGeometry for custom extrusion ---
+const points2D = [];
+// Profile points are defined in XY plane for LatheGeometry, where X is radius and Y is depth (z-axis)
+// Back of box is at z=0 locally. Clock unit is at z=4.8. So back of box is at z=-4.8 relative to clockUnit
+const bezelBackZ = -4.8; 
+// Midpoint of tick marks
+const markerFrontZ = -3.35 + zShift; // -2.35
+const markerDepth = 0.5;
+const markerBackZ = markerFrontZ - markerDepth; // -2.85
+const bezelFrontZ = (markerFrontZ + markerBackZ) / 2; // -2.6
+
+points2D.push(new THREE.Vector2(outerRadius, bezelBackZ)); // Bottom-outer edge
+points2D.push(new THREE.Vector2(outerRadius, bezelFrontZ)); // Top-outer edge
+points2D.push(new THREE.Vector2(innerRadius, bezelFrontZ)); // Top-inner edge
+points2D.push(new THREE.Vector2(innerRadius, bezelBackZ)); // Bottom-inner edge
+points2D.push(new THREE.Vector2(outerRadius, bezelBackZ)); // Close path
+
+const borderGeom = new THREE.LatheGeometry(points2D, 64);
 const borderMaterial = new THREE.MeshStandardMaterial({ color: 0x000040 });
 const borderMesh = new THREE.Mesh(borderGeom, borderMaterial);
 borderMesh.castShadow = true;
 borderMesh.receiveShadow = true;
-// MODIFICATION: Pushed border back slightly to prevent Z-fighting on mobile.
-borderMesh.position.z = -4.05 + zShift;
 clockUnit.add(borderMesh);
 
 
@@ -388,24 +411,17 @@ objLoader.load('ETA6497-1_OBJ.obj', (object) => {
 });
 
 
-// --- MODIFICATION: New unified function to handle camera, padding, and box layout ---
+// --- MODIFICATION: Rewritten function for dynamic scaling and layout ---
 function layoutScene() {
-    // --- 1. Update Camera to ensure clock has 15% padding ---
-    const clockDiameter = 22; // The actual diameter of the clock
-    const viewPercentage = 1.0 - (0.15 * 2); // 70% of the view (15% padding on each side)
-    const effectiveFovDiameter = clockDiameter / viewPercentage;
-
-    const fov = camera.fov * (Math.PI / 180);
-    const distanceForHeight = (effectiveFovDiameter / 2) / Math.tan(fov / 2);
-    const distanceForWidth = ((effectiveFovDiameter / 2) / Math.tan(fov / 2)) / camera.aspect;
-
-    camera.position.z = Math.max(distanceForHeight, distanceForWidth) + 2;
+    // --- 1. Set a fixed camera Z position ---
+    camera.position.z = 60;
     camera.updateProjectionMatrix();
 
-    // --- 2. Build the box to fit the new viewport ---
+    // --- 2. Build the box to fit the viewport ---
     const boxDepth = 5.0; 
     const backWallWorldZ = boxGroup.position.z; 
 
+    const fov = camera.fov * (Math.PI / 180);
     const viewPlaneDistance = camera.position.z - backWallWorldZ;
     const viewPlaneHeight = 2 * Math.tan(fov / 2) * viewPlaneDistance;
     const viewPlaneWidth = viewPlaneHeight * camera.aspect;
@@ -431,7 +447,17 @@ function layoutScene() {
     rightWall.position.set(viewPlaneWidth / 2, 0, wallCenterZ);
     rightWall.rotation.set(0, -Math.PI / 2, 0);
 
-    // --- 3. Update shadow camera to match box size ---
+    // --- 3. Scale clock to fit inside box with padding ---
+    const clockNativeDiameter = 22;
+    const padding = 5; //
+    const availableWidth = viewPlaneWidth - (padding * 2);
+    const availableHeight = viewPlaneHeight - (padding * 2);
+    
+    const scale = Math.min(availableWidth, availableHeight) / clockNativeDiameter;
+    clockUnit.scale.set(scale, scale, scale);
+
+
+    // --- 4. Update shadow camera to match box size ---
     dirLight.shadow.camera.left = -viewPlaneWidth / 2;
     dirLight.shadow.camera.right = viewPlaneWidth / 2;
     dirLight.shadow.camera.top = viewPlaneHeight / 2;
@@ -465,7 +491,7 @@ tickSound.volume = 0.2;
 function animate() {
   requestAnimationFrame(animate);
 
-  controls.update(); // Update OrbitControls
+  controls.update(); 
 
   const maxTilt = 15;
   const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
@@ -473,13 +499,9 @@ function animate() {
   const rotY = THREE.MathUtils.degToRad(x) * 0.5;
   const rotX = THREE.MathUtils.degToRad(y) * 0.5;
   
-  // Rotate the entire box for a parallax effect - DISABLED for OrbitControls
   // boxGroup.rotation.y = rotY;
   // boxGroup.rotation.x = rotX;
   
-  // camera.lookAt is now handled by OrbitControls
-  // camera.lookAt(scene.position); 
-
   const now = new Date();
   const seconds = now.getSeconds() + now.getMilliseconds() / 1000;
   const minutes = now.getMinutes() + seconds / 60;
@@ -502,7 +524,7 @@ function animate() {
   
   if (balanceWheel) {
     const time = now.getTime() / 1000;
-    const sineValue = Math.sin(time * Math.I * 2 * (3 * balanceWheelSpeedMultiplier));
+    const sineValue = Math.sin(time * Math.PI * 2 * (3 * balanceWheelSpeedMultiplier));
     balanceWheel.rotation.z = (Math.PI / 2) * sineValue;
     if (hairSpring) hairSpring.scale.set(0.95 + 0.35 * sineValue, 0.95 + 0.35 * sineValue, 1);
   }
@@ -533,4 +555,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
