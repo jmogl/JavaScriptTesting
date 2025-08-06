@@ -1,15 +1,3 @@
-Based on the detailed notes on your screenshot, I have made three adjustments to the code to match your intent.
-
-Perspective Effect: To create a more dramatic perspective effect as shown by the blue lines, the camera's Field of View (FOV) has been increased from 20 to 50. A wider FOV makes objects appear to have more depth.
-
-Clock Position: To fix the issue where the clock was embedded in the box, the box's depth has been increased, and the entire clock assembly has been moved forward along the Z-axis so it sits just inside the front edge of the case. This ensures no parts are hidden by the box walls.
-
-Digital Display: The lines of code that update the digital clock and date have been commented out, so they no longer appear on the screen but can be easily re-enabled later.
-
-Here is the full, updated code listing with these changes incorporated.
-
-JavaScript
-
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -521,3 +509,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
