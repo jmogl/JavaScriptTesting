@@ -1,7 +1,10 @@
+tttt
+
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
 // MODIFIED: Fixed mobile z-fighting, scaling, and adjusted lighting.
+// MODIFIED: Added an enclosing box to create a depth effect, with walls starting at the window edge.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -64,9 +67,9 @@ rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
     scene.environment = texture;
 });
 
-// MODIFICATION: Adjusted light position and intensity for softer, shorter shadows.
+// MODIFICATION: Adjusted light position for shorter shadows.
 const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
-dirLight.position.set(10, 30, 10);
+dirLight.position.set(7, 15, 10);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
@@ -116,9 +119,23 @@ const woodTextureRepeat = 5;
 
 const wallGeometry = new THREE.PlaneGeometry(1, 1, 100, 100);
 const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-wall.position.z = -4;
 wall.receiveShadow = true;
-clockUnit.add(wall);
+
+// --- Box Creation ---
+const boxGroup = new THREE.Group();
+scene.add(boxGroup);
+boxGroup.add(wall); // Use existing wall as the back of the box
+
+const topWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), wallMaterial);
+const bottomWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), wallMaterial);
+const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), wallMaterial);
+const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), wallMaterial);
+
+[topWall, bottomWall, leftWall, rightWall].forEach(w => {
+    w.castShadow = true;
+    w.receiveShadow = true;
+    boxGroup.add(w);
+});
 
 
 // 2. Brushed Steel PBR Material
@@ -348,28 +365,50 @@ objLoader.load('ETA6497-1_OBJ.obj', (object) => {
 });
 
 
-// --- MODIFICATION: Rewritten function for robust scaling on all devices ---
-function updateCameraPosition() {
-    const clockSize = 22; // The diameter of the clock to fit in the view
-    const fov = camera.fov * (Math.PI / 180); // FOV in radians
+// --- MODIFICATION: New unified function to handle camera, padding, and box layout ---
+function layoutScene() {
+    // --- 1. Update Camera to ensure clock has 15% padding ---
+    const clockDiameter = 22; // The actual diameter of the clock
+    const viewPercentage = 1.0 - (0.15 * 2); // 70% of the view (15% padding on each side)
+    const effectiveFovDiameter = clockDiameter / viewPercentage;
 
-    // Calculate the distance required to fit the clock's height
-    const distanceForHeight = (clockSize / 2) / Math.tan(fov / 2);
+    const fov = camera.fov * (Math.PI / 180);
+    const distanceForHeight = (effectiveFovDiameter / 2) / Math.tan(fov / 2);
+    const distanceForWidth = ((effectiveFovDiameter / 2) / Math.tan(fov / 2)) / camera.aspect;
 
-    // Calculate the distance required to fit the clock's width
-    const distanceForWidth = (clockSize / 2) / Math.tan(fov / 2) / camera.aspect;
-
-    // Use the greater of the two distances to ensure the clock is always fully visible
+    // Use the greater distance to ensure the padded view is always maintained
     camera.position.z = Math.max(distanceForHeight, distanceForWidth) + 2; // Add a small buffer
-}
+    camera.updateProjectionMatrix();
 
-function updateBackgroundSize() {
-    if (!wall || !camera) return;
-    const distance = camera.position.z - (wall.position.z + clockUnit.position.z);
-    const vFov = THREE.MathUtils.degToRad(camera.fov);
-    const height = 2 * Math.tan(vFov / 2) * distance;
-    const width = height * camera.aspect;
-    wall.scale.set(width * 1.2, height * 1.2, 1);
+    // --- 2. Build the box to fit the new viewport ---
+    const backWallZ = -4;
+    const boxDepth = 4.0; // Extend from z=-4 to z=0
+    const wallCenterZ = backWallZ + (boxDepth / 2);
+
+    // Calculate the size of the viewport at the z-position of the back wall
+    const viewPlaneDistance = camera.position.z - backWallZ;
+    const viewPlaneHeight = 2 * Math.tan(fov / 2) * viewPlaneDistance;
+    const viewPlaneWidth = viewPlaneHeight * camera.aspect;
+
+    // Reposition and resize all 5 walls of the box
+    wall.position.z = backWallZ;
+    wall.scale.set(viewPlaneWidth, viewPlaneHeight, 1);
+
+    topWall.scale.set(viewPlaneWidth, boxDepth, 1);
+    topWall.position.set(0, viewPlaneHeight / 2, wallCenterZ);
+    topWall.rotation.set(Math.PI / 2, 0, 0);
+
+    bottomWall.scale.set(viewPlaneWidth, boxDepth, 1);
+    bottomWall.position.set(0, -viewPlaneHeight / 2, wallCenterZ);
+    bottomWall.rotation.set(-Math.PI / 2, 0, 0);
+
+    leftWall.scale.set(boxDepth, viewPlaneHeight, 1);
+    leftWall.position.set(-viewPlaneWidth / 2, 0, wallCenterZ);
+    leftWall.rotation.set(0, Math.PI / 2, 0);
+
+    rightWall.scale.set(boxDepth, viewPlaneHeight, 1);
+    rightWall.position.set(viewPlaneWidth / 2, 0, wallCenterZ);
+    rightWall.rotation.set(0, -Math.PI / 2, 0);
 }
 
 let tiltX = 0, tiltY = 0;
@@ -406,7 +445,7 @@ function animate() {
   clockUnit.rotation.y = rotY;
   clockUnit.rotation.x = rotX;
   
-  camera.lookAt(clockUnit.position);
+  camera.lookAt(scene.position); // Look at the center of the scene
 
   const now = new Date();
   const seconds = now.getSeconds() + now.getMilliseconds() / 1000;
@@ -451,20 +490,13 @@ function animate() {
 }
 
 // --- Initial Setup Calls ---
-updateCameraPosition();
-updateBackgroundSize();
+layoutScene();
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  updateCameraPosition();
-  updateBackgroundSize();
+  layoutScene();
 });
 
 setupTiltControls();
 animate();
-
-
-
-
