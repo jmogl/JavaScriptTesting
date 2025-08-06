@@ -1,3 +1,12 @@
+You are right, the repeating texture on the side walls doesn't look realistic because it's being stretched instead of scaled proportionally.
+
+To fix this, I have updated the code to create separate material instances for the side walls. This allows for dynamic control over the texture scaling for each wall independently. The layoutScene function will now calculate the appropriate texture repetition based on the actual size of each wall in the scene.
+
+This change will make the wood grain on the side walls scale proportionally and appear much more realistic, matching the appearance of the back wall.
+
+Here is the complete, updated code listing.
+
+JavaScript
 
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
@@ -10,9 +19,9 @@
 // MODIFIED: Added OrbitControls for mouse/touch rotation and a helper to visualize the light source.
 // MODIFIED: Redesigned bezel with LatheGeometry, implemented dynamic clock scaling, and repositioned light.
 // MODIFIED: Corrected the 90-degree rotation of the new lathe bezel.
-// MODIFIED: Adjusted bezel thickness and box depth to prevent clipping.
 // MODIFIED: Corrected box depth and back wall positioning to fully contain the clock.
 // MODIFIED: Scaled view to align with the top of the box walls instead of the back wall.
+// MODIFIED: Implemented dynamic texture scaling on box walls for realistic appearance.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -138,11 +147,28 @@ const wallMaterial = new THREE.MeshStandardMaterial({
     displacementScale: 0.05
 });
 
-const woodTextureRepeat = 5;
-[woodBaseColor, woodNormal, woodRoughness, woodHeight].forEach( texture => {
+// Clone material and its textures for independent control over texture repeat
+function cloneMaterialWithTextures(material) {
+    const newMaterial = material.clone();
+    newMaterial.map = material.map.clone();
+    newMaterial.normalMap = material.normalMap.clone();
+    newMaterial.roughnessMap = material.roughnessMap.clone();
+    newMaterial.displacementMap = material.displacementMap.clone();
+    return newMaterial;
+}
+
+const topBottomMaterial = cloneMaterialWithTextures(wallMaterial);
+const leftRightMaterial = cloneMaterialWithTextures(wallMaterial);
+
+const allWallTextures = [
+    wallMaterial.map, wallMaterial.normalMap, wallMaterial.roughnessMap, wallMaterial.displacementMap,
+    topBottomMaterial.map, topBottomMaterial.normalMap, topBottomMaterial.roughnessMap, topBottomMaterial.displacementMap,
+    leftRightMaterial.map, leftRightMaterial.normalMap, leftRightMaterial.roughnessMap, leftRightMaterial.displacementMap
+];
+
+allWallTextures.forEach(texture => {
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(woodTextureRepeat, woodTextureRepeat);
 });
 
 const wallGeometry = new THREE.PlaneGeometry(1, 1, 100, 100);
@@ -155,10 +181,10 @@ scene.add(boxGroup);
 boxGroup.add(wall); 
 boxGroup.add(clockUnit); 
 
-const topWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), wallMaterial);
-const bottomWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), wallMaterial);
-const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), wallMaterial);
-const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), wallMaterial);
+const topWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), topBottomMaterial);
+const bottomWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), topBottomMaterial);
+const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), leftRightMaterial);
+const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), leftRightMaterial);
 
 [topWall, bottomWall, leftWall, rightWall].forEach(w => {
     w.castShadow = true;
@@ -410,21 +436,29 @@ function layoutScene() {
     const boxFrontZ = 0.0;
 
     const fov = camera.fov * (Math.PI / 180);
-    // Calculate view plane size at the FRONT of the box so it aligns with the screen edge
     const viewPlaneDistance = camera.position.z - boxFrontZ;
     const viewPlaneHeight = 2 * Math.tan(fov / 2) * viewPlaneDistance;
     const viewPlaneWidth = viewPlaneHeight * camera.aspect;
     
-    // Position the back wall
-    wall.position.z = backWallZ;
-    // The back wall must be scaled larger to appear the same size as the front opening
     const backPlaneDistance = camera.position.z - backWallZ;
     const backPlaneHeight = 2 * Math.tan(fov / 2) * backPlaneDistance;
     const backPlaneWidth = backPlaneHeight * camera.aspect;
+
+    // --- 3. Dynamically set texture repeats for realism ---
+    const unitsPerTexture = 15; // Lower number = higher texture density
+    const wallTextures = [wallMaterial.map, wallMaterial.normalMap, wallMaterial.roughnessMap, wallMaterial.displacementMap];
+    const tbTextures = [topBottomMaterial.map, topBottomMaterial.normalMap, topBottomMaterial.roughnessMap, topBottomMaterial.displacementMap];
+    const lrTextures = [leftRightMaterial.map, leftRightMaterial.normalMap, leftRightMaterial.roughnessMap, leftRightMaterial.displacementMap];
+
+    wallTextures.forEach(t => t.repeat.set(backPlaneWidth / unitsPerTexture, backPlaneHeight / unitsPerTexture));
+    tbTextures.forEach(t => t.repeat.set(viewPlaneWidth / unitsPerTexture, boxDepth / unitsPerTexture));
+    lrTextures.forEach(t => t.repeat.set(boxDepth / unitsPerTexture, viewPlaneHeight / unitsPerTexture));
+
+    // --- 4. Position and scale walls ---
+    wall.position.z = backWallZ;
     wall.scale.set(backPlaneWidth, backPlaneHeight, 1);
 
-    // Position the side walls
-    topWall.scale.set(viewPlaneWidth, boxDepth, 1); // Width is based on front opening
+    topWall.scale.set(viewPlaneWidth, boxDepth, 1);
     topWall.position.set(0, viewPlaneHeight / 2, wallCenterZ);
     topWall.rotation.set(Math.PI / 2, 0, 0);
 
@@ -432,7 +466,7 @@ function layoutScene() {
     bottomWall.position.set(0, -viewPlaneHeight / 2, wallCenterZ);
     bottomWall.rotation.set(-Math.PI / 2, 0, 0);
 
-    leftWall.scale.set(boxDepth, viewPlaneHeight, 1); // Height is based on front opening
+    leftWall.scale.set(boxDepth, viewPlaneHeight, 1);
     leftWall.position.set(-viewPlaneWidth / 2, 0, wallCenterZ);
     leftWall.rotation.set(0, Math.PI / 2, 0);
 
@@ -440,7 +474,7 @@ function layoutScene() {
     rightWall.position.set(viewPlaneWidth / 2, 0, wallCenterZ);
     rightWall.rotation.set(0, -Math.PI / 2, 0);
 
-    // --- 3. Scale clock to fit inside box with padding ---
+    // --- 5. Scale clock to fit inside box with padding ---
     const clockNativeDiameter = 22;
     const padding = 5; 
     const availableWidth = viewPlaneWidth - (padding * 2);
@@ -450,7 +484,7 @@ function layoutScene() {
     clockUnit.scale.set(scale, scale, scale);
 
 
-    // --- 4. Update shadow camera to match box size ---
+    // --- 6. Update shadow camera to match box size ---
     dirLight.shadow.camera.left = -backPlaneWidth / 2;
     dirLight.shadow.camera.right = backPlaneWidth / 2;
     dirLight.shadow.camera.top = backPlaneHeight / 2;
@@ -548,4 +582,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
