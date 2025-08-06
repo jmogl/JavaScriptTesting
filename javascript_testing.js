@@ -1,17 +1,3 @@
-Of course. I have updated the code to incorporate all six of the changes requested in your annotated screenshots.
-
-Here is a summary of the adjustments:
-
-Bezel Redesign: The simple blue bezel ring has been completely replaced with a new custom 3D shape. Using LatheGeometry, the new bezel is now extruded back to meet the base of the box and forward to the midpoint of the tick marks, as specified in your side-view image.
-
-Dynamic Scaling: The layoutScene function has been updated. The box walls are automatically sized to fit the browser window. The clock is now dynamically scaled to fit within those walls, always maintaining a margin of at least 5 units from the nearest edge. This ensures the layout is correct in both landscape and portrait orientations.
-
-Light Repositioning: The directional light has been moved 3 units up in the Z-axis and 2 units down in the Y-axis. The light's visual representation has also been updated to reflect this new position.
-
-These changes should result in a final render that matches your design specifications. Here is the full, updated code listing:
-
-JavaScript
-
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -555,3 +541,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
