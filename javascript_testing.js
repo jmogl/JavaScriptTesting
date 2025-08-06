@@ -1,3 +1,5 @@
+tttt
+
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -10,7 +12,7 @@
 // MODIFIED: Redesigned bezel with LatheGeometry, implemented dynamic clock scaling, and repositioned light.
 // MODIFIED: Corrected the 90-degree rotation of the new lathe bezel.
 // MODIFIED: Adjusted bezel thickness and box depth to prevent clipping.
-// MODIFIED: Corrected box depth and back wall positioning to fully contain the clock. (Final Fix)
+// MODIFIED: Corrected box depth and back wall positioning to fully contain the clock.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -394,17 +396,17 @@ objLoader.load('ETA6497-1_OBJ.obj', (object) => {
     clockUnit.add(newFace);
 });
 
+
+// --- MODIFICATION: Rewritten function for dynamic scaling and layout ---
 function layoutScene() {
     // --- 1. Set a fixed camera Z position ---
     camera.position.z = 60;
     camera.updateProjectionMatrix();
 
     // --- 2. Build the box to fit the viewport and contain the clock ---
-    // MODIFICATION: Set the back wall position directly to -4.8 to match the bezel's back.
-    const backWallZ = -4.8; 
-    const boxFrontZ = 1.0; 
-    const boxDepth = boxFrontZ - backWallZ;
-    const wallCenterZ = (backWallZ + boxFrontZ) / 2;
+    const boxDepth = 8.0; 
+    const backWallZ = -boxDepth;
+    const wallCenterZ = -boxDepth / 2;
 
     const fov = camera.fov * (Math.PI / 180);
     // Calculate view plane size at the back wall so it fills the screen
@@ -450,7 +452,6 @@ function layoutScene() {
     dirLight.shadow.camera.bottom = -viewPlaneHeight / 2;
     dirLight.shadow.camera.updateProjectionMatrix();
 }
-
 
 let tiltX = 0, tiltY = 0;
 function handleOrientation(event) {
@@ -542,5 +543,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
-
