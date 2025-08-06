@@ -1,4 +1,3 @@
-
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -11,7 +10,7 @@
 // MODIFIED: Redesigned bezel with LatheGeometry, implemented dynamic clock scaling, and repositioned light.
 // MODIFIED: Corrected the 90-degree rotation of the new lathe bezel.
 // MODIFIED: Adjusted bezel thickness and box depth to prevent clipping.
-// MODIFIED: Corrected box depth and clock positioning to fully contain the clock assembly.
+// MODIFIED: Corrected box depth and back wall positioning to fully contain the clock.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -81,7 +80,7 @@ rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
 
 // MODIFICATION: Repositioned light for better shadows inside the box.
 const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
-dirLight.position.set(10, 38, 23); //
+dirLight.position.set(10, 38, 23);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
@@ -112,7 +111,7 @@ scene.add(lightLine);
 
 // --- Create a master "clockUnit" group ---
 const clockUnit = new THREE.Group();
-clockUnit.position.z = 0; // Position clock assembly at the center of the box group locally
+clockUnit.position.z = 0;
 
 const watchGroup = new THREE.Group();
 clockUnit.add(watchGroup);
@@ -403,13 +402,11 @@ function layoutScene() {
     camera.position.z = 60;
     camera.updateProjectionMatrix();
 
-    // --- 2. Build the box to fit the viewport ---
-    const clockFrontZ = 0; // Front of box is at z=0
-    const clockBackZ = bezelBackZ; // Back of clock aligns with back of bezel
-    const boxDepth = Math.abs(clockBackZ - clockFrontZ); // Total depth to contain the clock
-    
-    const backWallZ = clockBackZ;
-    const wallCenterZ = backWallZ + (boxDepth / 2);
+    // --- 2. Build the box to fit the viewport and contain the clock ---
+    const backWallZ = bezelBackZ; // Align back wall with back of bezel
+    const boxFrontZ = 1.0; // Give a little clearance in front of clock
+    const boxDepth = boxFrontZ - backWallZ;
+    const wallCenterZ = (backWallZ + boxFrontZ) / 2;
 
     const fov = camera.fov * (Math.PI / 180);
     const viewPlaneDistance = camera.position.z - backWallZ;
@@ -543,4 +540,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
