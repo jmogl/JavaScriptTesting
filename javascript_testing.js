@@ -1,3 +1,17 @@
+Of course. To allow for examining the clock's alignment with a mouse or touch, I will integrate OrbitControls into the scene. I will also add a simple yellow sphere and a line to represent the position and direction of the main light source without affecting the overall render.
+
+Here are the key modifications:
+
+OrbitControls Added: The OrbitControls script is imported and instantiated to allow you to rotate the camera around the scene using a mouse (click and drag) or touch gestures.
+
+Tilt Controls Disabled: The code that rotates the box based on device tilt has been commented out to prevent it from conflicting with the new mouse/touch controls.
+
+Light Source Visualized: A yellow sphere has been placed at the light's position, and a yellow line is drawn from the sphere to the center of the scene to indicate the light's direction. These helpers use a basic material so they do not cast shadows or otherwise interfere with the scene's lighting.
+
+Here is the complete updated code listing.
+
+JavaScript
+
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -6,12 +20,14 @@
 // MODIFIED: Corrected box and clock positioning to create a recessed "display case" effect.
 // MODIFIED: Placed clock inside the box, resting on the back wall, and corrected tilt rotation.
 // MODIFIED: Increased FOV for more perspective, adjusted box depth, and commented out digital display.
+// MODIFIED: Added OrbitControls for mouse/touch rotation and a helper to visualize the light source.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 // --- Declare UI element variables in the global scope ---
 let digitalDate, digitalClock;
@@ -60,6 +76,10 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
+// --- Controls ---
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
 // --- PBR Correct Lighting Setup ---
 const rgbeLoader = new RGBELoader();
 rgbeLoader.setPath('textures/');
@@ -83,6 +103,21 @@ dirLight.shadow.bias = -0.0001;
 dirLight.shadow.normalBias = 0.005;
 
 scene.add(dirLight);
+
+// --- Helper: Visualize the light ---
+const lightSphere = new THREE.Mesh(
+    new THREE.SphereGeometry(0.5, 16, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffff00 })
+);
+lightSphere.position.copy(dirLight.position);
+scene.add(lightSphere);
+
+const points = [dirLight.position.clone(), dirLight.target.position.clone()];
+const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffff00 });
+const lightLine = new THREE.Line(lineGeometry, lineMaterial);
+scene.add(lightLine);
+
 
 // --- Create a master "clockUnit" group ---
 const clockUnit = new THREE.Group();
@@ -444,17 +479,20 @@ tickSound.volume = 0.2;
 function animate() {
   requestAnimationFrame(animate);
 
+  controls.update(); // Update OrbitControls
+
   const maxTilt = 15;
   const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
   const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
   const rotY = THREE.MathUtils.degToRad(x) * 0.5;
   const rotX = THREE.MathUtils.degToRad(y) * 0.5;
   
-  // Rotate the entire box for a parallax effect
-  boxGroup.rotation.y = rotY;
-  boxGroup.rotation.x = rotX;
+  // Rotate the entire box for a parallax effect - DISABLED for OrbitControls
+  // boxGroup.rotation.y = rotY;
+  // boxGroup.rotation.x = rotX;
   
-  camera.lookAt(scene.position); // Look at the center of the scene
+  // camera.lookAt is now handled by OrbitControls
+  // camera.lookAt(scene.position); 
 
   const now = new Date();
   const seconds = now.getSeconds() + now.getMilliseconds() / 1000;
@@ -478,7 +516,7 @@ function animate() {
   
   if (balanceWheel) {
     const time = now.getTime() / 1000;
-    const sineValue = Math.sin(time * Math.PI * 2 * (3 * balanceWheelSpeedMultiplier));
+    const sineValue = Math.sin(time * Math.I * 2 * (3 * balanceWheelSpeedMultiplier));
     balanceWheel.rotation.z = (Math.PI / 2) * sineValue;
     if (hairSpring) hairSpring.scale.set(0.95 + 0.35 * sineValue, 0.95 + 0.35 * sineValue, 1);
   }
@@ -509,4 +547,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
