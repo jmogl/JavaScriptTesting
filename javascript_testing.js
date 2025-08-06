@@ -1,3 +1,5 @@
+
+tttt
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/4/25
@@ -217,7 +219,7 @@ const outerRadius = markerRadius + borderThickness;
 const innerRadius = markerRadius;
 
 const points2D = [];
-const bezelBackZ = -4.8;
+const bezelBackZ = -7.0;
 const markerFrontZ = -3.35 + zShift;
 const bezelFrontZ = markerFrontZ;
 
@@ -542,5 +544,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
 
