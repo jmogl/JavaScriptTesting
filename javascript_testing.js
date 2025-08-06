@@ -1,7 +1,18 @@
+Of course. I have made the requested adjustments to the code.
+
+Here is a summary of the changes:
+
+Audio Disabled: All code related to the ticking sound has been commented out. This will resolve the "Forbidden" error and stop the sound from trying to load until you find a new audio file.
+
+Box Depth Adjusted: The boxDepth has been changed from 12.0 to 10.5. This moves the back wall 1.5 units closer to the clock in the positive Z-axis, which should reduce the shadow gap as you requested.
+
+Here is the complete and updated code listing.
+
+JavaScript
 
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
-// Jeff Miller 2025. 8/4/25
+// Jeff Miller 2025. 8/6/25
 // MODIFIED: Fixed mobile z-fighting, scaling, and adjusted lighting.
 // MODIFIED: Added an enclosing box to create a depth effect, with walls starting at the window edge.
 // MODIFIED: Corrected box and clock positioning to create a recessed "display case" effect.
@@ -14,6 +25,7 @@
 // MODIFIED: Scaled view to align with the top of the box walls instead of the back wall.
 // MODIFIED: Implemented dynamic texture scaling on box walls for realistic appearance.
 // MODIFIED: Added a LoadingManager to resolve texture update warnings.
+// MODIFIED: Commented out audio and adjusted box depth.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -429,12 +441,13 @@ function layoutScene() {
     camera.updateProjectionMatrix();
 
     // --- 2. Build the box to fit the viewport and contain the clock ---
-    const boxDepth = 12.0; 
+    const boxDepth = 10.5; // Adjusted depth
     const backWallZ = -boxDepth;
     const wallCenterZ = -boxDepth / 2;
     const boxFrontZ = 0.0;
 
     const fov = camera.fov * (Math.PI / 180);
+    // Calculate view plane size at the FRONT of the box so it aligns with the screen edge
     const viewPlaneDistance = camera.position.z - boxFrontZ;
     const viewPlaneHeight = 2 * Math.tan(fov / 2) * viewPlaneDistance;
     const viewPlaneWidth = viewPlaneHeight * camera.aspect;
@@ -503,8 +516,10 @@ function setupTiltControls() {
         button.textContent = 'Enable Tilt';
         document.body.appendChild(button);
         button.addEventListener('click', async () => {
-            tickSound.play();
-            tickSound.pause();
+            // if (tickSound) {
+            //     tickSound.play();
+            //     tickSound.pause();
+            // }
             try { if (await DeviceOrientationEvent.requestPermission() === 'granted') { window.addEventListener('deviceorientation', handleOrientation); } } finally { document.body.removeChild(button); }
         });
     } else {
@@ -512,8 +527,8 @@ function setupTiltControls() {
     }
 }
 
-const tickSound = new Audio('https://cdn.pixabay.com/download/audio/2022/03/10/audio_e5087a31a5.mp3');
-tickSound.volume = 0.2;
+// const tickSound = new Audio('https://cdn.pixabay.com/download/audio/2022/03/10/audio_e5087a31a5.mp3');
+// tickSound.volume = 0.2;
 
 // --- Animation Loop ---
 function animate() {
@@ -562,12 +577,14 @@ function animate() {
   // if (digitalClock) digitalClock.innerHTML = `<span style="${spanStyles}">${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(Math.floor(now.getSeconds()))}</span>`;
   // if (digitalDate) digitalDate.innerHTML = `<span style="${spanStyles}">${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear().toString().slice(-2)}</span>`;
 
-  const currentSecond = Math.floor(now.getSeconds());
-  if (animate.lastSecond !== currentSecond) {
-    tickSound.currentTime = 0;
-    tickSound.play().catch(() => {});
-    animate.lastSecond = currentSecond;
-  }
+  // const currentSecond = Math.floor(now.getSeconds());
+  // if (animate.lastSecond !== currentSecond) {
+  //   if(tickSound) {
+  //       tickSound.currentTime = 0;
+  //       tickSound.play().catch(() => {});
+  //   }
+  //   animate.lastSecond = currentSecond;
+  // }
 
   renderer.render(scene, camera);
 }
@@ -583,4 +600,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
