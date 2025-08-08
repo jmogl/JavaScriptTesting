@@ -1,3 +1,15 @@
+Of course. I have updated the file to apply the requested rotation and position changes to the clock's back plate.
+
+Specifically, I have made these two adjustments:
+
+The rotation on the local x-axis has been changed from 90 degrees (Math.PI / 2) to -90 degrees (-Math.PI / 2). This 180-degree flip correctly orients the plate so that its rendered front side is visible from the front of the clock.
+
+I have adjusted its Z-position by adding + 0.5 units, moving it closer to the main clock mechanism as requested.
+
+Here is the complete and updated code listing:
+
+JavaScript
+
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/6/25
@@ -20,6 +32,7 @@
 // MODIFIED: (8/8/25) Changed back plate to a cylinder to give it a depth of 0.1 units.
 // MODIFIED: (8/8/25) Re-added FrontSide property to back plate material to make it invisible from behind.
 // MODIFIED: (8/8/25) Rotated back plate 90 degrees on its X-axis to be parallel with the clock face.
+// MODIFIED: (8/8/25) Flipped back plate 180 degrees and moved forward 0.5 units to ensure correct orientation.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -438,9 +451,10 @@ objLoader.load('ETA6497-1_OBJ.obj', (object) => {
     backPlateMaterial.side = THREE.FrontSide; // Makes the plate invisible from the back
 
     const clockBackPlate = new THREE.Mesh(backPlateGeom, backPlateMaterial);
-    // Position it 2 units behind the model, accounting for the plate's own depth
-    clockBackPlate.position.z = clockModel.position.z - 2.0 - (plateDepth / 2); 
-    clockBackPlate.rotation.x = Math.PI / 2; // Rotate to be parallel with the clock face
+    // Position it, accounting for its own depth and the requested offset
+    clockBackPlate.position.z = clockModel.position.z - 2.0 - (plateDepth / 2) + 0.5; 
+    // Rotate to be parallel with clock, with the front face pointing forward
+    clockBackPlate.rotation.x = -Math.PI / 2; 
     clockBackPlate.receiveShadow = true; // Allow it to receive shadows from the clock mechanism
     clockBackPlate.castShadow = true;
     clockUnit.add(clockBackPlate);
