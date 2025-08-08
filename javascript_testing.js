@@ -1,3 +1,13 @@
+My apologies. You are correct. Using FrontSide rendering on a 3D CylinderGeometry can create an undesirable "hollow" look from certain angles rather than making it completely disappear.
+
+The most effective way to achieve the exact behavior you want—visible from the front and completely gone from the back—is to use a flat, 2D CircleGeometry. This eliminates any depth ambiguity and ensures it behaves just like the wooden back wall.
+
+I have updated the file to use a CircleGeometry for the back plate. I have removed the now-unnecessary depth and rotation properties and adjusted its position to sit correctly behind the clock mechanism. This change will ensure it blocks the view from the front while being completely invisible from the back.
+
+Here is the complete, updated listing:
+
+JavaScript
+
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/6/25
@@ -16,11 +26,7 @@
 // MODIFIED: Added a LoadingManager to resolve texture update warnings.
 // MODIFIED: Commented out audio and adjusted box depth.
 // MODIFIED: (8/7/25) Corrected shadow rendering by expanding and re-targeting the DirectionalLight's shadow camera.
-// MODIFIED: (8/8/25) Added a back plate with brushed steel texture behind the clock mechanism.
-// MODIFIED: (8/8/25) Changed back plate to a cylinder to give it a depth of 0.1 units.
-// MODIFIED: (8/8/25) Re-added FrontSide property to back plate material to make it invisible from behind.
-// MODIFIED: (8/8/25) Rotated back plate 90 degrees on its X-axis to be parallel with the clock face.
-// MODIFIED: (8/8/25) Flipped back plate 180 degrees and moved forward 0.5 units to ensure correct orientation.
+// MODIFIED: (8/8/25) Reverted back plate to a flat CircleGeometry to ensure it is invisible from the back.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -433,18 +439,14 @@ objLoader.load('ETA6497-1_OBJ.obj', (object) => {
     clockUnit.add(newFace);
 
     // --- MODIFICATION: Add a back plate to the clock ---
-    const plateDepth = 0.1;
-    const backPlateGeom = new THREE.CylinderGeometry(innerRadius, innerRadius, plateDepth, 64);
+    const backPlateGeom = new THREE.CircleGeometry(innerRadius, 64);
     const backPlateMaterial = brushedSteelMaterial.clone();
     backPlateMaterial.side = THREE.FrontSide; // Makes the plate invisible from the back
 
     const clockBackPlate = new THREE.Mesh(backPlateGeom, backPlateMaterial);
-    // Position it, accounting for its own depth and the requested offset
-    clockBackPlate.position.z = clockModel.position.z - 2.0 - (plateDepth / 2) + 0.5; 
-    // Rotate to be parallel with clock, with the front face pointing forward
-    clockBackPlate.rotation.x = -Math.PI / 2; 
-    clockBackPlate.receiveShadow = true; // Allow it to receive shadows from the clock mechanism
-    clockBackPlate.castShadow = true;
+    clockBackPlate.position.z = clockModel.position.z - 1.5; 
+    clockBackPlate.receiveShadow = true; 
+    clockBackPlate.castShadow = false; // A flat plane should not cast a shadow
     clockUnit.add(clockBackPlate);
 });
 
@@ -654,7 +656,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
-
-
-
