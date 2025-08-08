@@ -1,13 +1,3 @@
-My apologies. You are correct. Using FrontSide rendering on a 3D CylinderGeometry can create an undesirable "hollow" look from certain angles rather than making it completely disappear.
-
-The most effective way to achieve the exact behavior you want—visible from the front and completely gone from the back—is to use a flat, 2D CircleGeometry. This eliminates any depth ambiguity and ensures it behaves just like the wooden back wall.
-
-I have updated the file to use a CircleGeometry for the back plate. I have removed the now-unnecessary depth and rotation properties and adjusted its position to sit correctly behind the clock mechanism. This change will ensure it blocks the view from the front while being completely invisible from the back.
-
-Here is the complete, updated listing:
-
-JavaScript
-
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/6/25
@@ -656,3 +646,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
