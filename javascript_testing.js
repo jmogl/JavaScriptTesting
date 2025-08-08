@@ -1,4 +1,3 @@
-
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/6/25
@@ -20,6 +19,7 @@
 // MODIFIED: (8/8/25) Added a back plate with brushed steel texture behind the clock mechanism.
 // MODIFIED: (8/8/25) Changed back plate to a cylinder to give it a depth of 0.1 units.
 // MODIFIED: (8/8/25) Re-added FrontSide property to back plate material to make it invisible from behind.
+// MODIFIED: (8/8/25) Rotated back plate 90 degrees on its X-axis to be parallel with the clock face.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -440,6 +440,7 @@ objLoader.load('ETA6497-1_OBJ.obj', (object) => {
     const clockBackPlate = new THREE.Mesh(backPlateGeom, backPlateMaterial);
     // Position it 2 units behind the model, accounting for the plate's own depth
     clockBackPlate.position.z = clockModel.position.z - 2.0 - (plateDepth / 2); 
+    clockBackPlate.rotation.x = Math.PI / 2; // Rotate to be parallel with the clock face
     clockBackPlate.receiveShadow = true; // Allow it to receive shadows from the clock mechanism
     clockBackPlate.castShadow = true;
     clockUnit.add(clockBackPlate);
@@ -651,4 +652,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
