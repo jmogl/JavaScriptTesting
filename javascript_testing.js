@@ -436,7 +436,7 @@ function layoutScene() {
     camera.updateProjectionMatrix();
 
     // --- 2. Build the box to fit the viewport and contain the clock ---
-    const boxDepth = 7; 
+    const boxDepth = 8; 
     const backWallZ = -boxDepth;
     const wallCenterZ = -boxDepth / 2;
     const boxFrontZ = 0.0;
@@ -634,5 +634,6 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
 
 
