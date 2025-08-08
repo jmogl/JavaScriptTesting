@@ -1,3 +1,4 @@
+TTT
 
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
@@ -16,6 +17,7 @@
 // MODIFIED: Implemented dynamic texture scaling on box walls for realistic appearance.
 // MODIFIED: Added a LoadingManager to resolve texture update warnings.
 // MODIFIED: Commented out audio and adjusted box depth.
+// MODIFIED: (8/7/25) Corrected shadow rendering by expanding and re-targeting the DirectionalLight's shadow camera.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -66,9 +68,9 @@ renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.8;
+renderer.toneMappingExposure = 0.7;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.VSMShadowMap;
 document.body.appendChild(renderer.domElement);
 
 // --- Controls ---
@@ -93,7 +95,7 @@ rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
 });
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
-dirLight.position.set(10, 38, 23);
+dirLight.position.set(10, 28, 25);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
@@ -102,11 +104,13 @@ dirLight.shadow.camera.left = -d;
 dirLight.shadow.camera.right = d;
 dirLight.shadow.camera.top = d;
 dirLight.shadow.camera.bottom = -d;
-dirLight.shadow.bias = -0.0001;
-dirLight.shadow.normalBias = 0.005;
+dirLight.shadow.bias = -0.001; //was -0.0001
+dirLight.shadow.normalBias = 0.01; //was 0.005
 
 scene.add(dirLight);
+scene.add(dirLight.target); // Add the light's target to the scene to be able to move it
 
+/*
 // --- Helper: Visualize the light ---
 const lightSphere = new THREE.Mesh(
     new THREE.SphereGeometry(0.5, 16, 8),
@@ -114,12 +118,13 @@ const lightSphere = new THREE.Mesh(
 );
 lightSphere.position.copy(dirLight.position);
 scene.add(lightSphere);
+*/
 
 const points = [dirLight.position.clone(), dirLight.target.position.clone()];
 const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
 const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffff00 });
 const lightLine = new THREE.Line(lineGeometry, lineMaterial);
-scene.add(lightLine);
+// scene.add(lightLine); // Helper can be distracting, commented out
 
 
 // --- Create a master "clockUnit" group ---
@@ -177,15 +182,17 @@ const wall = new THREE.Mesh(wallGeometry, wallMaterial);
 wall.receiveShadow = true;
 
 // --- Box Creation ---
+    // give walls a little thickness so they can cast shadows on adjacent walls
+    const wallThickness = 0.01;
 const boxGroup = new THREE.Group();
 scene.add(boxGroup);
 boxGroup.add(wall); 
 boxGroup.add(clockUnit); 
 
-const topWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), topBottomMaterial);
-const bottomWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), topBottomMaterial);
-const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), leftRightMaterial);
-const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), leftRightMaterial);
+const topWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial);
+const bottomWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial);
+const leftWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial);
+const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial);
 
 [topWall, bottomWall, leftWall, rightWall].forEach(w => {
     w.castShadow = true;
@@ -487,11 +494,49 @@ function layoutScene() {
     clockUnit.scale.set(scale, scale, scale);
 
 
-    // --- 6. Update shadow camera to match box size ---
-    dirLight.shadow.camera.left = -backPlaneWidth / 2;
-    dirLight.shadow.camera.right = backPlaneWidth / 2;
-    dirLight.shadow.camera.top = backPlaneHeight / 2;
-    dirLight.shadow.camera.bottom = -backPlaneHeight / 2;
+// --- 6. Update shadow camera using a precise bounding volume ---
+    // This is a more robust method that guarantees the entire box is captured.
+
+    // First, calculate a bounding box that contains the entire boxGroup (walls and all).
+    const shadowVolumeBox = new THREE.Box3().setFromObject(boxGroup);
+    
+    // From that box, get its center point and a radius that encloses it.
+    const shadowVolumeCenter = new THREE.Vector3();
+    shadowVolumeBox.getCenter(shadowVolumeCenter);
+    const shadowVolumeRadius = shadowVolumeBox.getSize(new THREE.Vector3()).length() / 2;
+// pad the shadow frustum to ensure corners get included
+const paddedRadius = shadowVolumeRadius * 1.2;
+
+    // Define the light's direction relative to the target.
+    const lightPositionOffset = { x: 10, y: 28, z: 25 };
+
+    // Aim the light at the calculated center of the entire volume.
+    dirLight.target.position.copy(shadowVolumeCenter);
+
+    // Position the light relative to this new, precise target.
+    dirLight.position.set(
+        shadowVolumeCenter.x + lightPositionOffset.x,
+        shadowVolumeCenter.y + lightPositionOffset.y,
+        shadowVolumeCenter.z + lightPositionOffset.z
+    );
+    
+    // CRITICAL: Update the target's matrix before rendering shadows.
+    dirLight.target.updateMatrixWorld();
+
+    // Configure the shadow camera's size (frustum) using the calculated radius.
+    // This ensures the view is wide and tall enough to see the whole box.
+    dirLight.shadow.camera.left = -paddedRadius;
+    dirLight.shadow.camera.right = paddedRadius;
+    dirLight.shadow.camera.top = paddedRadius;
+    dirLight.shadow.camera.bottom = -paddedRadius;
+
+    // Configure the near and far planes based on the light's distance to the volume.
+    // This ensures the camera's depth includes the entire box, but no more than necessary.
+    const lightDistanceToCenter = dirLight.position.distanceTo(shadowVolumeCenter);
+    dirLight.shadow.camera.near = Math.max(0.1, lightDistanceToCenter - shadowVolumeRadius); // Cannot be negative
+    dirLight.shadow.camera.far = lightDistanceToCenter + shadowVolumeRadius;
+
+    // Apply all the new settings.
     dirLight.shadow.camera.updateProjectionMatrix();
 }
 
@@ -591,4 +636,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
