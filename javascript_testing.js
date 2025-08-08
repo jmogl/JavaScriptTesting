@@ -1,8 +1,3 @@
-Understood. You would like the back plate to be visible only from the front, even though it has depth. I will add the FrontSide property back to the plate's material. This will make the rear-facing polygons of the cylinder disappear when the clock is rotated, achieving the effect you're looking for.
-
-I have re-added the backPlateMaterial.side = THREE.FrontSide; line to the code. Please find the complete, updated listing below.
-
-JavaScript
 
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
@@ -656,3 +651,4 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
+
