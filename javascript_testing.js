@@ -1,3 +1,9 @@
+Understood. You would like the back plate to be visible only from the front, even though it has depth. I will add the FrontSide property back to the plate's material. This will make the rear-facing polygons of the cylinder disappear when the clock is rotated, achieving the effect you're looking for.
+
+I have re-added the backPlateMaterial.side = THREE.FrontSide; line to the code. Please find the complete, updated listing below.
+
+JavaScript
+
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress using Gemini
 // Jeff Miller 2025. 8/6/25
@@ -16,6 +22,9 @@
 // MODIFIED: Added a LoadingManager to resolve texture update warnings.
 // MODIFIED: Commented out audio and adjusted box depth.
 // MODIFIED: (8/7/25) Corrected shadow rendering by expanding and re-targeting the DirectionalLight's shadow camera.
+// MODIFIED: (8/8/25) Added a back plate with brushed steel texture behind the clock mechanism.
+// MODIFIED: (8/8/25) Changed back plate to a cylinder to give it a depth of 0.1 units.
+// MODIFIED: (8/8/25) Re-added FrontSide property to back plate material to make it invisible from behind.
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -426,6 +435,19 @@ objLoader.load('ETA6497-1_OBJ.obj', (object) => {
     newFace.receiveShadow = true;
     newFace.position.z = -3.4 + zShift;
     clockUnit.add(newFace);
+
+    // --- MODIFICATION: Add a back plate to the clock ---
+    const plateDepth = 0.1;
+    const backPlateGeom = new THREE.CylinderGeometry(innerRadius, innerRadius, plateDepth, 64);
+    const backPlateMaterial = brushedSteelMaterial.clone();
+    backPlateMaterial.side = THREE.FrontSide; // Makes the plate invisible from the back
+
+    const clockBackPlate = new THREE.Mesh(backPlateGeom, backPlateMaterial);
+    // Position it 2 units behind the model, accounting for the plate's own depth
+    clockBackPlate.position.z = clockModel.position.z - 2.0 - (plateDepth / 2); 
+    clockBackPlate.receiveShadow = true; // Allow it to receive shadows from the clock mechanism
+    clockBackPlate.castShadow = true;
+    clockUnit.add(clockBackPlate);
 });
 
 
@@ -634,6 +656,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
-
-
