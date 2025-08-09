@@ -1,6 +1,6 @@
 // 3D Javacript Clock using three.js
-// MIT License. - Work in Progress using Gemini
-// Jeff Miller 2025. 8/6/25
+// MIT License. - Work in Progress
+// Jeff Miller 2025. 8/9/25
 // MODIFIED: Fixed mobile z-fighting, scaling, and adjusted lighting.
 // MODIFIED: Added an enclosing box to create a depth effect, with walls starting at the window edge.
 // MODIFIED: Corrected box and clock positioning to create a recessed "display case" effect.
@@ -17,6 +17,32 @@
 // MODIFIED: Commented out audio and adjusted box depth.
 // MODIFIED: (8/7/25) Corrected shadow rendering by expanding and re-targeting the DirectionalLight's shadow camera.
 // MODIFIED: (8/8/25) Reverted back plate to a flat CircleGeometry to ensure it is invisible from the back.
+// MODIFIED: (8/9/25) Set back plate material to DoubleSide to ensure visibility.
+// MODIFIED: (8/9/25) Uncommented tick sound and switched to a local audio file.
+// MODIFIED: (8/9/25) Set back plate material to FrontSide to make it invisible from the rear.
+
+/* References and Credits
+- HDRI: https://polyhaven.com/a/colorful_studio
+- PBR Textures: https://www.cgbookcase.com/
+- ETA 6497-1 Watch Movement CAD: Steen Winther: https://grabcad.com/library/eta-6497-1-complete-watch-movement
+- ETA 6497 Custom Hands made in Fusion 360
+- 5 Hz Tick Sound - Clock Ticking by RedDog0607: https://pixabay.com/sound-effects/clock-ticking-365218/ 
+- Development and Debugging Tools: Google Gemini and ChatGPT
+- File encoding is set to UF-8
+
+ETA 6497 Watch Movement Notes:
+- Movement is 36.6mm in diameter and 4.5mm thick (Currently using a custom scale)
+- 18,000 vibrations per hour (VPH) (balance wheel swing)
+	- 3600 seconds/hour
+	- One tick sound for ballance wheel full swing
+	- Tick per second = 18,000 VPH / 3600 sec/hr = 5 ticks per second
+- Wheels
+	- Center Wheel: Carries Minute hand and rotates once per hour
+	- Third Wheel: Rotates every 7.5 minutes clockwise from dial side	
+	- Fourth Wheel: Carries small seconds hand and rotates once per minute. Also drives the escapement
+	- Escape Wheel: Advances by half a tooth per beat (15 teeth), resulting in a full rotation every 5 seconds.
+	- Balance Wheel: 270 to 310 degrees, 2.5 Hz or 1 per 0.4 seconds. 
+*/
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -562,10 +588,10 @@ function setupTiltControls() {
         button.textContent = 'Enable Tilt';
         document.body.appendChild(button);
         button.addEventListener('click', async () => {
-            // if (tickSound) {
-            //     tickSound.play();
-            //     tickSound.pause();
-            // }
+            if (tickSound) {
+                tickSound.play();
+                tickSound.pause();
+            }
             try { if (await DeviceOrientationEvent.requestPermission() === 'granted') { window.addEventListener('deviceorientation', handleOrientation); } } finally { document.body.removeChild(button); }
         });
     } else {
@@ -573,8 +599,8 @@ function setupTiltControls() {
     }
 }
 
-// const tickSound = new Audio('https://cdn.pixabay.com/download/audio/2022/03/10/audio_e5087a31a5.mp3');
-// tickSound.volume = 0.2;
+const tickSound = new Audio('/textures/clock-ticking-5Hz.mp3');
+tickSound.volume = 0.2;
 
 // --- Animation Loop ---
 function animate() {
@@ -623,14 +649,14 @@ function animate() {
   // if (digitalClock) digitalClock.innerHTML = `<span style="${spanStyles}">${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(Math.floor(now.getSeconds()))}</span>`;
   // if (digitalDate) digitalDate.innerHTML = `<span style="${spanStyles}">${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear().toString().slice(-2)}</span>`;
 
-  // const currentSecond = Math.floor(now.getSeconds());
-  // if (animate.lastSecond !== currentSecond) {
-  //   if(tickSound) {
-  //       tickSound.currentTime = 0;
-  //       tickSound.play().catch(() => {});
-  //   }
-  //   animate.lastSecond = currentSecond;
-  // }
+  const currentSecond = Math.floor(now.getSeconds());
+  if (animate.lastSecond !== currentSecond) {
+    if(tickSound) {
+        tickSound.currentTime = 0;
+        tickSound.play().catch(() => {});
+    }
+    animate.lastSecond = currentSecond;
+  }
 
   renderer.render(scene, camera);
 }
@@ -646,4 +672,3 @@ window.addEventListener('resize', () => {
 
 setupTiltControls();
 animate();
-
