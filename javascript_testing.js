@@ -1,34 +1,68 @@
 // 3D Javacript Clock using three.js
 // MIT License. - Work in Progress
-// Jeff Miller 2025. 8/9/25
-// MODIFIED: Fixed mobile z-fighting, scaling, and adjusted lighting.
-// MODIFIED: Added an enclosing box to create a depth effect, with walls starting at the window edge.
-// MODIFIED: Corrected box and clock positioning to create a recessed "display case" effect.
-// MODIFIED: Placed clock inside the box, resting on the back wall, and corrected tilt rotation.
-// MODIFIED: Increased FOV for more perspective, adjusted box depth, and commented out digital display.
-// MODIFIED: Added OrbitControls for mouse/touch rotation and a helper to visualize the light source.
-// MODIFIED: Redesigned bezel with LatheGeometry, implemented dynamic clock scaling, and repositioned light.
-// MODIFIED: Corrected the 90-degree rotation of the new lathe bezel.
-// MODIFIED: Adjusted bezel thickness and box depth to prevent clipping.
-// MODIFIED: Corrected box depth and back wall positioning to fully contain the clock.
-// MODIFIED: Scaled view to align with the top of the box walls instead of the back wall.
-// MODIFIED: Implemented dynamic texture scaling on box walls for realistic appearance.
-// MODIFIED: Added a LoadingManager to resolve texture update warnings.
-// MODIFIED: Commented out audio and adjusted box depth.
-// MODIFIED: (8/7/25) Corrected shadow rendering by expanding and re-targeting the DirectionalLight's shadow camera.
-// MODIFIED: (8/8/25) Reverted back plate to a flat CircleGeometry to ensure it is invisible from the back.
-// MODIFIED: (8/9/25) Set back plate material to DoubleSide to ensure visibility.
-// MODIFIED: (8/9/25) Uncommented tick sound and switched to a local audio file.
-// MODIFIED: (8/9/25) Set back plate material to FrontSide to make it invisible from the rear.
+// Jeff Miller 2025. 8/10/25
+// MODIFIED: Reintroduced animation logic to the clean baseline.
+// - GLB model is now correctly oriented by default from Blender export.
+// - All parts are identified, and pivots are created after loading.
+// - All animations are set to the Z-axis, which is now the correct perpendicular axis.
+// MODIFIED: Added back the console log for all mesh names and restored the pallet fork animation.
+// MODIFIED: Corrected hand animation logic: fixed lume body name typos and implemented a proper pivot for the seconds hand to prevent orbiting.
 
-/* References and Credits
+
+
+/*
+ToDo:
+- Fix the wheel default angles so the gears mesh regardless of the start time.
+- Try Blender PBR Textures
+- Update the rotation rate for the balance wheel
+- Add a GUI
+- Fix BalancingBridgeBody showing up twice in the mesh body ListFormat
+- Add back in the top and set a transparency based on direction
+*/
+
+
+/* References and Notes
 - HDRI: https://polyhaven.com/a/colorful_studio
 - PBR Textures: https://www.cgbookcase.com/
 - ETA 6497-1 Watch Movement CAD: Steen Winther: https://grabcad.com/library/eta-6497-1-complete-watch-movement
 - ETA 6497 Custom Hands made in Fusion 360
-- 5 Hz Tick Sound - Clock Ticking by RedDog0607: https://pixabay.com/sound-effects/clock-ticking-365218/ 
+- 5 Hz Tick Sound - Clock Ticking by RedDog0607: https://pixabay.com/sound-effects/clock-ticking-365218/
 - Development and Debugging Tools: Google Gemini and ChatGPT
 - File encoding is set to UF-8
+
+- Local Server: python -m http.server run in a terminal in local javascript directory with index.html
+- 	http://localhost:8000 in local browser tab
+
+- Fusion 360 to .OBJ to Blender to .GLB
+	- Select "Split By Group" when importing into Blender under import file dialog options to keep mesh body names
+	- Select Up Axis as -Z and Forward Axis as Y based on the orientation used in F360, may change for other models
+	- To increase curve object resolution in Blender:
+		- In Object Mode (Drop down upper left), right click part of interest
+		- In the GUI menu to the lower right, select the wrench icon and "+ Add Modifier" -> Generate -> Subdivision Surface
+			- Select Catmull-Clark for best mesh generation
+			- Levels Viewport (Note "Render" is ignored in .GLB export!): 
+			- Level 0: Original mesh.
+			- Level 1: ~4x the polygons. Great for adding a good degree of smoothness (Recommended for 3.js).
+			- Level 2: ~16x the original polygons. Use this with caution for hero objects seen up close.
+			- Level 3+: ~64x+ polygons. Avoid this for real-time applications, rarely worth it over level 2
+		- A Bevel modifyer needs to be added or mesh detail like edges, emboss, etc. are lost (ie. melt).
+			- Ensure the object is selected in Blender
+			- Select "Add Modifier" -> "Generate" -> "Bevel"
+			- Move the Bevel Modifier above the Subdivision Catmull-Clark modifier. Bevel must be run first!
+			- Limit method should be set to "Angle", 30 degrees is default. 
+			- Segments should be set to "2"
+			- Amount should be changed to a small value (default 0.1 m) to 0.002 m to start with. 
+			- Under profile, Shape should be 1.0, which makes the beveled edge bow outward. This creates a tigher "cage" 
+			  for the subdivision to work with.
+		- If Bevel and Subdivision surface doesn't maintain detail, then try using F360 to export high resolution mesh with tessellate command.
+				- Select high quality and export the mesh out as .fbx and import separately into Blender.
+				- Use scale 100
+				- Exporting .obj instead of .fbx for Movement model file since the axis changed in .fbx. Used .fbx for Case model file.
+		- Note: Be careful using F360 appearance and material properties together. It can create two separate meshes when exporting from Blender
+			- *** This may be mute depending on how well custom Blender PBR texture exporting works 
+
+ -	Export .GLB, +Y transform out of Blender and save in three.js folder
+
 
 ETA 6497 Watch Movement Notes:
 - Movement is 36.6mm in diameter and 4.5mm thick (Currently using a custom scale)
@@ -38,17 +72,17 @@ ETA 6497 Watch Movement Notes:
 	- Tick per second = 18,000 VPH / 3600 sec/hr = 5 ticks per second
 - Wheels
 	- Center Wheel: Carries Minute hand and rotates once per hour
-	- Third Wheel: Rotates every 7.5 minutes clockwise from dial side	
+	- Third Wheel: Rotates every 7.5 minutes clockwise from dial side
 	- Fourth Wheel: Carries small seconds hand and rotates once per minute. Also drives the escapement
-	- Escape Wheel: Advances by half a tooth per beat (15 teeth), resulting in a full rotation every 5 seconds.
-	- Balance Wheel: 270 to 310 degrees, 2.5 Hz or 1 per 0.4 seconds. 
+	- Escape Wheel: Advances by half a tooth per beat (15 teeth), resulting in a full rotation every 5 seconds counter clockwise.
+	- Balance Wheel: 270 to 310 degrees, 2.5 Hz or 1 per 0.4 seconds.
 */
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'; // Use GLTFLoader
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 // --- Declare UI element variables in the global scope ---
@@ -56,9 +90,10 @@ let digitalDate, digitalClock;
 
 // --- 3D Model Variables ---
 let clockModel;
-let modelRotationX = 0, modelRotationY = 0, modelRotationZ = 0;
 let modelScale = 3.5;
+// --- RE-ADDED: Animation variables ---
 let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring;
+let newHourHand, newMinuteHand, newSecondHand;
 const balanceWheelSpeedMultiplier = 1.0;
 
 
@@ -135,31 +170,11 @@ dirLight.shadow.normalBias = 0.01; //was 0.005
 scene.add(dirLight);
 scene.add(dirLight.target); // Add the light's target to the scene to be able to move it
 
-/*
-// --- Helper: Visualize the light ---
-const lightSphere = new THREE.Mesh(
-    new THREE.SphereGeometry(0.5, 16, 8),
-    new THREE.MeshBasicMaterial({ color: 0xffff00 })
-);
-lightSphere.position.copy(dirLight.position);
-scene.add(lightSphere);
-*/
-
-const points = [dirLight.position.clone(), dirLight.target.position.clone()];
-const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
-const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffff00 });
-const lightLine = new THREE.Line(lineGeometry, lineMaterial);
-// scene.add(lightLine); // Helper can be distracting, commented out
-
-
 // --- Create a master "clockUnit" group ---
 const clockUnit = new THREE.Group();
 clockUnit.position.z = 0;
 
-const watchGroup = new THREE.Group();
-clockUnit.add(watchGroup);
-
-const zShift = 1.0; 
+const zShift = 1.0;
 
 // --- PBR Material Definitions ---
 const textureLoader = new THREE.TextureLoader(loadingManager).setPath('textures/');
@@ -177,6 +192,27 @@ const wallMaterial = new THREE.MeshStandardMaterial({
     roughnessMap: woodRoughness,
     displacementMap: woodHeight,
     displacementScale: 0.05
+});
+
+// 2. Brushed Steel PBR Material
+const steelBaseColor = textureLoader.load('BrushedIron02_2K_BaseColor.png');
+const steelNormal = textureLoader.load('BrushedIron02_2K_Normal.png');
+const steelRoughness = textureLoader.load('BrushedIron02_2K_Roughness.png');
+steelBaseColor.colorSpace = THREE.SRGBColorSpace;
+
+const steelTextures = [steelBaseColor, steelNormal, steelRoughness];
+steelTextures.forEach(texture => {
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+});
+
+const brushedSteelMaterial = new THREE.MeshStandardMaterial({
+    map: steelBaseColor,
+    normalMap: steelNormal,
+    roughnessMap: steelRoughness,
+    metalness: 0.9,
+    roughness: 0.4,
+    color: 0xe0e0e0 // Added to give it a brighter, more metallic silver look
 });
 
 function cloneMaterialWithTextures(material) {
@@ -211,8 +247,8 @@ wall.receiveShadow = true;
     const wallThickness = 0.01;
 const boxGroup = new THREE.Group();
 scene.add(boxGroup);
-boxGroup.add(wall); 
-boxGroup.add(clockUnit); 
+boxGroup.add(wall);
+boxGroup.add(clockUnit);
 
 const topWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial);
 const bottomWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial);
@@ -226,182 +262,84 @@ const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), lef
 });
 
 
-// 2. Brushed Steel PBR Material
-const steelBaseColor = textureLoader.load('BrushedIron02_2K_BaseColor.png');
-const steelNormal = textureLoader.load('BrushedIron02_2K_Normal.png');
-const steelRoughness = textureLoader.load('BrushedIron02_2K_Roughness.png');
-steelBaseColor.colorSpace = THREE.SRGBColorSpace;
+// --- RE-ADDED: Materials for GLB parts ---
+const brassMaterial = new THREE.MeshStandardMaterial({ color: 0xED9149, metalness: 0.8, roughness: 0.2 });
+const blackAluminumMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.6, roughness: 0.4 });
+//const lumeMaterial = new THREE.MeshStandardMaterial({ color: 0x90ee90, emissive: 0x90ee90, emissiveIntensity: 0.6, roughness: 0.8 });
+const lumeMaterial = new THREE.MeshStandardMaterial({ color: 0x90ee90, emissive: 0x90ee90, emissiveIntensity: 0.6, roughness: 0.8, transparent: true, opacity: 0.5 });
 
-const brushedSteelMaterial = new THREE.MeshStandardMaterial({
-    map: steelBaseColor,
-    metalness: 1.0,
-    roughnessMap: steelRoughness,
-    normalMap: steelNormal
-});
+// --- GLB Model Loader ---
+const gltfLoader = new GLTFLoader(loadingManager);
+gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => {
+    clockModel = gltf.scene || gltf.scenes[0];
 
-// 3. Original Materials
-const silverMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff, metalness: 1.0, roughness: 0.1
-});
-const brightSilverMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff, metalness: 1.0, roughness: 0.1
-});
-const secondMaterial = new THREE.MeshStandardMaterial({
-    color: 0xff0000, metalness: 0.5, roughness: 0.4
-});
-const brassMaterial = new THREE.MeshStandardMaterial({
-    color: 0xED9149, metalness: 0.8, roughness: 0.2
-});
-const placeholderMaterial = new THREE.MeshPhysicalMaterial({
-    color: 0x555555, roughness: 0.5, metalness: 1.0, envMapIntensity: 0.5
-});
-
-
-// Apply the HDRI environment map to all relevant materials
-rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
-    const envMap = new THREE.PMREMGenerator(renderer).fromEquirectangular(texture).texture;
-    scene.environment = envMap; 
+    if (!clockModel) {
+        console.error("GLTFLoader Error: Could not find a valid scene in the GLB file.");
+        return;
+    }
     
-    silverMaterial.envMap = envMap;
-    brightSilverMaterial.envMap = envMap;
-    secondMaterial.envMap = envMap;
-    brassMaterial.envMap = envMap;
-    brushedSteelMaterial.envMap = envMap;
-    placeholderMaterial.envMap = envMap;
-});
+    clockUnit.add(clockModel);
 
-
-// --- Tick Marks, Numerals, Hands, etc. ---
-const markerRadius = 10.0;
-const borderThickness = 1.0;
-const outerRadius = markerRadius + borderThickness;
-const innerRadius = markerRadius;
-
-const points2D = [];
-const bezelBackZ = -4.8;
-const markerFrontZ = -3.35 + zShift;
-const bezelFrontZ = markerFrontZ;
-
-points2D.push(new THREE.Vector2(outerRadius, bezelBackZ));
-points2D.push(new THREE.Vector2(outerRadius, bezelFrontZ));
-points2D.push(new THREE.Vector2(innerRadius, bezelFrontZ));
-points2D.push(new THREE.Vector2(innerRadius, bezelBackZ));
-points2D.push(new THREE.Vector2(outerRadius, bezelBackZ));
-
-const borderGeom = new THREE.LatheGeometry(points2D, 64);
-const borderMaterial = new THREE.MeshStandardMaterial({ color: 0x000040 });
-const borderMesh = new THREE.Mesh(borderGeom, borderMaterial);
-borderMesh.rotation.x = Math.PI / 2;
-borderMesh.castShadow = true;
-borderMesh.receiveShadow = true;
-clockUnit.add(borderMesh);
-
-
-for (let i = 0; i < 60; i++) {
-    const angle = (i / 60) * Math.PI * 2;
-    let markerGeom;
-    const markerDepth = 0.5;
-    const extrudeSettings = { depth: markerDepth, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2 };
-    if (i % 5 === 0) {
-        const shape = new THREE.Shape();
-        shape.moveTo(-0.125, -0.5); shape.lineTo(0.125, -0.5); shape.lineTo(0.125, 0.5); shape.lineTo(-0.125, 0.5); shape.closePath();
-        markerGeom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    } else {
-        const shape = new THREE.Shape();
-        shape.moveTo(-0.05, -0.25); shape.lineTo(0.05, -0.25); shape.lineTo(0.05, 0.25); shape.lineTo(-0.05, 0.25); shape.closePath();
-        markerGeom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    }
-    const marker = new THREE.Mesh(markerGeom, silverMaterial);
-    const markerZ = -3.35 + zShift;
-    marker.position.set(markerRadius * Math.sin(angle), markerRadius * Math.cos(angle), markerZ);
-    marker.rotation.z = -angle;
-    marker.castShadow = true;
-    watchGroup.add(marker);
-}
-
-const fontLoader = new FontLoader(loadingManager);
-const fontURL = 'https://cdn.jsdelivr.net/npm/three@0.166.0/examples/fonts/helvetiker_regular.typeface.json';
-const numeralRadius = 8.075;
-fontLoader.load(fontURL, (font) => {
-    const numeralSize = 1.5;
-    const numeralThickness = (numeralSize / 2) * 1.25;
-    for (let i = 1; i <= 12; i++) {
-        const angle = (i / 12) * Math.PI * 2;
-        const numeralGeometry = new TextGeometry(i.toString(), { font: font, size: numeralSize, depth: numeralThickness, curveSegments: 12, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.05, bevelSegments: 2 });
-        numeralGeometry.center();
-        const numeral = new THREE.Mesh(numeralGeometry, silverMaterial);
-        const numeralZ = -3.34 + zShift;
-        numeral.position.set(numeralRadius * Math.sin(angle), numeralRadius * Math.cos(angle), numeralZ);
-        numeral.castShadow = true;
-        numeral.receiveShadow = true;
-        watchGroup.add(numeral);
-    }
-});
-
-const hourHandShape = new THREE.Shape();
-hourHandShape.moveTo(-0.3, 0); hourHandShape.lineTo(0.3, 0); hourHandShape.lineTo(0, 4.0); hourHandShape.closePath();
-const hourGeometry = new THREE.ExtrudeGeometry(hourHandShape, { depth: 0.4, bevelEnabled: true, bevelSize: 0.04, bevelThickness: 0.08, bevelSegments: 2 });
-hourGeometry.translate(0, 0, -0.2);
-const hourHand = new THREE.Mesh(hourGeometry, silverMaterial);
-hourHand.position.z = -2.04 + zShift;
-hourHand.castShadow = true;
-watchGroup.add(hourHand);
-
-const minuteHandShape = new THREE.Shape();
-minuteHandShape.moveTo(-0.2, 0); minuteHandShape.lineTo(0.2, 0); minuteHandShape.lineTo(0, 6.0); minuteHandShape.closePath();
-const minuteGeometry = new THREE.ExtrudeGeometry(minuteHandShape, { depth: 0.3, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.06, bevelSegments: 2 });
-minuteGeometry.translate(0, 0, -0.15);
-const minuteHand = new THREE.Mesh(minuteGeometry, brightSilverMaterial);
-minuteHand.position.z = -2.03 + zShift;
-minuteHand.castShadow = true;
-watchGroup.add(minuteHand);
-
-const secondGeometry = new THREE.BoxGeometry(0.1, 7.0, 0.3);
-secondGeometry.translate(0, 3.5, 0);
-const secondHand = new THREE.Mesh(secondGeometry, secondMaterial);
-secondHand.position.z = -2.02 + zShift;
-secondHand.castShadow = true;
-watchGroup.add(secondHand);
-
-
-// --- Refactored Model Loader ---
-const objLoader = new OBJLoader(loadingManager).setPath('textures/');
-objLoader.load('ETA6497-1_OBJ.obj', (object) => {
-    clockModel = object;
     clockModel.position.set(0, 0, -4.0 + zShift);
-    clockModel.rotation.set(0,0,0);
+    clockModel.rotation.set(0, 0, 0); // NO ROTATION NEEDED
     clockModel.scale.set(modelScale, modelScale, modelScale);
+
+    // --- Log all mesh names to the console ---
+    console.log("--- All Meshes in GLB File ---");
+    clockModel.traverse(child => {
+        if (child.isMesh) {
+            console.log(child.name);
+        }
+    });
+    console.log("--------------------------------");
     
+
+    // --- RE-ADDED: Part identification and setup ---
     const collectedParts = {};
     clockModel.traverse(child => {
         if (child.isMesh) {
             child.castShadow = true;
             child.receiveShadow = true;
-            
-            switch (child.name) {
-                case 'BarrelBridge_Body':
-                case 'TrainWheelBridgeBody':
-                    child.material = brushedSteelMaterial;
-                    break;
-                case 'SecondsWheel': case 'Minute_Wheel_Body': case 'HourWheel_Body':
-                case 'EscapeWheel': case 'CenterWheelBody': case 'ThirdWheel':
-                case 'BalanceWheelBody':
-                    child.material = brassMaterial;
-                    break;
-                case 'MovementBarrel2_Body':
-                case 'PalletBridgeBody':
-                    child.material = placeholderMaterial.clone();
-                    child.material.transparent = true;
-                    child.material.opacity = 0.5;
-                    child.castShadow = false;
-                    break;
-                default:
-                    child.material = silverMaterial.clone();
-                    break;
-            }
             collectedParts[child.name] = child;
         }
     });
+
+    // Create new groups for the hands to ensure all parts rotate together
+    newHourHand = new THREE.Group();
+    newMinuteHand = new THREE.Group();
+    newSecondHand = new THREE.Group();
+    
+    // Find the original hand meshes and add them to the new groups
+    const hourOuter = collectedParts['HourHandOuterBody'];
+    const hourLume = collectedParts['HourHandLumeBody'];
+    if (hourOuter) newHourHand.add(hourOuter);
+    if (hourLume) newHourHand.add(hourLume);
+
+    // --- FIX: Corrected the name for the minute hand's lume body ---
+    const minuteOuter = collectedParts['MinuteHandOuterBody'];
+    const minuteLume = collectedParts['MinuteHandLumeBody'];
+    if (minuteOuter) newMinuteHand.add(minuteOuter);
+    if (minuteLume) newMinuteHand.add(minuteLume);
+
+    // --- FIX: Corrected the name for the seconds hand's lume body ---
+    const secondOuter = collectedParts['SecondsHandOuterBody'];
+    const secondLume = collectedParts['SecondsHandLumeBody']; // Need to troubleshoot two lume bodies
+    if (secondOuter) newSecondHand.add(secondOuter);
+    if (secondLume) newSecondHand.add(secondLume);
+
+    // Add the new, complete hand groups to the scene
+    clockModel.add(newHourHand);
+    clockModel.add(newMinuteHand);
+    // The seconds hand is added later, after being moved to its pivot
+    
+    // Apply materials to the original meshes
+    for (const name in collectedParts) {
+        const part = collectedParts[name];
+        if (name.startsWith('HourHandOuterBody') || name.startsWith('MinuteHandOuterBody') || name.startsWith('SecondsHandOuterBody')) { part.material = blackAluminumMaterial; }
+        else if (name.startsWith('HourHandLumeBody') || name.startsWith('MinuteHandLumeBody') || name.startsWith('SecondsHandLumeBody')) { part.material = lumeMaterial; }
+        else if (['BarrelBridge_Body', 'TrainWheelBridgeBody', 'BalancingBridgeBody'].includes(name)) { part.material = brushedSteelMaterial; }
+        else if (['SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'BalanceWheelBody'].includes(name)) { part.material = brassMaterial; }
+    }
 
     const partsToPivot = [ 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody', 'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody' ];
     partsToPivot.forEach(name => {
@@ -429,52 +367,47 @@ objLoader.load('ETA6497-1_OBJ.obj', (object) => {
 
     const palletForkBodyMesh = collectedParts['PalletForkBody'];
     const palletJewelBodyMesh = collectedParts['Plate_Jewel_Body'];
-    const palletForkJewel1Mesh = collectedParts['PalletForkJewel1'];
-    const palletForkJewel2Mesh = collectedParts['PalletForkJewel2'];
     if (palletForkBodyMesh && palletJewelBodyMesh) {
         const jewelCenter = new THREE.Vector3();
         new THREE.Box3().setFromObject(palletJewelBodyMesh).getCenter(jewelCenter);
         const pivot = new THREE.Group();
         palletForkBodyMesh.parent.add(pivot);
         pivot.position.copy(jewelCenter);
+        if (collectedParts['PalletForkJewel1']) pivot.add(collectedParts['PalletForkJewel1']);
+        if (collectedParts['PalletForkJewel2']) pivot.add(collectedParts['PalletForkJewel2']);
         pivot.add(palletForkBodyMesh);
-        palletForkBodyMesh.position.sub(jewelCenter);
-        if (palletForkJewel1Mesh) { pivot.add(palletForkJewel1Mesh); palletForkJewel1Mesh.position.sub(jewelCenter); }
-        if (palletForkJewel2Mesh) { pivot.add(palletForkJewel2Mesh); palletForkJewel2Mesh.position.sub(jewelCenter); }
+        pivot.children.forEach(child => child.position.sub(jewelCenter));
         palletFork = pivot;
     }
-
-    // --- Final scene adjustments ---
-    clockUnit.add(clockModel);
     
-    const faceGeom = new THREE.RingGeometry(6.25, 10.5, 64);
-    const faceMat = new THREE.MeshStandardMaterial({ color: 0xFFFDD0, metalness: 0.1, roughness: 0.9 });
-    const newFace = new THREE.Mesh(faceGeom, faceMat);
-    newFace.receiveShadow = true;
-    newFace.position.z = -3.4 + zShift;
-    clockUnit.add(newFace);
+    // --- FIX: Re-engineered the seconds hand pivot to prevent orbiting ---
+    if (secondWheel) {
+        const pivot = new THREE.Group(); // This is the new, true pivot point
+        clockModel.add(pivot);
 
-    // --- MODIFICATION: Add a back plate to the clock ---
-    const backPlateGeom = new THREE.CircleGeometry(innerRadius, 64);
-    const backPlateMaterial = brushedSteelMaterial.clone();
-    backPlateMaterial.side = THREE.FrontSide; // Makes the plate invisible from the back
+        const center = new THREE.Vector3();
+        new THREE.Box3().setFromObject(secondWheel).getCenter(center);
+        pivot.position.copy(center);
 
-    const clockBackPlate = new THREE.Mesh(backPlateGeom, backPlateMaterial);
-    clockBackPlate.position.z = clockModel.position.z - 1.5; 
-    clockBackPlate.receiveShadow = true; 
-    clockBackPlate.castShadow = false; // A flat plane should not cast a shadow
-    clockUnit.add(clockBackPlate);
+        // Add the assembled hand (body + lume) to the new pivot
+        pivot.add(newSecondHand);
+        // Offset the hand group by the INVERSE of the pivot's position
+        newSecondHand.position.sub(center);
+
+        // The animated object is now the pivot, not the hand group itself
+        newSecondHand = pivot;
+    }
 });
 
 
-// --- MODIFICATION: Rewritten function for dynamic scaling and layout ---
+// Rewritten function for dynamic scaling and layout
 function layoutScene() {
     // --- 1. Set a fixed camera Z position ---
     camera.position.z = 60;
     camera.updateProjectionMatrix();
 
     // --- 2. Build the box to fit the viewport and contain the clock ---
-    const boxDepth = 8.5; 
+    const boxDepth = 8.5;
     const backWallZ = -boxDepth;
     const wallCenterZ = -boxDepth / 2;
     const boxFrontZ = 0.0;
@@ -484,14 +417,14 @@ function layoutScene() {
     const viewPlaneDistance = camera.position.z - boxFrontZ;
     const viewPlaneHeight = 2 * Math.tan(fov / 2) * viewPlaneDistance;
     const viewPlaneWidth = viewPlaneHeight * camera.aspect;
-    
+
     // The back wall must be scaled larger to appear the same size as the front opening
     const backPlaneDistance = camera.position.z - backWallZ;
     const backPlaneHeight = 2 * Math.tan(fov / 2) * backPlaneDistance;
     const backPlaneWidth = backPlaneHeight * camera.aspect;
 
     // --- 3. Dynamically set texture repeats for realism ---
-    const unitsPerTexture = 15; 
+    const unitsPerTexture = 15;
     const wallTextures = [wallMaterial.map, wallMaterial.normalMap, wallMaterial.roughnessMap, wallMaterial.displacementMap];
     const tbTextures = [topBottomMaterial.map, topBottomMaterial.normalMap, topBottomMaterial.roughnessMap, topBottomMaterial.displacementMap];
     const lrTextures = [leftRightMaterial.map, leftRightMaterial.normalMap, leftRightMaterial.roughnessMap, leftRightMaterial.displacementMap];
@@ -522,10 +455,10 @@ function layoutScene() {
 
     // --- 5. Scale clock to fit inside box with padding ---
     const clockNativeDiameter = 22;
-    const padding = 5; 
+    const padding = 5;
     const availableWidth = viewPlaneWidth - (padding * 2);
     const availableHeight = viewPlaneHeight - (padding * 2);
-    
+
     const scale = Math.min(availableWidth, availableHeight) / clockNativeDiameter;
     clockUnit.scale.set(scale, scale, scale);
 
@@ -535,13 +468,13 @@ function layoutScene() {
 
     // First, calculate a bounding box that contains the entire boxGroup (walls and all).
     const shadowVolumeBox = new THREE.Box3().setFromObject(boxGroup);
-    
+
     // From that box, get its center point and a radius that encloses it.
     const shadowVolumeCenter = new THREE.Vector3();
     shadowVolumeBox.getCenter(shadowVolumeCenter);
     const shadowVolumeRadius = shadowVolumeBox.getSize(new THREE.Vector3()).length() / 2;
-// pad the shadow frustum to ensure corners get included
-const paddedRadius = shadowVolumeRadius * 1.2;
+	// pad the shadow frustum to ensure corners get included
+	const paddedRadius = shadowVolumeRadius * 1.2;
 
     // Define the light's direction relative to the target.
     const lightPositionOffset = { x: 10, y: 28, z: 25 };
@@ -555,7 +488,7 @@ const paddedRadius = shadowVolumeRadius * 1.2;
         shadowVolumeCenter.y + lightPositionOffset.y,
         shadowVolumeCenter.z + lightPositionOffset.z
     );
-    
+
     // CRITICAL: Update the target's matrix before rendering shadows.
     dirLight.target.updateMatrixWorld();
 
@@ -600,54 +533,53 @@ function setupTiltControls() {
 }
 
 const tickSound = new Audio('/textures/clock-ticking-5Hz.mp3');
-tickSound.volume = 0.2;
+tickSound.volume = 0.0; // 0.2
 
 // --- Animation Loop ---
 function animate() {
   requestAnimationFrame(animate);
 
-  controls.update(); 
+  controls.update();
 
   const maxTilt = 15;
   const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
   const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
   const rotY = THREE.MathUtils.degToRad(x) * 0.5;
   const rotX = THREE.MathUtils.degToRad(y) * 0.5;
-  
-  // boxGroup.rotation.y = rotY;
-  // boxGroup.rotation.x = rotX;
-  
+
   const now = new Date();
   const seconds = now.getSeconds() + now.getMilliseconds() / 1000;
   const minutes = now.getMinutes() + seconds / 60;
   const hours = now.getHours() % 12 + minutes / 60;
 
-  secondHand.rotation.z = -THREE.MathUtils.degToRad((seconds / 60) * 360);
-  minuteHand.rotation.z = -THREE.MathUtils.degToRad((minutes / 60) * 360);
-  hourHand.rotation.z   = -THREE.MathUtils.degToRad((hours / 12) * 360);
+  // --- RE-ADDED: Animation logic ---
+  // With the model correctly oriented, the perpendicular axis for rotation is Z.
+  // A negative value produces a clockwise rotation from the dial side.
+  if (newSecondHand) newSecondHand.rotation.z = -THREE.MathUtils.degToRad((seconds / 60) * 360);
+  if (newMinuteHand) newMinuteHand.rotation.z = -THREE.MathUtils.degToRad((minutes / 60) * 360);
+  if (newHourHand) newHourHand.rotation.z = -THREE.MathUtils.degToRad((hours / 12) * 360);
+
+  if (secondWheel) secondWheel.rotation.z = -((seconds / 60) * Math.PI * 2);
+  if (minuteWheel) minuteWheel.rotation.z = ((minutes / 60) * Math.PI * 2);
+  if (hourWheel) hourWheel.rotation.z = -((hours / 12) * Math.PI * 2);
+  if (escapeWheel) escapeWheel.rotation.z = (((seconds % 5) / 5) * Math.PI * 2);
+  if (centerWheel) centerWheel.rotation.z = -((minutes / 60) * Math.PI * 2);
+  if (thirdWheel) thirdWheel.rotation.z = (((minutes % 7.5) / 7.5) * Math.PI * 2);
   
-  if (secondWheel) secondWheel.rotation.z = -(seconds / 60) * Math.PI * 2;
-  if (minuteWheel) minuteWheel.rotation.z = -(minutes / 60) * Math.PI * 2;
-  if (hourWheel) hourWheel.rotation.z = -(hours / 12) * Math.PI * 2;
-  if (escapeWheel) escapeWheel.rotation.z = ((seconds % 5) / 5) * Math.PI * 2;
-  if (centerWheel) centerWheel.rotation.z = (minutes / 60) * Math.PI * 2;
-  if (thirdWheel) thirdWheel.rotation.z = ((minutes % 7.5) / 7.5) * Math.PI * 2;
   if (palletFork) {
     const time = now.getTime() / 1000;
-    palletFork.rotation.z = THREE.MathUtils.degToRad(22) * Math.sin(time * Math.PI * 8);
+    palletFork.rotation.z = -THREE.MathUtils.degToRad(22) * Math.sin(time * Math.PI * 8);
   }
-  
+
   if (balanceWheel) {
     const time = now.getTime() / 1000;
     const sineValue = Math.sin(time * Math.PI * 2 * (3 * balanceWheelSpeedMultiplier));
-    balanceWheel.rotation.z = (Math.PI / 2) * sineValue;
-    if (hairSpring) hairSpring.scale.set(0.95 + 0.35 * sineValue, 0.95 + 0.35 * sineValue, 1);
+    balanceWheel.rotation.z = -(Math.PI / 2) * sineValue;
+    if (hairSpring) hairSpring.scale.set(1 + 0.1 * sineValue, 1 + 0.1 * sineValue, 1);
   }
 
   const pad = (n) => n.toString().padStart(2, '0');
   const spanStyles = `background-color: rgba(0, 0, 0, 0.5); padding: 0.1em 0.3em; border-radius: 4px;`;
-  // if (digitalClock) digitalClock.innerHTML = `<span style="${spanStyles}">${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(Math.floor(now.getSeconds()))}</span>`;
-  // if (digitalDate) digitalDate.innerHTML = `<span style="${spanStyles}">${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear().toString().slice(-2)}</span>`;
 
   const currentSecond = Math.floor(now.getSeconds());
   if (animate.lastSecond !== currentSecond) {
