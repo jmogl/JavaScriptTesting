@@ -1,39 +1,30 @@
-// 3D Javacript Clock using three.js
+// 3D Javacript ETA 6497 Clock using three.js
 // MIT License. - Work in Progress
-// Jeff Miller 2025. 8/10/25
-// MODIFIED: Reintroduced animation logic to the clean baseline.
-// - GLB model is now correctly oriented by default from Blender export.
-// - All parts are identified, and pivots are created after loading.
-// - All animations are set to the Z-axis, which is now the correct perpendicular axis.
-// MODIFIED: Added back the console log for all mesh names and restored the pallet fork animation.
-// MODIFIED: Corrected hand animation logic: fixed lume body name typos and implemented a proper pivot for the seconds hand to prevent orbiting.
-
-
+// Jeff Miller 2025. 8/24/25
 
 /*
 ToDo:
 - Fix the wheel default angles so the gears mesh regardless of the start time.
-- Try Blender PBR Textures
-- Update the rotation rate for the balance wheel
-- Add a GUI
+- Add PBR textures for the 3D Model. Will try Blender PBR Textures.
 - Fix BalancingBridgeBody showing up twice in the mesh body ListFormat
-- Add back in the top and set a transparency based on direction
+- Add back top watch plate and set a transparency based on direction
 */
 
-
 /* References and Notes
+- AI support: Google Gemini
 - HDRI: https://polyhaven.com/a/colorful_studio
 - PBR Textures: https://www.cgbookcase.com/
-- ETA 6497-1 Watch Movement CAD: Steen Winther: https://grabcad.com/library/eta-6497-1-complete-watch-movement
-- ETA 6497 Custom Hands made in Fusion 360
+- Modified ETA 6497-1 Watch Movement CAD: Steen Winther: https://grabcad.com/library/eta-6497-1-complete-watch-movement
+- ETA 6497 Custom Clock Hands and Clock Case made in Fusion 360
 - 5 Hz Tick Sound - Clock Ticking by RedDog0607: https://pixabay.com/sound-effects/clock-ticking-365218/
-- Development and Debugging Tools: Google Gemini and ChatGPT
+- Development and Debugging Tools: Google Gemini
 - File encoding is set to UF-8
 
 - Local Server: python -m http.server run in a terminal in local javascript directory with index.html
-- 	http://localhost:8000 in local browser tab
+- 	http://localhost:8000 in a local browser tab
 
 - Fusion 360 to .OBJ to Blender to .GLB
+	- Note: Use "remove" instead of "delete" when removing F360 bodies and keep the history timeline.
 	- Select "Split By Group" when importing into Blender under import file dialog options to keep mesh body names
 	- Select Up Axis as -Z and Forward Axis as Y based on the orientation used in F360, may change for other models
 	- To increase curve object resolution in Blender:
@@ -65,17 +56,47 @@ ToDo:
 
 
 ETA 6497 Watch Movement Notes:
-- Movement is 36.6mm in diameter and 4.5mm thick (Currently using a custom scale)
+- https://calibercorner.com/unitas-caliber-6497/
+- Movement is 36.6mm in diameter and 4.5mm thick
 - 18,000 vibrations per hour (VPH) (balance wheel swing)
 	- 3600 seconds/hour
 	- One tick sound for ballance wheel full swing
 	- Tick per second = 18,000 VPH / 3600 sec/hr = 5 ticks per second
-- Wheels
+- Drive Train
 	- Center Wheel: Carries Minute hand and rotates once per hour
+		- Driven by the Main Spring Barrel. Cannon Pinon Arbor has gear teeth that is press fit into the center wheel's arbor. 
+		  The arbor friction acts as a clutch. When the crown is moved to set the time, the minute wheel is turned. The
+		  force applied is enough to overcome friction allowing the pinion to slip and rotate independently on the Center
+		  wheel arbor. This allows the hands to move without breaking or backwinding the entire drive train!
+	
+	- To Do: Add Cannon Pinion Back! (Start over with original model now using .glb!)
+	- DriverCannonPinion_Gear_Body for rotation.
+	- Small Center Wheel gear rotates with Center Gear. Separated for material color.
+	- SecondWheelSmallGear rotates with the second wheel. Silver instead of brass.
+	- ThirdWheelBottomGear & ThirdWheelTopGear silver moves with ThirdWheel
 	- Third Wheel: Rotates every 7.5 minutes clockwise from dial side
 	- Fourth Wheel: Carries small seconds hand and rotates once per minute. Also drives the escapement
 	- Escape Wheel: Advances by half a tooth per beat (15 teeth), resulting in a full rotation every 5 seconds counter clockwise.
-	- Balance Wheel: 270 to 310 degrees, 2.5 Hz or 1 per 0.4 seconds.
+	- Crown Wheel: Used to wind the main spring. Turns with the crown.
+	- Hour Wheel rotates 1 revolution every 12 hours (720 min).
+	- Minute Wheel: Used to set the time with the crown and also drives the hour hand.
+		- Drive rate: cannon pinion rotates 1 rotaton per hour. Gear ratio driven minute wheel 36 teeth / driving gear pinon =3
+		- Rotation rate is 1 rev per hour / 3 = 1/3 revolution per hour  **** Need to check or fix
+	- Balance Wheel: 270 to 310 degrees, 2.5 Hz or 1 per 0.4 seconds back and forth.
+	- Power Flow: Mainspring Barrel (First Wheel) -> Center Wheel -> Third Wheel
+	- Time Delay (Locking Phase)
+		- Escape wheel is stationary when the pallet fork is at its maximum displacement, which is at:
+			- At +1.5 to +2 degrees, one of the pallet jewels (for instance, the entry pallet) is holding 
+			an escape wheel tooth, and the fork is resting against one banking pin.
+			- At -1.5 to -2 degrees, the other pallet jewel (the exit pallet) is holding the next escape wheel tooth, 
+			- and the fork is resting against the opposite banking pin.
+		- 1. Start of Cycle (0.0 Seconds): Balance wheel is at its fastest, passing through the center.
+			It kicks the pallet fork, unlocking the escape wheel. The escape wheel moves one tooth (impulse), which
+			happens almost instantly. The first 0.2 second pause begins. 
+		- 2. Mid Cycle (0.2 Seconds): Balance wheel reaches end of its swing and starts back the other way. It passes
+			through the center again, kicks the pallet fork, and unlocks the escape wheel again. The escape wheel moves	
+			another tooth. This ends the first pause and immediately begins the second 0.2 second pause.
+		- 3. End of cycle (0.4 Seconds): Balance wheel reaces the end of its second swing and starts back.
 */
 
 import * as THREE from 'three';
@@ -84,14 +105,27 @@ import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'; // Use GLTFLoader
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js';
 
 // --- Declare UI element variables in the global scope ---
 let digitalDate, digitalClock;
+let gui;
+let mouseDownTime;
+let mouseDownPos = new THREE.Vector2();
+
+const settings = {
+    tiltEnabled: false,
+    soundEnabled: false,
+    resetCamera: () => {
+        controls.reset();
+        camera.position.set(0, 0, 60); // As set in layoutScene
+        controls.target.set(0, 0, 0);
+    }
+};
 
 // --- 3D Model Variables ---
 let clockModel;
 let modelScale = 3.5;
-// --- RE-ADDED: Animation variables ---
 let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring;
 let newHourHand, newMinuteHand, newSecondHand;
 const balanceWheelSpeedMultiplier = 1.0;
@@ -115,6 +149,56 @@ window.addEventListener('DOMContentLoaded', () => {
 
     document.body.appendChild(digitalDate);
     document.body.appendChild(digitalClock);
+
+    // --- GUI Setup ---
+    gui = new GUI();
+    gui.domElement.style.display = 'none'; // Start hidden
+
+    gui.add(settings, 'tiltEnabled').name('Enable Tilt').onChange(value => {
+        if (value) {
+            enableTilt();
+        } else {
+            disableTilt();
+        }
+    });
+
+    gui.add(settings, 'soundEnabled').name('Enable Sound').onChange(value => {
+        tickSound.volume = value ? 0.2 : 0.0;
+    });
+
+    gui.add(settings, 'resetCamera').name('Reset Camera');
+
+    // --- Listeners to differentiate clicks from drags for GUI toggle ---
+    window.addEventListener('mousedown', (event) => {
+        mouseDownTime = Date.now();
+        mouseDownPos.set(event.clientX, event.clientY);
+    });
+
+    window.addEventListener('mouseup', (event) => {
+        const duration = Date.now() - mouseDownTime;
+        const distance = mouseDownPos.distanceTo(new THREE.Vector2(event.clientX, event.clientY));
+
+        // Only toggle if it's a short, stationary press (a "tap")
+        if (duration < 200 && distance < 5) {
+            // Do nothing if the tap is on the GUI itself, allowing interaction with controls
+            if (gui.domElement.contains(event.target)) {
+                return;
+            }
+
+            // Toggle display
+            if (gui.domElement.style.display === 'none') {
+                gui.domElement.style.display = 'block';
+
+                // User interaction is required to start audio (only runs on the first open)
+                if (tickSound && tickSound.paused) {
+                    tickSound.play().catch(() => {}); // Play and immediately pause to 'unlock'
+                    tickSound.pause();
+                }
+            } else {
+                gui.domElement.style.display = 'none';
+            }
+        }
+    });
 });
 
 
@@ -338,10 +422,10 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => {
         if (name.startsWith('HourHandOuterBody') || name.startsWith('MinuteHandOuterBody') || name.startsWith('SecondsHandOuterBody')) { part.material = blackAluminumMaterial; }
         else if (name.startsWith('HourHandLumeBody') || name.startsWith('MinuteHandLumeBody') || name.startsWith('SecondsHandLumeBody')) { part.material = lumeMaterial; }
         else if (['BarrelBridge_Body', 'TrainWheelBridgeBody', 'BalancingBridgeBody'].includes(name)) { part.material = brushedSteelMaterial; }
-        else if (['SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'BalanceWheelBody'].includes(name)) { part.material = brassMaterial; }
+        else if (['SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'BalanceWheelBody'].includes(name)) { part.material = brassMaterial; }
     }
 
-    const partsToPivot = [ 'SecondsWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody', 'EscapeWheel', 'CenterWheelBody', 'ThirdWheel', 'HairSpringBody' ];
+    const partsToPivot = [ 'SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'HairSpringBody' ];
     partsToPivot.forEach(name => {
         const part = collectedParts[name];
         if (part) {
@@ -353,13 +437,13 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => {
             pivot.add(part);
             part.position.sub(center);
             switch (name) {
-                case 'SecondsWheel': secondWheel = pivot; break;
+                case 'SecondWheel': secondWheel = pivot; break;
                 case 'Minute_Wheel_Body': minuteWheel = pivot; break;
                 case 'HourWheel_Body': hourWheel = pivot; break;
                 case 'BalanceWheelBody': balanceWheel = pivot; break;
-                case 'EscapeWheel': escapeWheel = pivot; break;
+                case 'EscapeWheelBody': escapeWheel = pivot; break;
                 case 'CenterWheelBody': centerWheel = pivot; break;
-                case 'ThirdWheel': thirdWheel = pivot; break;
+                case 'ThirdWheelBody': thirdWheel = pivot; break;
                 case 'HairSpringBody': hairSpring = pivot; break;
             }
         }
@@ -514,26 +598,34 @@ function handleOrientation(event) {
   tiltY = event.beta || 0;
   tiltX = event.gamma || 0;
 }
-function setupTiltControls() {
+
+function enableTilt() {
     if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
-        const button = document.createElement('button');
-        Object.assign(button.style, { position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', padding: '1em 2em', fontSize: '1em', color: 'white', backgroundColor: 'rgba(0,0,0,0.7)', border: '1px solid white', borderRadius: '8px', cursor: 'pointer', zIndex: '1001' });
-        button.textContent = 'Enable Tilt';
-        document.body.appendChild(button);
-        button.addEventListener('click', async () => {
-            if (tickSound) {
-                tickSound.play();
-                tickSound.pause();
+        DeviceOrientationEvent.requestPermission().then(permissionState => {
+            if (permissionState === 'granted') {
+                window.addEventListener('deviceorientation', handleOrientation);
+            } else {
+                // User denied permission, so toggle the GUI back to off.
+                settings.tiltEnabled = false;
+                gui.controllers.forEach(c => c.updateDisplay()); // Refresh GUI to show it's off
             }
-            try { if (await DeviceOrientationEvent.requestPermission() === 'granted') { window.addEventListener('deviceorientation', handleOrientation); } } finally { document.body.removeChild(button); }
         });
     } else {
+        // Non-iOS device
         window.addEventListener('deviceorientation', handleOrientation);
     }
 }
 
+function disableTilt() {
+    window.removeEventListener('deviceorientation', handleOrientation);
+    // Reset tilt values so the clock doesn't get stuck
+    tiltX = 0;
+    tiltY = 0;
+}
+
+
 const tickSound = new Audio('/textures/clock-ticking-5Hz.mp3');
-tickSound.volume = 0.0; // 0.2
+tickSound.volume = 0.0; // Controlled by GUI
 
 // --- Animation Loop ---
 function animate() {
@@ -546,34 +638,49 @@ function animate() {
   const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
   const rotY = THREE.MathUtils.degToRad(x) * 0.5;
   const rotX = THREE.MathUtils.degToRad(y) * 0.5;
+  
+  // NOTE: The tilt rotation values rotX and rotY are calculated but not applied
+  // to an object. If tilt is desired to rotate the box, you would add:
+  // boxGroup.rotation.x = rotX;
+  // boxGroup.rotation.y = rotY;
 
   const now = new Date();
-  const seconds = now.getSeconds() + now.getMilliseconds() / 1000;
-  const minutes = now.getMinutes() + seconds / 60;
+  const time = now.getTime() / 1000; // Time in seconds for sine waves
+
+  // --- Time Calculations ---
+  // Continuous time for smooth motion (minutes, hours)
+  const continuousSeconds = now.getSeconds() + now.getMilliseconds() / 1000;
+  const minutes = now.getMinutes() + continuousSeconds / 60;
   const hours = now.getHours() % 12 + minutes / 60;
 
-  // --- RE-ADDED: Animation logic ---
-  // With the model correctly oriented, the perpendicular axis for rotation is Z.
-  // A negative value produces a clockwise rotation from the dial side.
-  if (newSecondHand) newSecondHand.rotation.z = -THREE.MathUtils.degToRad((seconds / 60) * 360);
+  // Quantized time for stepped motion (escapement)
+  // The movement ticks 5 times per second (18,000 VPH), so each step is 0.2 seconds.
+  const intervalIndex = Math.floor(continuousSeconds * 5);
+  const quantizedSeconds = intervalIndex / 5.0;
+
+
+  // --- Animation Logic ---
+  // Smoothly rotating parts
   if (newMinuteHand) newMinuteHand.rotation.z = -THREE.MathUtils.degToRad((minutes / 60) * 360);
   if (newHourHand) newHourHand.rotation.z = -THREE.MathUtils.degToRad((hours / 12) * 360);
-
-  if (secondWheel) secondWheel.rotation.z = -((seconds / 60) * Math.PI * 2);
-  if (minuteWheel) minuteWheel.rotation.z = ((minutes / 60) * Math.PI * 2);
+  if (minuteWheel) minuteWheel.rotation.z = ((minutes / 60) * Math.PI * 2); 
   if (hourWheel) hourWheel.rotation.z = -((hours / 12) * Math.PI * 2);
-  if (escapeWheel) escapeWheel.rotation.z = (((seconds % 5) / 5) * Math.PI * 2);
   if (centerWheel) centerWheel.rotation.z = -((minutes / 60) * Math.PI * 2);
   if (thirdWheel) thirdWheel.rotation.z = (((minutes % 7.5) / 7.5) * Math.PI * 2);
   
+  // Stepped rotation for escapement parts
+  if (newSecondHand) newSecondHand.rotation.z = -THREE.MathUtils.degToRad((quantizedSeconds / 60) * 360);
+  if (secondWheel) secondWheel.rotation.z = -((quantizedSeconds / 60) * Math.PI * 2);
+  if (escapeWheel) escapeWheel.rotation.z = (((quantizedSeconds % 5) / 5) * Math.PI * 2);
+  
+  // Pallet Fork: Oscillates 5 times per second (5 Hz)
   if (palletFork) {
-    const time = now.getTime() / 1000;
-    palletFork.rotation.z = -THREE.MathUtils.degToRad(22) * Math.sin(time * Math.PI * 8);
+    palletFork.rotation.z = -THREE.MathUtils.degToRad(22) * Math.sin(time * Math.PI * 10);
   }
 
+  // Balance Wheel: Oscillates at 2.5 Hz (18,000 VPH)
   if (balanceWheel) {
-    const time = now.getTime() / 1000;
-    const sineValue = Math.sin(time * Math.PI * 2 * (3 * balanceWheelSpeedMultiplier));
+    const sineValue = Math.sin(time * Math.PI * 2 * (2.5 * balanceWheelSpeedMultiplier));
     balanceWheel.rotation.z = -(Math.PI / 2) * sineValue;
     if (hairSpring) hairSpring.scale.set(1 + 0.1 * sineValue, 1 + 0.1 * sineValue, 1);
   }
@@ -583,7 +690,7 @@ function animate() {
 
   const currentSecond = Math.floor(now.getSeconds());
   if (animate.lastSecond !== currentSecond) {
-    if(tickSound) {
+    if(tickSound && settings.soundEnabled) { // Check if sound is enabled in settings
         tickSound.currentTime = 0;
         tickSound.play().catch(() => {});
     }
@@ -602,5 +709,4 @@ window.addEventListener('resize', () => {
   layoutScene();
 });
 
-setupTiltControls();
 animate();
