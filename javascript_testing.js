@@ -405,18 +405,18 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => {
         const part = collectedParts[name];
         if (name.startsWith('HourHandOuterBody') || name.startsWith('MinuteHandOuterBody') || name.startsWith('SecondsHandOuterBody')) { part.material = blackAluminumMaterial; }
         else if (name.startsWith('HourHandLumeBody') || name.startsWith('MinuteHandLumeBody') || name.startsWith('SecondsHandLumeBody')) { part.material = lumeMaterial; }
-        else if (['BarrelBridge_Body', 'TrainWheelBridgeBody', 'BalancingBridgeBody'].includes(name)) { part.material = brushedSteelMaterial; }
+        else if (['BarrelBridge_Body', 'TrainWheelBridgeBody', 'BalancingBridgeBody', 'PalletBridgeBody'].includes(name)) { part.material = brushedSteelMaterial; }
         else if (['SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'BalanceWheelBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear'].includes(name)) { part.material = brassMaterial; }
     }
 
-    // --- NEW LOGIC: Get a reliable center point from the Balance Wheel first ---
-    const balanceWheelMesh = collectedParts['BalanceWheelBody'];
-    let trueCenter = new THREE.Vector3();
-    if (balanceWheelMesh) {
-        new THREE.Box3().setFromObject(balanceWheelMesh).getCenter(trueCenter);
-        console.log("Found true center from Balance Wheel at:", trueCenter);
-    } else {
-        console.error("Could not find BalanceWheelBody to determine true center!");
+    // --- Make the Pallet Bridge transparent ---
+    const palletBridgeMesh = collectedParts['PalletBridgeBody'];
+    if (palletBridgeMesh) {
+        // Clone the material to avoid affecting other parts
+        const transparentMaterial = palletBridgeMesh.material.clone();
+        transparentMaterial.transparent = true;
+        transparentMaterial.opacity = 0.5;
+        palletBridgeMesh.material = transparentMaterial;
     }
 
     const partsToPivot = [ 'SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'HairSpringBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear' ];
@@ -431,14 +431,17 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => {
                 const vertexCount = positions.length / 3;
                 let tempVertex = new THREE.Vector3();
 
-                // --- NEW COLLET LOGIC: Find hairspring vertex closest to the true center ---
-                let min_dist_sq_to_true_center = Infinity;
+                const bb = new THREE.Box3().setFromObject(hairSpringMesh);
+                const bbCenter = new THREE.Vector3();
+                bb.getCenter(bbCenter);
+                
+                let min_dist_sq = Infinity;
                 let colletVertexIndex = -1;
                 for (let i = 0; i < vertexCount; i++) {
                     tempVertex.set(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
-                    const distSq = tempVertex.distanceToSquared(trueCenter);
-                    if (distSq < min_dist_sq_to_true_center) {
-                        min_dist_sq_to_true_center = distSq;
+                    const distSq = tempVertex.distanceToSquared(bbCenter);
+                    if (distSq < min_dist_sq) {
+                        min_dist_sq = distSq;
                         colletVertexIndex = i;
                     }
                 }
@@ -447,7 +450,7 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => {
                     colletOriginalPos.set(positions[colletVertexIndex * 3], positions[colletVertexIndex * 3 + 1], positions[colletVertexIndex * 3 + 2]);
                 }
 
-                // --- STUD LOGIC: Find anchor by a target angle AND radius ratio ---
+                // --- Reverted STUD LOGIC: Find anchor by angle ---
                 let maxRadius = 0;
                 for (let i = 0; i < vertexCount; i++) {
                     tempVertex.set(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
@@ -457,84 +460,34 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => {
                     }
                 }
 
-                // --- Tweak these values to position the red sphere ---
-                const targetAngleDeg = 15; // Angle in degrees. Looks like ~15 in your image.
-                const targetRadiusRatio = 0.85; // How far from center (0.0) to edge (1.0). Looks like ~85%.
-                // ----------------------------------------------------
-
-                const targetAngleRad = THREE.MathUtils.degToRad(targetAngleDeg);
-                const targetRadius = maxRadius * targetRadiusRatio;
-
-                let bestMatchIndex = -1;
-                let minError = Infinity;
+                const targetAngle = THREE.MathUtils.degToRad(-100);
+                let minAngleDiff = Infinity;
+                let studVertexIndex = -1;
 
                 for (let i = 0; i < vertexCount; i++) {
-                    tempVertex.set(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
-                    
-                    const radius = tempVertex.distanceTo(colletOriginalPos);
-                    const angle = Math.atan2(tempVertex.z - colletOriginalPos.z, tempVertex.x - colletOriginalPos.x);
+                     tempVertex.set(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+                     const radius = tempVertex.distanceTo(colletOriginalPos);
 
-                    // Calculate an "error" score. Lower is better.
-                    const radiusError = Math.abs(radius - targetRadius) * 5; // Weigh radius error more heavily
-                    
-                    let angleDiff = Math.abs(angle - targetAngleRad);
-                    if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
-                    const angleError = angleDiff;
+                     if (radius > maxRadius * 0.9) { 
+                         const angle = Math.atan2(tempVertex.z - colletOriginalPos.z, tempVertex.x - colletOriginalPos.x);
+                         let angleDiff = Math.abs(angle - targetAngle);
+                         if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
 
-                    const totalError = radiusError + angleError;
-
-                    if (totalError < minError) {
-                        minError = totalError;
-                        bestMatchIndex = i;
-                    }
+                         if (angleDiff < minAngleDiff) {
+                             minAngleDiff = angleDiff;
+                             studVertexIndex = i;
+                         }
+                     }
                 }
-                
-                let studVertexIndex = bestMatchIndex;
                 
                 if (studVertexIndex !== -1) {
                     studOriginalPos.set(positions[studVertexIndex * 3], positions[studVertexIndex * 3 + 1], positions[studVertexIndex * 3 + 2]);
                     studRadius = studOriginalPos.distanceTo(colletOriginalPos);
-                    console.log("Hairspring Stud (regulator pin) found at:", studOriginalPos);
-                    console.log("Hairspring Collet (balance staff) found at:", colletOriginalPos);
+                    console.log("Hairspring Stud (outer anchor) found at:", studOriginalPos);
+                    console.log("Hairspring Collet (inner anchor) found at:", colletOriginalPos);
                 } else {
                     console.error("Could not find stud for hairspring.");
                 }
-
-                // --- START: RIGOROUS DEBUGGING BLOCK (Part 1) ---
-                if (hairSpringMesh && hairSpringMesh.parent) {
-                    // This message should appear in red in your developer console (F12)
-                    console.error("DEBUG BLOCK IS RUNNING!"); 
-                    
-                    // Log the calculated positions to check their values
-                    console.log("Calculated colletOriginalPos:", JSON.stringify(colletOriginalPos));
-                    console.log("Calculated studOriginalPos:", JSON.stringify(studOriginalPos));
-
-                    // Check if the numbers are valid. If not, the spheres can't be placed.
-                    if (isNaN(colletOriginalPos.x) || isNaN(studOriginalPos.x)) {
-                        console.error("HAIRSPRING DEBUG ERROR: Position data is invalid (NaN)!");
-                    } else {
-                        const debugMaterialRed = new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false });
-                        const debugMaterialBlue = new THREE.MeshBasicMaterial({ color: 0x0000ff, depthTest: false });
-                        const debugSphereGeometry = new THREE.SphereGeometry(0.125, 16, 16); // Scaled to 25% of previous size
-                        const studDebugSphere = new THREE.Mesh(debugSphereGeometry, debugMaterialRed);
-                        const colletDebugSphere = new THREE.Mesh(debugSphereGeometry, debugMaterialBlue);
-
-                        studDebugSphere.position.copy(studOriginalPos);
-                        colletDebugSphere.position.copy(colletOriginalPos);
-
-                        hairSpringMesh.parent.add(studDebugSphere);
-                        hairSpringMesh.parent.add(colletDebugSphere);
-
-                        studDebugSphere.renderOrder = 999;
-                        colletDebugSphere.renderOrder = 999;
-                        
-                        console.log("Debug spheres were created and added to the hairspring's parent group.");
-                    }
-                } else {
-                    // This will tell us if the initial condition is failing
-                    console.error("DEBUG BLOCK SKIPPED! The 'hairSpringMesh' or its parent object was not found.");
-                }
-                // --- END: RIGOROUS DEBUGGING BLOCK (Part 1) ---
             }
 
             const center = new THREE.Vector3();
@@ -699,103 +652,134 @@ const p_relative = new THREE.Vector3();
 
 // --- Animation Loop ---
 function animate() {
-  requestAnimationFrame(animate);
-  controls.update();
+    requestAnimationFrame(animate);
+    controls.update();
 
-  const maxTilt = 15;
-  const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
-  const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
-  const rotY = THREE.MathUtils.degToRad(x) * 0.5;
-  const rotX = THREE.MathUtils.degToRad(y) * 0.5;
+    const maxTilt = 15;
+    const x = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
+    const y = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
+    const rotY = THREE.MathUtils.degToRad(x) * 0.5;
+    const rotX = THREE.MathUtils.degToRad(y) * 0.5;
 
-  const now = new Date();
-  const time = now.getTime() / 1000;
+    const now = new Date();
+    const time = now.getTime() / 1000;
 
-  const continuousSeconds = now.getSeconds() + now.getMilliseconds() / 1000;
-  const minutes = now.getMinutes() + continuousSeconds / 60;
-  const hours = now.getHours() % 12 + minutes / 60;
-  const intervalIndex = Math.floor(continuousSeconds * 5);
-  const quantizedSeconds = intervalIndex / 5.0;
+    // Update digital clocks
+    if (digitalDate && digitalClock) {
+        const optionsDate = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+        digitalDate.textContent = now.toLocaleDateString('en-US', optionsDate);
+        digitalClock.textContent = now.toLocaleTimeString('en-US');
+    }
 
-  const thirdWheelRotation = (((minutes % 7.5) / 7.5) * Math.PI * 2);
-  const secondRotation = -((quantizedSeconds / 60) * Math.PI * 2);
+    const continuousSeconds = now.getSeconds() + now.getMilliseconds() / 1000;
+    const minutes = now.getMinutes() + continuousSeconds / 60;
+    const hours = now.getHours() % 12 + minutes / 60;
+    const intervalIndex = Math.floor(continuousSeconds * 5);
+    const quantizedSeconds = intervalIndex / 5.0;
+
+    const thirdWheelRotation = (((minutes % 7.5) / 7.5) * Math.PI * 2);
+    const secondRotation = -((quantizedSeconds / 60) * Math.PI * 2);
   
-  if (newMinuteHand) newMinuteHand.rotation.z = -THREE.MathUtils.degToRad((minutes / 60) * 360);
-  if (newHourHand) newHourHand.rotation.z = -THREE.MathUtils.degToRad((hours / 12) * 360);
-  if (minuteWheel) minuteWheel.rotation.z = ((minutes / 60) * Math.PI * 2); 
-  if (hourWheel) hourWheel.rotation.z = -((hours / 12) * Math.PI * 2);
-  if (centerWheel) centerWheel.rotation.z = -((minutes / 60) * Math.PI * 2);
-  if (thirdWheel) thirdWheel.rotation.z = thirdWheelRotation;
-  if (thirdWheelTopGear) thirdWheelTopGear.rotation.z = thirdWheelRotation;
+    if (newMinuteHand) newMinuteHand.rotation.z = -THREE.MathUtils.degToRad((minutes / 60) * 360);
+    if (newHourHand) newHourHand.rotation.z = -THREE.MathUtils.degToRad((hours / 12) * 360);
+    if (minuteWheel) minuteWheel.rotation.z = ((minutes / 60) * Math.PI * 2); 
+    if (hourWheel) hourWheel.rotation.z = -((hours / 12) * Math.PI * 2);
+    if (centerWheel) centerWheel.rotation.z = -((minutes / 60) * Math.PI * 2);
+    if (thirdWheel) thirdWheel.rotation.z = thirdWheelRotation;
+    if (thirdWheelTopGear) thirdWheelTopGear.rotation.z = thirdWheelRotation;
   
-  if (newSecondHand) newSecondHand.rotation.z = -THREE.MathUtils.degToRad((quantizedSeconds / 60) * 360);
-  if (secondWheel) secondWheel.rotation.z = secondRotation;
-  if (secondWheelSmallGear) secondWheelSmallGear.rotation.z = secondRotation;
-  if (escapeWheel) escapeWheel.rotation.z = (((quantizedSeconds % 5) / 5) * Math.PI * 2);
+    if (newSecondHand) newSecondHand.rotation.z = -THREE.MathUtils.degToRad((quantizedSeconds / 60) * 360);
+    if (secondWheel) secondWheel.rotation.z = secondRotation;
+    if (secondWheelSmallGear) secondWheelSmallGear.rotation.z = secondRotation;
+    if (escapeWheel) escapeWheel.rotation.z = (((quantizedSeconds % 5) / 5) * Math.PI * 2);
   
-  if (palletFork) {
-    palletFork.rotation.z = -THREE.MathUtils.degToRad(22) * Math.sin(time * Math.PI * 10);
-  }
+    if (palletFork) {
+        palletFork.rotation.z = -THREE.MathUtils.degToRad(22) * Math.sin(time * Math.PI * 10);
+    }
 
-  // --- Balance Wheel and Hairspring Animation ---
-  if (balanceWheel) {
-    const sineValue = Math.sin(time * Math.PI * 2 * (2.5 * balanceWheelSpeedMultiplier));
-    balanceWheel.rotation.z = -(Math.PI / 2) * sineValue;
+    // --- Balance Wheel and Hairspring Animation ---
+    if (balanceWheel) {
+        const sineValue = Math.sin(time * Math.PI * 2 * (2.5 * balanceWheelSpeedMultiplier));
+        balanceWheel.rotation.z = -(Math.PI / 2) * sineValue;
     
-    // Animate hairspring with "breathing" only, based on radial distance from center
-    if (hairSpringMesh && hairSpringOriginalPositions && studRadius > 0) {
-      const positions = hairSpringMesh.geometry.attributes.position;
-      const vertexCount = positions.count;
+        // Animate hairspring with torsional spring physics
+        if (hairSpringMesh && hairSpringOriginalPositions && studRadius > 0) {
+            const positions = hairSpringMesh.geometry.attributes.position;
+            const vertexCount = positions.count;
       
-      const minScale = 0.25;
-      const maxScale = 1.25;
-      const currentScale = minScale + ((sineValue + 1) / 2) * (maxScale - minScale);
+            // NEW LOGIC: Model torsional spring behavior
+            // The magnitude of deformation is 0 at the center and 1 at the extremes of rotation.
+            const deformationMagnitude = Math.abs(sineValue);
 
-      for (let i = 0; i < vertexCount; i++) {
-        p_orig.set(
-            hairSpringOriginalPositions[i * 3],
-            hairSpringOriginalPositions[i * 3 + 1],
-            hairSpringOriginalPositions[i * 3 + 2]
-        );
-
-        const dist_c = p_orig.distanceTo(colletOriginalPos);
+            // Define the neutral, compressed, and expanded states
+/*
+            const neutralScale = 1.0;
+            const compressionScale = 0.8; // Tighter coil
+            const expansionScale = 1.2;   // Looser coil
+*/
+            const neutralScale = 1.0;
+            const compressionScale = 0.5; // Tighter coil
+            const expansionScale = 1.5;   // Looser coil
         
-        // Weight is 1.0 at the collet and fades to 0.0 at the stud's radius.
-        // It is clamped at 0 to keep the outer edge and tail static.
-        let weight = 1.0 - (dist_c / studRadius);
-        weight = Math.max(0, weight);
+            let currentScale;
+            if (sineValue > 0) {
+                // As the wheel rotates one way, the spring compresses.
+                // Interpolate from neutral (1.0) to fully compressed (0.8).
+                currentScale = neutralScale + (compressionScale - neutralScale) * deformationMagnitude;
+            } else {
+                // As it rotates the other way, the spring expands.
+                // Interpolate from neutral (1.0) to fully expanded (1.2).
+                currentScale = neutralScale + (expansionScale - neutralScale) * deformationMagnitude;
+            }
+
+            for (let i = 0; i < vertexCount; i++) {
+                p_orig.set(
+                    hairSpringOriginalPositions[i * 3],
+                    hairSpringOriginalPositions[i * 3 + 1],
+                    hairSpringOriginalPositions[i * 3 + 2]
+                );
+
+                const dist_c = p_orig.distanceTo(colletOriginalPos);
         
-        const vertexScale = 1.0 + (currentScale - 1.0) * weight;
+                // Weight is 1.0 at the collet and fades to 0.0 at the stud's radius.
+                // It is clamped at 0 to keep the outer edge and tail static.
+                let weight = 1 - (dist_c / studRadius);
+                weight = Math.max(0, weight);
+        
+                const vertexScale = 1.0 + (currentScale - 1.0) * weight;
 
-        p_relative.subVectors(p_orig, colletOriginalPos);
-        p_relative.multiplyScalar(vertexScale);
-        p_relative.add(colletOriginalPos);
+                p_relative.subVectors(p_orig, colletOriginalPos);
+                p_relative.multiplyScalar(vertexScale);
+                p_relative.add(colletOriginalPos);
 
-        positions.setXYZ(i, p_relative.x, p_relative.y, p_relative.z);
-      }
+                positions.setXYZ(i, p_relative.x, p_relative.y, p_relative.z);
+            }
       
-      positions.needsUpdate = true;
+            positions.needsUpdate = true;
+        }
     }
-  }
 
-  const currentSecond = Math.floor(now.getSeconds());
-  if (animate.lastSecond !== currentSecond) {
-    if(tickSound && settings.soundEnabled) {
-        tickSound.currentTime = 0;
-        tickSound.play().catch(() => {});
+    const currentSecond = Math.floor(now.getSeconds());
+    if (animate.lastSecond !== currentSecond) {
+        if(tickSound && settings.soundEnabled) {
+            tickSound.currentTime = 0;
+            tickSound.play().catch(() => {});
+        }
+        animate.lastSecond = currentSecond;
     }
-    animate.lastSecond = currentSecond;
-  }
 
-  renderer.render(scene, camera);
+    renderer.render(scene, camera);
 }
 
 
 // --- Initial Setup Calls ---
 window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  layoutScene();
+    camera.aspect = window.innerWidth / window.innerHeight;
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    layoutScene();
 });
 
 animate();
+
+animate();
+
