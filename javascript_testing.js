@@ -1,6 +1,6 @@
 // 3D Javacript ETA 6497 Clock using three.js
 // MIT License. - Work In Progress
-// Jeff Miller 2025. 9/2/25
+// Jeff Miller 2025. 9/3/25
 
 /* References and Notes
 - AI Development Support & Debugging: Google Gemini
@@ -110,8 +110,6 @@ NOTES (Will eventually move this to the ReadMe file):
 		- 3. End of cycle (0.4 Seconds): Balance wheel reaces the end of its second swing and starts back.
 */
 
-
-
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
@@ -121,7 +119,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js';
 
 // --- Declare UI element variables in the global scope ---
-let digitalDate, digitalClock;
+let digitalDate, digitalClock, fpsCounter;
 let gui;
 let mouseDownTime;
 let mouseDownPos = new THREE.Vector2();
@@ -129,6 +127,8 @@ let mouseDownPos = new THREE.Vector2();
 const settings = {
     tiltEnabled: false,
     soundEnabled: false,
+    showFPS: false, // Default FPS counter to off
+    listMeshBodies: false, // For console log GUI toggle
     beatRate: 5.0, // Default beat rate of 5 beats per second (2.5 Hz cycle frequency)
     resetCamera: () => {
         controls.reset();
@@ -157,6 +157,7 @@ let clockModel;
 let modelScale = 3.5;
 let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring, secondWheelSmallGear, thirdWheelTopGear;
 let newHourHand, newMinuteHand, newSecondHand;
+let collectedParts = {}; // Moved to global scope
 
 // --- Simulation State Variables ---
 let simulatedSeconds = 0;
@@ -165,6 +166,7 @@ let palletForkState = 1;
 const PALLET_FORK_ANGLE = THREE.MathUtils.degToRad(6.7);
 const PALLET_FORK_OFFSET = THREE.MathUtils.degToRad(-6.7); // Offset to align pallet fork animation
 const ESCAPE_WHEEL_STEP = (Math.PI * 2) / 30; // 15 teeth, 2 steps per tooth = 30 steps/rotation
+const ESCAPE_WHEEL_OFFSET = THREE.MathUtils.degToRad(6.7); // Offset for startup alignment
 const BEAT_TIME_VALUE = 1.0 / 5.0; // The fixed time value of one beat (for a 5 beat/sec clock)
 
 // --- Pallet Fork Animation State ---
@@ -194,6 +196,8 @@ tickSound.volume = 0.0;
 window.addEventListener('DOMContentLoaded', () => {
     digitalDate = document.createElement('div');
     digitalClock = document.createElement('div');
+    fpsCounter = document.createElement('div');
+
 
     Object.assign(digitalDate.style, {
         position: 'absolute', bottom: '20px', left: '20px',
@@ -205,6 +209,16 @@ window.addEventListener('DOMContentLoaded', () => {
         color: 'white', fontFamily: '"Courier New", Courier, monospace',
         fontSize: '1.75em', textShadow: '0 0 8px black', zIndex: '10'
     });
+    Object.assign(fpsCounter.style, {
+        position: 'absolute', top: '20px', left: '20px',
+        color: 'white', fontFamily: '"Courier New", Courier, monospace',
+        fontSize: '1.75em', textShadow: '0 0 8px black', zIndex: '10',
+        display: 'none'
+    });
+
+    document.body.appendChild(digitalDate);
+    document.body.appendChild(digitalClock);
+    document.body.appendChild(fpsCounter);
     
     // --- GUI Setup ---
     gui = new GUI();
@@ -216,9 +230,34 @@ window.addEventListener('DOMContentLoaded', () => {
     gui.add(settings, 'soundEnabled').name('Enable Sound').onChange(value => {
         tickSound.volume = value ? 0.2 : 0.0;
     });
+    gui.add(settings, 'showFPS').name('Show FPS').onChange(value => {
+        fpsCounter.style.display = value ? 'block' : 'none';
+    });
     gui.add(settings, 'beatRate', 0.5, 5.0, 0.1).name('Beat Rate / Sec');
     gui.add(settings, 'resetClock').name('Reset Clock');
     gui.add(settings, 'resetCamera').name('Reset Camera');
+
+    // --- Console Log Sub-Menu ---
+    const consoleFolder = gui.addFolder('Console Log Outputs');
+    const listMeshesController = consoleFolder.add(settings, 'listMeshBodies').name('List All Mesh Bodies');
+    listMeshesController.onChange(value => {
+        if (value) {
+            if (clockModel && Object.keys(collectedParts).length > 0) {
+                console.log("--- All Mesh Bodies in GLTF Model ---");
+                const meshNames = Object.keys(collectedParts).sort();
+                meshNames.forEach(name => console.log(name));
+                console.log(`--- Total: ${meshNames.length} meshes ---`);
+            } else {
+                console.warn("Model not yet loaded. Cannot list mesh bodies.");
+            }
+            // Reset the toggle so it acts like a momentary button
+            setTimeout(() => {
+                settings.listMeshBodies = false;
+                listMeshesController.updateDisplay();
+            }, 200);
+        }
+    });
+
 
     // --- Listeners for GUI toggle ---
     window.addEventListener('mousedown', (event) => {
@@ -368,7 +407,7 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => {
     clockModel.position.set(0, 0, -4.0 + zShift);
     clockModel.rotation.set(0, 0, 0);
     clockModel.scale.set(modelScale, modelScale, modelScale);
-    const collectedParts = {};
+    
     clockModel.traverse(child => {
         if (child.isMesh) {
             child.castShadow = true;
@@ -396,9 +435,9 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => {
     for (const name in collectedParts) {
         const part = collectedParts[name];
         if (name.startsWith('HourHandOuterBody') || name.startsWith('MinuteHandOuterBody') || name.startsWith('SecondsHandOuterBody')) { part.material = blackAluminumMaterial; }
-        else if (name.startsWith('HourHandLumeBody') || name.startsWith('MinuteHandLumeBody') || name.startsWith('SecondsHandLumeBody')) { part.material = lumeMaterial; }
+        else if (name.startsWith('HourHandLumeBody') || name.startsWith('MinuteHandLumeBody') || name.startsWith('SecondsHandLumeBody') || name.includes('PipLumeBody')) { part.material = lumeMaterial; }
         else if (['BarrelBridge_Body', 'TrainWheelBridgeBody', 'BalancingBridgeBody', 'PalletBridgeBody'].includes(name)) { part.material = brushedSteelMaterial; }
-        else if (['SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'BalanceWheelBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear', 'RollerJewel'].includes(name)) { part.material = brassMaterial; }
+        else if (['SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'BalanceWheelBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear', 'RollerJewel'].includes(name) || name.includes('PipOuter')) { part.material = brassMaterial; }
     }
     const palletBridgeMesh = collectedParts['PalletBridgeBody'];
     if (palletBridgeMesh) {
@@ -473,6 +512,12 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => {
         pivot.children.forEach(child => child.position.sub(jewelCenter));
         palletFork = pivot;
     }
+
+    // Apply initial offset to escape wheel for alignment
+    if (escapeWheel) {
+        escapeWheel.rotation.z = ESCAPE_WHEEL_OFFSET;
+    }
+
     if (secondWheel) {
         const pivot = new THREE.Group();
         clockModel.add(pivot);
@@ -584,8 +629,23 @@ window.addEventListener('resize', () => {
 });
 
 // --- Animation Loop ---
+let lastFPSTime = performance.now();
+let frameCount = 0;
+
 function animate() {
     requestAnimationFrame(animate);
+
+    // --- FPS Counter Logic ---
+    const now = performance.now();
+    frameCount++;
+    if (now >= lastFPSTime + 1000) {
+        if (settings.showFPS) {
+            fpsCounter.textContent = `FPS: ${frameCount}`;
+        }
+        frameCount = 0;
+        lastFPSTime = now;
+    }
+
     controls.update();
 
     const time = performance.now() / 1000; // Use a high-precision timer
@@ -714,3 +774,4 @@ function animate() {
 
 // Start the animation
 animate();
+
