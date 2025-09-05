@@ -475,6 +475,18 @@ const brassMaterial = new THREE.MeshStandardMaterial({ color: 0xED9149, metalnes
 const blackAluminumMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.6, roughness: 0.4 });
 const lumeMaterial = new THREE.MeshStandardMaterial({ color: 0x90ee90, emissive: 0x90ee90, emissiveIntensity: 0.6, roughness: 0.8, transparent: true, opacity: 0.5 });
 const polishedAluminumMaterial = new THREE.MeshStandardMaterial({ color: 0xe5e5e5, metalness: 0.98, roughness: 0.1 });
+// --- MODIFICATION START: Added purple sapphire material ---
+const purpleSapphireMaterial = new THREE.MeshStandardMaterial({
+    color: 0x6A0DAD, // Deep purple color
+    metalness: 0.1,
+    roughness: 0.05,
+    ior: 1.77, // Index of Refraction for sapphire
+    transmission: 1.0, // Allow light to pass through
+    transparent: true,
+    opacity: 0.75,
+    depthWrite: false // Helps with rendering transparent objects correctly
+});
+// --- MODIFICATION END ---
 
 
 // --- GLB Model Loader ---
@@ -518,14 +530,17 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => {
         const part = collectedParts[name];
         if (name.startsWith('HourHandOuterBody') || name.startsWith('MinuteHandOuterBody') || name.startsWith('SecondsHandOuterBody')) { part.material = blackAluminumMaterial; }
         else if (name.startsWith('HourHandLumeBody') || name.startsWith('MinuteHandLumeBody') || name.startsWith('SecondsHandLumeBody') || name.includes('PipLumeBody')) { part.material = lumeMaterial; }
-        // --- MODIFICATION START: Added "RollerTable" to this list ---
+        // --- MODIFICATION START: Added rule to apply sapphire material to all jewel parts ---
+        else if (name.includes('Jewel')) {
+            part.material = purpleSapphireMaterial;
+        }
+        // --- MODIFICATION END ---
         else if ([
             'BalancingBridgeBody', 'BarrelBridge_Body', 'BarrelDrum_Gear_Body', 
             'PalletBridgeBody', 'RollerTable', 'TrainWheelBridgeBody'
         ].includes(name)) { 
             part.material = brushedSteelMaterial; 
         }
-        // --- MODIFICATION END ---
         else if ([
             'BarrelArborBody', 'BarrelMainSpringBody', 'ClickBody', 'CrownWheelBody', 
             'DriverCannonPinion_Gear_Body', 'HairSpringBody', 'Incabloc1_1', 'Incabloc1_Base', 
@@ -539,7 +554,9 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => {
         else if (name.includes('Screw')) {
             part.material = polishedAluminumMaterial;
         }
-        else if (['SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'BalanceWheelBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear', 'RollerJewel'].includes(name) || name.includes('PipOuter')) { part.material = brassMaterial; }
+        // --- MODIFICATION START: Removed "RollerJewel" from the brass material list ---
+        else if (['SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'BalanceWheelBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear'].includes(name) || name.includes('PipOuter')) { part.material = brassMaterial; }
+        // --- MODIFICATION END ---
     }
     const palletBridgeMesh = collectedParts['PalletBridgeBody'];
     if (palletBridgeMesh) {
