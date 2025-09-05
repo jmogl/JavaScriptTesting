@@ -1,6 +1,6 @@
 // 3D Javacript ETA 6497 Clock using three.js
 // MIT License. - Work In Progress
-// Jeff Miller 2025. 9/3/25
+// Jeff Miller 2025. 9/4/25
 
 /* References and Notes
 - AI Development Support & Debugging: Google Gemini
@@ -121,14 +121,22 @@ import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js';
 // --- Declare UI element variables in the global scope ---
 let digitalDate, digitalClock, fpsCounter;
 let gui;
-let mouseDownTime;
-let mouseDownPos = new THREE.Vector2();
+// --- MODIFICATION START: Renamed variables to be pointer-event generic ---
+let pointerDownTime;
+let pointerDownPos = new THREE.Vector2();
+// --- MODIFICATION END ---
+
 
 const settings = {
+    clockRunning: true,
+    showDateTime: false, // Date and time text is hidden on load by default
     tiltEnabled: false,
     soundEnabled: false,
     showFPS: false, // Default FPS counter to off
     listMeshBodies: false, // For console log GUI toggle
+    // --- MODIFICATION START: Added GUI toggle for angle logging ---
+    showMinMaxWheelAngles: false,
+    // --- MODIFICATION END ---
     beatRate: 5.0, // Default beat rate of 5 beats per second (2.5 Hz cycle frequency)
     resetCamera: () => {
         controls.reset();
@@ -142,6 +150,9 @@ const settings = {
         // Calculate the total seconds since midnight for accurate time setting
         const totalSecondsSinceMidnight = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds() + (now.getMilliseconds() / 1000);
         simulatedSeconds = totalSecondsSinceMidnight;
+        
+        // --- MODIFICATION: Reset angle tracking data with the clock ---
+        balanceWheelAngles = { start: null, min: Infinity, max: -Infinity };
         
         // Update the GUI slider display
         gui.controllers.forEach(c => {
@@ -163,8 +174,10 @@ let collectedParts = {}; // Moved to global scope
 let simulatedSeconds = 0;
 let previousSineValue = 0;
 let palletForkState = 1;
-const PALLET_FORK_ANGLE = THREE.MathUtils.degToRad(6.7);
-const PALLET_FORK_OFFSET = THREE.MathUtils.degToRad(-6.7); // Offset to align pallet fork animation
+// --- MODIFICATION: Added state tracking for balance wheel angles ---
+let balanceWheelAngles = { start: null, min: Infinity, max: -Infinity };
+const PALLET_FORK_ANGLE = THREE.MathUtils.degToRad(9); // Was 6.7
+const PALLET_FORK_OFFSET = THREE.MathUtils.degToRad(0); // Offset to align pallet fork animation (Was -6.7)
 const ESCAPE_WHEEL_STEP = (Math.PI * 2) / 30; // 15 teeth, 2 steps per tooth = 30 steps/rotation
 const ESCAPE_WHEEL_OFFSET = THREE.MathUtils.degToRad(6.7); // Offset for startup alignment
 const BEAT_TIME_VALUE = 1.0 / 5.0; // The fixed time value of one beat (for a 5 beat/sec clock)
@@ -202,12 +215,14 @@ window.addEventListener('DOMContentLoaded', () => {
     Object.assign(digitalDate.style, {
         position: 'absolute', bottom: '20px', left: '20px',
         color: 'white', fontFamily: '"Courier New", Courier, monospace',
-        fontSize: '1.75em', textShadow: '0 0 8px black', zIndex: '10'
+        fontSize: '1.75em', textShadow: '0 0 8px black', zIndex: '10',
+        display: 'none' 
     });
     Object.assign(digitalClock.style, {
         position: 'absolute', bottom: '20px', right: '20px',
         color: 'white', fontFamily: '"Courier New", Courier, monospace',
-        fontSize: '1.75em', textShadow: '0 0 8px black', zIndex: '10'
+        fontSize: '1.75em', textShadow: '0 0 8px black', zIndex: '10',
+        display: 'none'
     });
     Object.assign(fpsCounter.style, {
         position: 'absolute', top: '20px', left: '20px',
@@ -224,6 +239,12 @@ window.addEventListener('DOMContentLoaded', () => {
     gui = new GUI();
     gui.domElement.style.display = 'none';
 
+    gui.add(settings, 'clockRunning').name('Run Clock');
+    gui.add(settings, 'showDateTime').name('Show Date & Time').onChange(value => {
+        digitalDate.style.display = value ? 'block' : 'none';
+        digitalClock.style.display = value ? 'block' : 'none';
+    });
+
     gui.add(settings, 'tiltEnabled').name('Enable Tilt').onChange(value => {
         if (value) { enableTilt(); } else { disableTilt(); }
     });
@@ -239,6 +260,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // --- Console Log Sub-Menu ---
     const consoleFolder = gui.addFolder('Console Log Outputs');
+    consoleFolder.close(); // --- MODIFICATION: Collapse this folder by default ---
     const listMeshesController = consoleFolder.add(settings, 'listMeshBodies').name('List All Mesh Bodies');
     listMeshesController.onChange(value => {
         if (value) {
@@ -257,21 +279,65 @@ window.addEventListener('DOMContentLoaded', () => {
             }, 200);
         }
     });
-
-
-    // --- Listeners for GUI toggle ---
-    window.addEventListener('mousedown', (event) => {
-        mouseDownTime = Date.now();
-        mouseDownPos.set(event.clientX, event.clientY);
-    });
-    window.addEventListener('mouseup', (event) => {
-        const duration = Date.now() - mouseDownTime;
-        const distance = mouseDownPos.distanceTo(new THREE.Vector2(event.clientX, event.clientY));
-        if (duration < 200 && distance < 5) {
-            if (gui.domElement.contains(event.target)) return;
-            gui.domElement.style.display = (gui.domElement.style.display === 'none') ? 'block' : 'none';
+    
+    // --- MODIFICATION START: Added GUI control for wheel angle logging ---
+    const showMinMaxController = consoleFolder.add(settings, 'showMinMaxWheelAngles').name('Show Min/Max Wheel');
+    showMinMaxController.onChange(value => {
+        if (value) {
+            if (balanceWheel && balanceWheelAngles.start !== null) {
+                console.log("--- Balance Wheel & Roller Jewel Angles (degrees) ---");
+                console.log(`Starting Angle: ${balanceWheelAngles.start.toFixed(2)}`);
+                console.log(`Min Angle Seen: ${balanceWheelAngles.min.toFixed(2)}`);
+                console.log(`Max Angle Seen: ${balanceWheelAngles.max.toFixed(2)}`);
+            } else {
+                console.warn("Balance wheel not yet loaded or clock hasn't run. Cannot show angles.");
+            }
+             // Reset the toggle so it acts like a momentary button
+             setTimeout(() => {
+                settings.showMinMaxWheelAngles = false;
+                showMinMaxController.updateDisplay();
+            }, 200);
         }
     });
+    // --- MODIFICATION END ---
+
+    // --- MODIFICATION START: Updated GUI toggle to support both mouse and touch devices (iOS) ---
+    // Listeners for GUI toggle
+    window.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('mouseup', onPointerUp);
+    window.addEventListener('touchstart', onPointerDown, { passive: true });
+    window.addEventListener('touchend', onPointerUp);
+
+    function onPointerDown(event) {
+        // Use touch event if available, otherwise use mouse event
+        const pointer = event.touches ? event.touches[0] : event;
+        pointerDownTime = Date.now();
+        pointerDownPos.set(pointer.clientX, pointer.clientY);
+    }
+
+    function onPointerUp(event) {
+        // If there's no start time, exit. This can happen if interaction starts outside the window.
+        if (!pointerDownTime) return;
+
+        // Use changedTouches if available (for touchend), otherwise use the direct event (for mouseup)
+        const pointer = event.changedTouches ? event.changedTouches[0] : event;
+        const duration = Date.now() - pointerDownTime;
+        const distance = pointerDownPos.distanceTo(new THREE.Vector2(pointer.clientX, pointer.clientY));
+        
+        // Reset the timer for the next interaction
+        pointerDownTime = null;
+
+        // Check for a quick, stationary press (a "tap" or "click")
+        if (duration < 200 && distance < 10) { // Increased distance threshold for less precise touch input
+            // Do not toggle the GUI if the tap/click was on the GUI itself
+            if (gui.domElement.contains(event.target)) return;
+            
+            // Toggle the display
+            gui.domElement.style.display = (gui.domElement.style.display === 'none') ? 'block' : 'none';
+        }
+    }
+    // --- MODIFICATION END ---
+
 
     // Initialize clock
     settings.resetClock();
@@ -631,12 +697,14 @@ window.addEventListener('resize', () => {
 // --- Animation Loop ---
 let lastFPSTime = performance.now();
 let frameCount = 0;
+const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
 
 function animate() {
     requestAnimationFrame(animate);
 
-    // --- FPS Counter Logic ---
     const now = performance.now();
+
+    // --- FPS Counter Logic ---
     frameCount++;
     if (now >= lastFPSTime + 1000) {
         if (settings.showFPS) {
@@ -648,7 +716,51 @@ function animate() {
 
     controls.update();
 
-    const time = performance.now() / 1000; // Use a high-precision timer
+    const time = now / 1000; // Use a high-precision timer
+
+    // Update UI Text (if visible)
+    if (settings.showDateTime) {
+        const nowForDate = new Date();
+        digitalDate.textContent = nowForDate.toLocaleDateString(undefined, dateOptions);
+
+        // Update Time from simulation
+        const totalSeconds = Math.floor(simulatedSeconds);
+        const hours = Math.floor((totalSeconds / 3600) % 24);
+        const minutes = Math.floor((totalSeconds / 60) % 60);
+        const seconds = totalSeconds % 60;
+
+        // Use `slice(-2)` for a clean way to pad with leading zeros
+        const formattedHours = ('0' + hours).slice(-2);
+        const formattedMinutes = ('0' + minutes).slice(-2);
+        const formattedSeconds = ('0' + seconds).slice(-2);
+        digitalClock.textContent = `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
+    }
+
+    // --- DRIVE TRAIN AND HANDS (driven by SIMULATED time) ---
+    // This part is now calculated every frame regardless of whether the clock is running,
+    // so the hands reflect the current `simulatedSeconds` value even when paused.
+    const simulatedMinutes = simulatedSeconds / 60.0;
+    const simulatedHours = simulatedSeconds / 3600.0;
+    const secondHandRotation = -((simulatedSeconds / 60.0) * Math.PI * 2);
+    if (newSecondHand) newSecondHand.rotation.z = secondHandRotation;
+    if (secondWheel) secondWheel.rotation.z = secondHandRotation;
+    if (secondWheelSmallGear) secondWheelSmallGear.rotation.z = secondHandRotation;
+    const minuteHandRotation = -((simulatedMinutes / 60.0) * Math.PI * 2);
+    if (newMinuteHand) newMinuteHand.rotation.z = minuteHandRotation;
+    if (minuteWheel) minuteWheel.rotation.z = -minuteHandRotation;
+    if (centerWheel) centerWheel.rotation.z = minuteHandRotation;
+    if (thirdWheel) thirdWheel.rotation.z = ((simulatedMinutes / 7.5) * Math.PI * 2);
+    if (thirdWheelTopGear) thirdWheelTopGear.rotation.z = -((simulatedMinutes / 7.5) * Math.PI * 2);
+    const hourHandRotation = -(((simulatedHours % 12) / 12.0) * Math.PI * 2);
+    if (newHourHand) newHourHand.rotation.z = hourHandRotation;
+    if (hourWheel) hourWheel.rotation.z = -hourHandRotation;
+
+    // If clock is not running, stop here after updating controls, UI, and static hand positions
+    if (!settings.clockRunning) {
+        renderer.render(scene, camera);
+        return;
+    }
+
 
     // --- BALANCE WHEEL & SIMULATION LOGIC ---
     if (balanceWheel) {
@@ -656,6 +768,15 @@ function animate() {
         const sineValue = Math.sin(time * Math.PI * 2 * frequency);
         const amplitudeRadians = THREE.MathUtils.degToRad(290);
         balanceWheel.rotation.z = -amplitudeRadians * sineValue;
+
+        // --- MODIFICATION: Track balance wheel angles for logging ---
+        const currentAngleDeg = THREE.MathUtils.radToDeg(balanceWheel.rotation.z);
+        if (balanceWheelAngles.start === null) {
+            balanceWheelAngles.start = currentAngleDeg;
+        }
+        balanceWheelAngles.min = Math.min(balanceWheelAngles.min, currentAngleDeg);
+        balanceWheelAngles.max = Math.max(balanceWheelAngles.max, currentAngleDeg);
+
 
         // --- ESCAPEMENT LOGIC ---
         // Trigger when the balance wheel crosses the center (peak velocity)
@@ -747,27 +868,6 @@ function animate() {
             positions.needsUpdate = true;
         }
     }
-
-    // --- DRIVE TRAIN AND HANDS (driven by SIMULATED time) ---
-    const simulatedMinutes = simulatedSeconds / 60.0;
-    const simulatedHours = simulatedSeconds / 3600.0;
-
-    const secondHandRotation = -((simulatedSeconds / 60.0) * Math.PI * 2);
-    if (newSecondHand) newSecondHand.rotation.z = secondHandRotation;
-    if (secondWheel) secondWheel.rotation.z = secondHandRotation;
-    if (secondWheelSmallGear) secondWheelSmallGear.rotation.z = secondHandRotation;
-    
-    const minuteHandRotation = -((simulatedMinutes / 60.0) * Math.PI * 2);
-    if (newMinuteHand) newMinuteHand.rotation.z = minuteHandRotation;
-    if (minuteWheel) minuteWheel.rotation.z = -minuteHandRotation;
-    if (centerWheel) centerWheel.rotation.z = minuteHandRotation;
-    
-    if (thirdWheel) thirdWheel.rotation.z = ((simulatedMinutes / 7.5) * Math.PI * 2);
-    if (thirdWheelTopGear) thirdWheelTopGear.rotation.z = -((simulatedMinutes / 7.5) * Math.PI * 2);
-    
-    const hourHandRotation = -(((simulatedHours % 12) / 12.0) * Math.PI * 2);
-    if (newHourHand) newHourHand.rotation.z = hourHandRotation;
-    if (hourWheel) hourWheel.rotation.z = -hourHandRotation;
 
     renderer.render(scene, camera);
 }
