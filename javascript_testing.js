@@ -109,6 +109,36 @@ NOTES (Will eventually move this to the ReadMe file):
 			another tooth. This ends the first pause and immediately begins the second 0.2 second pause.
 		- 3. End of cycle (0.4 Seconds): Balance wheel reaces the end of its second swing and starts back.
 */
+// 3D Javacript ETA 6497 Clock using three.js
+// MIT License. - Work In Progress
+// Jeff Miller 2025. 9/5/25
+
+/* References and Notes
+- AI Development Support & Debugging: Google Gemini
+- HDRI: https://polyhaven.com/a/colorful_studio
+- PBR Textures: https://www.cgbookcase.com/
+- Modified ETA 6497-1 Watch Movement CAD: Steen Winther: https://grabcad.com/library/eta-6497-1-complete-watch-movement
+- ETA 6497 Custom Clock Hands and Clock Case made in Fusion 360
+- 5 Hz Tick Sound - Clock Ticking by RedDog0607: https://pixabay.com/sound-effects/clock-ticking-365218/
+- Development and Debugging Tools: Google Gemini
+- File encoding is set to UF-8
+- Local Server: python -m http.server run in a terminal in local javascript directory with index.html
+- 	http://localhost:8000 in a local browser tab
+- Single click brings up gui
+- Zoom, Pan (right mouse button or two finger touch), and rotate are supported
+- Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
+*/
+
+/*
+To Do:
+- Finish textures
+- Finish gears anamation
+- Add option to "explode parts"
+- Fix tilt mode for mobile devices 
+- Update Shadow Box to a better texture and more detail
+- Add top plate back in and make it transparent when viewed from the front
+- Add option for lower poly model to improve frame rate on mobile devices
+*/
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -121,10 +151,8 @@ import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js';
 // --- Declare UI element variables in the global scope ---
 let digitalDate, digitalClock, fpsCounter;
 let gui;
-// --- MODIFICATION START: Renamed variables to be pointer-event generic ---
 let pointerDownTime;
 let pointerDownPos = new THREE.Vector2();
-// --- MODIFICATION END ---
 
 
 const settings = {
@@ -134,9 +162,7 @@ const settings = {
     soundEnabled: false,
     showFPS: false, // Default FPS counter to off
     listMeshBodies: false, // For console log GUI toggle
-    // --- MODIFICATION START: Added GUI toggle for angle logging ---
     showMinMaxWheelAngles: false,
-    // --- MODIFICATION END ---
     beatRate: 5.0, // Default beat rate of 5 beats per second (2.5 Hz cycle frequency)
     resetCamera: () => {
         controls.reset();
@@ -151,7 +177,6 @@ const settings = {
         const totalSecondsSinceMidnight = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds() + (now.getMilliseconds() / 1000);
         simulatedSeconds = totalSecondsSinceMidnight;
         
-        // --- MODIFICATION: Reset angle tracking data with the clock ---
         balanceWheelAngles = { start: null, min: Infinity, max: -Infinity };
         
         // Update the GUI slider display
@@ -174,7 +199,6 @@ let collectedParts = {}; // Moved to global scope
 let simulatedSeconds = 0;
 let previousSineValue = 0;
 let palletForkState = 1;
-// --- MODIFICATION: Added state tracking for balance wheel angles ---
 let balanceWheelAngles = { start: null, min: Infinity, max: -Infinity };
 const PALLET_FORK_ANGLE = THREE.MathUtils.degToRad(9); // Was 6.7
 const PALLET_FORK_OFFSET = THREE.MathUtils.degToRad(0); // Offset to align pallet fork animation (Was -6.7)
@@ -260,7 +284,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // --- Console Log Sub-Menu ---
     const consoleFolder = gui.addFolder('Console Log Outputs');
-    consoleFolder.close(); // --- MODIFICATION: Collapse this folder by default ---
+    consoleFolder.close();
     const listMeshesController = consoleFolder.add(settings, 'listMeshBodies').name('List All Mesh Bodies');
     listMeshesController.onChange(value => {
         if (value) {
@@ -280,7 +304,6 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // --- MODIFICATION START: Added GUI control for wheel angle logging ---
     const showMinMaxController = consoleFolder.add(settings, 'showMinMaxWheelAngles').name('Show Min/Max Wheel');
     showMinMaxController.onChange(value => {
         if (value) {
@@ -299,9 +322,8 @@ window.addEventListener('DOMContentLoaded', () => {
             }, 200);
         }
     });
-    // --- MODIFICATION END ---
 
-    // --- MODIFICATION START: Updated GUI toggle to support both mouse and touch devices (iOS) ---
+    // --- MODIFICATION START: Updated GUI toggle to prevent "ghost clicks" on mobile ---
     // Listeners for GUI toggle
     window.addEventListener('mousedown', onPointerDown);
     window.addEventListener('mouseup', onPointerUp);
@@ -319,8 +341,10 @@ window.addEventListener('DOMContentLoaded', () => {
         // If there's no start time, exit. This can happen if interaction starts outside the window.
         if (!pointerDownTime) return;
 
-        // Use changedTouches if available (for touchend), otherwise use the direct event (for mouseup)
-        const pointer = event.changedTouches ? event.changedTouches[0] : event;
+        const isTouchEvent = !!event.changedTouches;
+        // Use the specific pointer object for coordinates and target
+        const pointer = isTouchEvent ? event.changedTouches[0] : event;
+
         const duration = Date.now() - pointerDownTime;
         const distance = pointerDownPos.distanceTo(new THREE.Vector2(pointer.clientX, pointer.clientY));
         
@@ -328,9 +352,15 @@ window.addEventListener('DOMContentLoaded', () => {
         pointerDownTime = null;
 
         // Check for a quick, stationary press (a "tap" or "click")
-        if (duration < 200 && distance < 10) { // Increased distance threshold for less precise touch input
+        if (duration < 200 && distance < 15) { // Increased distance threshold for touch
             // Do not toggle the GUI if the tap/click was on the GUI itself
-            if (gui.domElement.contains(event.target)) return;
+            if (gui.domElement.contains(pointer.target)) return;
+            
+            // On a touch device, prevent the browser from firing a "ghost" mouse click
+            // after the touch event, which would cause the GUI to close and immediately reopen.
+            if (isTouchEvent) {
+                event.preventDefault();
+            }
             
             // Toggle the display
             gui.domElement.style.display = (gui.domElement.style.display === 'none') ? 'block' : 'none';
@@ -359,7 +389,6 @@ document.body.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-// The custom controls.mouseButtons line has been removed to restore default behavior.
 
 const loadingManager = new THREE.LoadingManager();
 loadingManager.onLoad = () => {
@@ -769,7 +798,6 @@ function animate() {
         const amplitudeRadians = THREE.MathUtils.degToRad(290);
         balanceWheel.rotation.z = -amplitudeRadians * sineValue;
 
-        // --- MODIFICATION: Track balance wheel angles for logging ---
         const currentAngleDeg = THREE.MathUtils.radToDeg(balanceWheel.rotation.z);
         if (balanceWheelAngles.start === null) {
             balanceWheelAngles.start = currentAngleDeg;
@@ -874,4 +902,5 @@ function animate() {
 
 // Start the animation
 animate();
+
 
