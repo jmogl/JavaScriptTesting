@@ -129,17 +129,6 @@ NOTES (Will eventually move this to the ReadMe file):
 - Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
 */
 
-/*
-To Do:
-- Finish textures
-- Finish gears anamation
-- Add option to "explode parts"
-- Fix tilt mode for mobile devices 
-- Update Shadow Box to a better texture and more detail
-- Add top plate back in and make it transparent when viewed from the front
-- Add option for lower poly model to improve frame rate on mobile devices
-*/
-
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
@@ -154,32 +143,35 @@ let gui;
 let pointerDownTime;
 let pointerDownPos = new THREE.Vector2();
 
+// --- Variables for smooth camera reset animation ---
+const clock = new THREE.Clock(); 
+let isResettingCamera = false;
+const cameraResetTargetPos = new THREE.Vector3(0, 0, 60);
+const cameraResetTargetTarget = new THREE.Vector3(0, 0, 0);
+let isUserInteracting = false;
 
 const settings = {
     clockRunning: true,
-    showDateTime: false, // Date and time text is hidden on load by default
+    showDateTime: false, 
     tiltEnabled: false,
     soundEnabled: false,
-    showFPS: false, // Default FPS counter to off
-    listMeshBodies: false, // For console log GUI toggle
+    showFPS: false, 
+    listMeshBodies: false, 
     showMinMaxWheelAngles: false,
-    beatRate: 5.0, // Default beat rate of 5 beats per second (2.5 Hz cycle frequency)
+    beatRate: 5.0, 
     resetCamera: () => {
-        controls.reset();
-        camera.position.set(0, 0, 60);
-        controls.target.set(0, 0, 0);
+        if (isResettingCamera) return;
+        isResettingCamera = true;
     },
     resetClock: () => {
         settings.beatRate = 5.0;
         const now = new Date();
         
-        // Calculate the total seconds since midnight for accurate time setting
         const totalSecondsSinceMidnight = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds() + (now.getMilliseconds() / 1000);
         simulatedSeconds = totalSecondsSinceMidnight;
         
         balanceWheelAngles = { start: null, min: Infinity, max: -Infinity };
         
-        // Update the GUI slider display
         gui.controllers.forEach(c => {
             if (c.property === 'beatRate') {
                 c.updateDisplay();
@@ -193,23 +185,23 @@ let clockModel;
 let modelScale = 3.5;
 let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring, secondWheelSmallGear, thirdWheelTopGear;
 let newHourHand, newMinuteHand, newSecondHand;
-let collectedParts = {}; // Moved to global scope
+let collectedParts = {}; 
 
 // --- Simulation State Variables ---
 let simulatedSeconds = 0;
 let previousSineValue = 0;
 let palletForkState = 1;
 let balanceWheelAngles = { start: null, min: Infinity, max: -Infinity };
-const PALLET_FORK_ANGLE = THREE.MathUtils.degToRad(9); // Was 6.7
-const PALLET_FORK_OFFSET = THREE.MathUtils.degToRad(0); // Offset to align pallet fork animation (Was -6.7)
-const ESCAPE_WHEEL_STEP = (Math.PI * 2) / 30; // 15 teeth, 2 steps per tooth = 30 steps/rotation
-const ESCAPE_WHEEL_OFFSET = THREE.MathUtils.degToRad(6.7); // Offset for startup alignment
-const BEAT_TIME_VALUE = 1.0 / 5.0; // The fixed time value of one beat (for a 5 beat/sec clock)
+const PALLET_FORK_ANGLE = THREE.MathUtils.degToRad(9);
+const PALLET_FORK_OFFSET = THREE.MathUtils.degToRad(0);
+const ESCAPE_WHEEL_STEP = (Math.PI * 2) / 30; 
+const ESCAPE_WHEEL_OFFSET = THREE.MathUtils.degToRad(6.7);
+const BEAT_TIME_VALUE = 1.0 / 5.0; 
 
 // --- Pallet Fork Animation State ---
 let isPalletForkAnimating = false;
 let palletForkAnimStartTime = 0;
-const palletForkAnimDuration = 0.08; // Duration of the smooth animation in seconds
+const palletForkAnimDuration = 0.08; 
 let palletForkStartAngle = 0;
 let palletForkTargetAngle = 0;
 
@@ -222,7 +214,7 @@ let maxRadius = 0;
 const hairspringAnimationSettings = {
     maxAmplitude: 0.22,
     topWeightMultiplier: 0.59,
-    bottomWeightMultiplier: -0.06 //Was -0.09
+    bottomWeightMultiplier: -0.06
 };
 
 // --- Sound ---
@@ -296,7 +288,6 @@ window.addEventListener('DOMContentLoaded', () => {
             } else {
                 console.warn("Model not yet loaded. Cannot list mesh bodies.");
             }
-            // Reset the toggle so it acts like a momentary button
             setTimeout(() => {
                 settings.listMeshBodies = false;
                 listMeshesController.updateDisplay();
@@ -315,7 +306,6 @@ window.addEventListener('DOMContentLoaded', () => {
             } else {
                 console.warn("Balance wheel not yet loaded or clock hasn't run. Cannot show angles.");
             }
-             // Reset the toggle so it acts like a momentary button
              setTimeout(() => {
                 settings.showMinMaxWheelAngles = false;
                 showMinMaxController.updateDisplay();
@@ -323,7 +313,6 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- MODIFICATION START: Updated GUI toggle to prevent "ghost clicks" on mobile ---
     // Listeners for GUI toggle
     window.addEventListener('mousedown', onPointerDown);
     window.addEventListener('mouseup', onPointerUp);
@@ -331,43 +320,32 @@ window.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('touchend', onPointerUp);
 
     function onPointerDown(event) {
-        // Use touch event if available, otherwise use mouse event
         const pointer = event.touches ? event.touches[0] : event;
         pointerDownTime = Date.now();
         pointerDownPos.set(pointer.clientX, pointer.clientY);
     }
 
     function onPointerUp(event) {
-        // If there's no start time, exit. This can happen if interaction starts outside the window.
         if (!pointerDownTime) return;
 
         const isTouchEvent = !!event.changedTouches;
-        // Use the specific pointer object for coordinates and target
         const pointer = isTouchEvent ? event.changedTouches[0] : event;
 
         const duration = Date.now() - pointerDownTime;
         const distance = pointerDownPos.distanceTo(new THREE.Vector2(pointer.clientX, pointer.clientY));
         
-        // Reset the timer for the next interaction
         pointerDownTime = null;
 
-        // Check for a quick, stationary press (a "tap" or "click")
-        if (duration < 200 && distance < 15) { // Increased distance threshold for touch
-            // Do not toggle the GUI if the tap/click was on the GUI itself
+        if (duration < 200 && distance < 15) {
             if (gui.domElement.contains(pointer.target)) return;
             
-            // On a touch device, prevent the browser from firing a "ghost" mouse click
-            // after the touch event, which would cause the GUI to close and immediately reopen.
             if (isTouchEvent) {
                 event.preventDefault();
             }
             
-            // Toggle the display
             gui.domElement.style.display = (gui.domElement.style.display === 'none') ? 'block' : 'none';
         }
     }
-    // --- MODIFICATION END ---
-
 
     // Initialize clock
     settings.resetClock();
@@ -389,6 +367,14 @@ document.body.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
+
+controls.addEventListener('start', () => {
+    isUserInteracting = true;
+    isResettingCamera = false;
+});
+controls.addEventListener('end', () => {
+    isUserInteracting = false;
+});
 
 const loadingManager = new THREE.LoadingManager();
 loadingManager.onLoad = () => {
@@ -488,6 +474,7 @@ const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), lef
 const brassMaterial = new THREE.MeshStandardMaterial({ color: 0xED9149, metalness: 0.95, roughness: 0.1 });
 const blackAluminumMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.6, roughness: 0.4 });
 const lumeMaterial = new THREE.MeshStandardMaterial({ color: 0x90ee90, emissive: 0x90ee90, emissiveIntensity: 0.6, roughness: 0.8, transparent: true, opacity: 0.5 });
+const polishedAluminumMaterial = new THREE.MeshStandardMaterial({ color: 0xe5e5e5, metalness: 0.98, roughness: 0.1 });
 
 
 // --- GLB Model Loader ---
@@ -531,7 +518,27 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => {
         const part = collectedParts[name];
         if (name.startsWith('HourHandOuterBody') || name.startsWith('MinuteHandOuterBody') || name.startsWith('SecondsHandOuterBody')) { part.material = blackAluminumMaterial; }
         else if (name.startsWith('HourHandLumeBody') || name.startsWith('MinuteHandLumeBody') || name.startsWith('SecondsHandLumeBody') || name.includes('PipLumeBody')) { part.material = lumeMaterial; }
-        else if (['BarrelBridge_Body', 'TrainWheelBridgeBody', 'BalancingBridgeBody', 'PalletBridgeBody'].includes(name)) { part.material = brushedSteelMaterial; }
+        // --- MODIFICATION START: Added "RollerTable" to this list ---
+        else if ([
+            'BalancingBridgeBody', 'BarrelBridge_Body', 'BarrelDrum_Gear_Body', 
+            'PalletBridgeBody', 'RollerTable', 'TrainWheelBridgeBody'
+        ].includes(name)) { 
+            part.material = brushedSteelMaterial; 
+        }
+        // --- MODIFICATION END ---
+        else if ([
+            'BarrelArborBody', 'BarrelMainSpringBody', 'ClickBody', 'CrownWheelBody', 
+            'DriverCannonPinion_Gear_Body', 'HairSpringBody', 'Incabloc1_1', 'Incabloc1_Base', 
+            'Incabloc2_2', 'IncablocDisc_2', 'PalletForkBody', 'RatchetWheelBody', 
+            'RegulatorCurvePin_1', 'RegulatorCurvePin_2', 'RegulatorPiece1_Body', 'RegulatorPiece2_Body', 
+            'RegulatorPiece3_Body', 'SettingLeverJumperBody', 'SettingLever_Body', 'SettingWheelBody', 
+            'SlidingPinion', 'WindingKnob', 'WindingPinion', 'WindingStem', 'YokeBody'
+        ].includes(name)) { 
+            part.material = polishedAluminumMaterial; 
+        }
+        else if (name.includes('Screw')) {
+            part.material = polishedAluminumMaterial;
+        }
         else if (['SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'BalanceWheelBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear', 'RollerJewel'].includes(name) || name.includes('PipOuter')) { part.material = brassMaterial; }
     }
     const palletBridgeMesh = collectedParts['PalletBridgeBody'];
@@ -608,7 +615,6 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => {
         palletFork = pivot;
     }
 
-    // Apply initial offset to escape wheel for alignment
     if (escapeWheel) {
         escapeWheel.rotation.z = ESCAPE_WHEEL_OFFSET;
     }
@@ -732,6 +738,7 @@ function animate() {
     requestAnimationFrame(animate);
 
     const now = performance.now();
+    const delta = clock.getDelta();
 
     // --- FPS Counter Logic ---
     frameCount++;
@@ -743,22 +750,36 @@ function animate() {
         lastFPSTime = now;
     }
 
+    // --- Camera Reset Animation Handler ---
+    // Only run the animation if it's triggered AND the user isn't actively controlling the camera.
+    if (isResettingCamera && !isUserInteracting) {
+        const lerpFactor = Math.min(delta * 4.0, 1.0); 
+
+        camera.position.lerp(cameraResetTargetPos, lerpFactor);
+        controls.target.lerp(cameraResetTargetTarget, lerpFactor);
+
+        // When the animation is very close to finishing, snap to the end and stop.
+        if (camera.position.distanceTo(cameraResetTargetPos) < 0.01) {
+            camera.position.copy(cameraResetTargetPos);
+            controls.target.copy(cameraResetTargetTarget);
+            isResettingCamera = false;
+        }
+    }
+
     controls.update();
 
-    const time = now / 1000; // Use a high-precision timer
+    const time = now / 1000;
 
     // Update UI Text (if visible)
     if (settings.showDateTime) {
         const nowForDate = new Date();
         digitalDate.textContent = nowForDate.toLocaleDateString(undefined, dateOptions);
 
-        // Update Time from simulation
         const totalSeconds = Math.floor(simulatedSeconds);
         const hours = Math.floor((totalSeconds / 3600) % 24);
         const minutes = Math.floor((totalSeconds / 60) % 60);
         const seconds = totalSeconds % 60;
 
-        // Use `slice(-2)` for a clean way to pad with leading zeros
         const formattedHours = ('0' + hours).slice(-2);
         const formattedMinutes = ('0' + minutes).slice(-2);
         const formattedSeconds = ('0' + seconds).slice(-2);
@@ -766,8 +787,6 @@ function animate() {
     }
 
     // --- DRIVE TRAIN AND HANDS (driven by SIMULATED time) ---
-    // This part is now calculated every frame regardless of whether the clock is running,
-    // so the hands reflect the current `simulatedSeconds` value even when paused.
     const simulatedMinutes = simulatedSeconds / 60.0;
     const simulatedHours = simulatedSeconds / 3600.0;
     const secondHandRotation = -((simulatedSeconds / 60.0) * Math.PI * 2);
@@ -784,7 +803,6 @@ function animate() {
     if (newHourHand) newHourHand.rotation.z = hourHandRotation;
     if (hourWheel) hourWheel.rotation.z = -hourHandRotation;
 
-    // If clock is not running, stop here after updating controls, UI, and static hand positions
     if (!settings.clockRunning) {
         renderer.render(scene, camera);
         return;
@@ -807,7 +825,6 @@ function animate() {
 
 
         // --- ESCAPEMENT LOGIC ---
-        // Trigger when the balance wheel crosses the center (peak velocity)
         const currentSign = Math.sign(sineValue);
         if (currentSign !== Math.sign(previousSineValue) && !isPalletForkAnimating) {
             
@@ -820,18 +837,15 @@ function animate() {
             palletForkTargetAngle = (PALLET_FORK_ANGLE * palletForkState) + PALLET_FORK_OFFSET;
 
             if (settings.beatRate < 1.0) {
-                // Trigger smooth animation for slower beat rates
                 isPalletForkAnimating = true;
                 palletForkAnimStartTime = time;
                 palletForkStartAngle = palletFork.rotation.z;
             } else {
-                // Snap instantly for faster beat rates (>= 1.0 Hz)
                 if (palletFork) {
                     palletFork.rotation.z = palletForkTargetAngle;
                 }
             }
 
-            // Advance the rest of the mechanism only when the pallet fork is triggered
             if (escapeWheel) {
                 escapeWheel.rotation.z += ESCAPE_WHEEL_STEP;
             }
@@ -850,10 +864,9 @@ function animate() {
 
             if (progress >= 1.0) {
                 progress = 1.0;
-                isPalletForkAnimating = false; // End the animation
+                isPalletForkAnimating = false;
             }
             
-            // Ease-out cubic function for smooth stopping
             const easedProgress = 1 - Math.pow(1 - progress, 3);
             palletFork.rotation.z = THREE.MathUtils.lerp(palletForkStartAngle, palletForkTargetAngle, easedProgress);
         }
@@ -902,7 +915,3 @@ function animate() {
 
 // Start the animation
 animate();
-
-
-
-
