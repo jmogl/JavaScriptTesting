@@ -138,797 +138,855 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js';
 
 // --- Declare UI element variables in the global scope ---
-let digitalDate, digitalClock, fpsCounter;
-let gui;
-let pointerDownTime;
-let pointerDownPos = new THREE.Vector2();
+let digitalDate, digitalClock, fpsCounter; //
+let gui; //
+let pointerDownTime; //
+let pointerDownPos = new THREE.Vector2(); //
 
 // --- Variables for smooth camera reset animation ---
-const clock = new THREE.Clock(); 
-let isResettingCamera = false;
-const cameraResetTargetPos = new THREE.Vector3(0, 0, 60);
-const cameraResetTargetTarget = new THREE.Vector3(0, 0, 0);
-let isUserInteracting = false;
+const clock = new THREE.Clock();  //
+let isResettingCamera = false; //
+const cameraResetTargetPos = new THREE.Vector3(0, 0, 60); //
+const cameraResetTargetTarget = new THREE.Vector3(0, 0, 0); //
+let isUserInteracting = false; //
 
 const settings = {
-    clockRunning: true,
-    showDateTime: false, 
-    tiltEnabled: false,
-    soundEnabled: false,
-    showFPS: false, 
-    listMeshBodies: false, 
-    showMinMaxWheelAngles: false,
-    beatRate: 5.0, 
-    resetCamera: () => {
-        if (isResettingCamera) return;
-        isResettingCamera = true;
+    clockRunning: false, //
+    showDateTime: false,  //
+    tiltEnabled: false, //
+    soundEnabled: false, //
+    showFPS: false,  //
+    listMeshBodies: false,  //
+    showMinMaxWheelAngles: false, //
+    beatRate: 5.0,  //
+    resetCamera: () => { //
+        if (isResettingCamera) return; //
+        isResettingCamera = true; //
     },
-    resetClock: () => {
-        settings.beatRate = 5.0;
-        const now = new Date();
+    resetClock: () => { //
+        settings.beatRate = 5.0; //
+        const now = new Date(); //
         
-        const totalSecondsSinceMidnight = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds() + (now.getMilliseconds() / 1000);
-        simulatedSeconds = totalSecondsSinceMidnight;
+        const totalSecondsSinceMidnight = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds() + (now.getMilliseconds() / 1000); //
+        simulatedSeconds = totalSecondsSinceMidnight; //
         
-        balanceWheelAngles = { start: null, min: Infinity, max: -Infinity };
+        balanceWheelAngles = { start: null, min: Infinity, max: -Infinity }; //
         
-        gui.controllers.forEach(c => {
-            if (c.property === 'beatRate') {
-                c.updateDisplay();
+        gui.controllers.forEach(c => { //
+            if (c.property === 'beatRate') { //
+                c.updateDisplay(); //
             }
         });
     }
 };
 
 // --- 3D Model Variables ---
-let clockModel;
-let modelScale = 3.5;
-let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring, secondWheelSmallGear, thirdWheelTopGear;
-let newHourHand, newMinuteHand, newSecondHand;
-let collectedParts = {}; 
+let clockModel; //
+let modelScale = 3.5; //
+let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring, secondWheelSmallGear, thirdWheelTopGear; //
+let newHourHand, newMinuteHand, newSecondHand; //
+let collectedParts = {};  //
 
 // --- Simulation State Variables ---
-let simulatedSeconds = 0;
-let previousSineValue = 0;
-let palletForkState = 1;
-let balanceWheelAngles = { start: null, min: Infinity, max: -Infinity };
-const PALLET_FORK_ANGLE = THREE.MathUtils.degToRad(9);
-const PALLET_FORK_OFFSET = THREE.MathUtils.degToRad(0);
-const ESCAPE_WHEEL_STEP = (Math.PI * 2) / 30; 
-const ESCAPE_WHEEL_OFFSET = THREE.MathUtils.degToRad(6.7);
-const BEAT_TIME_VALUE = 1.0 / 5.0; 
+let simulatedSeconds = 0; //
+// Set the starting direction of the pallet fork: 1 for CCW, -1 for CW.
+let palletForkState = -1; //
+// Synchronize the balance wheel's starting phase with the pallet fork's state.
+// This should be the opposite of palletForkState.
+let previousSineValue = -palletForkState; //
+let balanceWheelAngles = { start: null, min: Infinity, max: -Infinity }; //
+const PALLET_FORK_ANGLE = THREE.MathUtils.degToRad(9); //
+const PALLET_FORK_OFFSET = THREE.MathUtils.degToRad(0); //
+// A 15-tooth escape wheel requires 30 beats/steps for a full revolution.
+const ESCAPE_WHEEL_STEP = (Math.PI * 2) / 30;  //
+// This offset aligns a tooth with the pallet fork at its starting 9-degree rotation.
+const ESCAPE_WHEEL_OFFSET = ESCAPE_WHEEL_STEP / 2; //
+const BEAT_TIME_VALUE = 1.0 / 5.0;  //
 
 // --- Pallet Fork Animation State ---
-let isPalletForkAnimating = false;
-let palletForkAnimStartTime = 0;
-const palletForkAnimDuration = 0.08; 
-let palletForkStartAngle = 0;
-let palletForkTargetAngle = 0;
+let isPalletForkAnimating = false; //
+let palletForkAnimStartTime = 0; //
+const palletForkAnimDuration = 0.08;  //
+let palletForkStartAngle = 0; //
+let palletForkTargetAngle = 0; //
 
 
 // --- Hairspring Animation Variables ---
-let hairSpringMesh, hairSpringOriginalPositions;
-let colletOriginalPos = new THREE.Vector3();
-let hairspringBounds = { minZ: 0, maxZ: 0 };
-let maxRadius = 0;
-const hairspringAnimationSettings = {
-    maxAmplitude: 0.22,
-    topWeightMultiplier: 0.59,
-    bottomWeightMultiplier: -0.06
+let hairSpringMesh; //
+// hairSpringOriginalPositions is no longer needed; shader uses original geometry attribute
+let colletOriginalPos = new THREE.Vector3(); //
+let hairspringBounds = { minZ: 0, maxZ: 0 }; //
+let maxRadius = 0; //
+const hairspringAnimationSettings = { //
+    maxAmplitude: 0.22, //
+    topWeightMultiplier: 0.59, //
+    bottomWeightMultiplier: -0.06 //
 };
 
 // --- Sound ---
-const tickSound = new Audio('/textures/clock-ticking-5Hz.mp3');
-tickSound.volume = 0.0;
+const tickSound = new Audio('/textures/clock-ticking-5Hz.mp3'); //
+tickSound.volume = 0.0; //
 
 // --- Wait for the DOM to be ready, then create and inject UI elements ---
-window.addEventListener('DOMContentLoaded', () => {
-    digitalDate = document.createElement('div');
-    digitalClock = document.createElement('div');
-    fpsCounter = document.createElement('div');
+window.addEventListener('DOMContentLoaded', () => { //
+    digitalDate = document.createElement('div'); //
+    digitalClock = document.createElement('div'); //
+    fpsCounter = document.createElement('div'); //
 
 
-    Object.assign(digitalDate.style, {
-        position: 'absolute', bottom: '20px', left: '20px',
-        color: 'white', fontFamily: '"Courier New", Courier, monospace',
-        fontSize: '1.75em', textShadow: '0 0 8px black', zIndex: '10',
-        display: 'none' 
+    Object.assign(digitalDate.style, { //
+        position: 'absolute', bottom: '20px', left: '20px', //
+        color: 'white', fontFamily: '"Courier New", Courier, monospace', //
+        fontSize: '1.75em', textShadow: '0 0 8px black', zIndex: '10', //
+        display: 'none'  //
     });
-    Object.assign(digitalClock.style, {
-        position: 'absolute', bottom: '20px', right: '20px',
-        color: 'white', fontFamily: '"Courier New", Courier, monospace',
-        fontSize: '1.75em', textShadow: '0 0 8px black', zIndex: '10',
-        display: 'none'
+    Object.assign(digitalClock.style, { //
+        position: 'absolute', bottom: '20px', right: '20px', //
+        color: 'white', fontFamily: '"Courier New", Courier, monospace', //
+        fontSize: '1.75em', textShadow: '0 0 8px black', zIndex: '10', //
+        display: 'none' //
     });
-    Object.assign(fpsCounter.style, {
-        position: 'absolute', top: '20px', left: '20px',
-        color: 'white', fontFamily: '"Courier New", Courier, monospace',
-        fontSize: '1.75em', textShadow: '0 0 8px black', zIndex: '10',
-        display: 'none'
+    Object.assign(fpsCounter.style, { //
+        position: 'absolute', top: '20px', left: '20px', //
+        color: 'white', fontFamily: '"Courier New", Courier, monospace', //
+        fontSize: '1.75em', textShadow: '0 0 8px black', zIndex: '10', //
+        display: 'none' //
     });
 
-    document.body.appendChild(digitalDate);
-    document.body.appendChild(digitalClock);
-    document.body.appendChild(fpsCounter);
+    document.body.appendChild(digitalDate); //
+    document.body.appendChild(digitalClock); //
+    document.body.appendChild(fpsCounter); //
     
     // --- GUI Setup ---
-    gui = new GUI();
-    gui.domElement.style.display = 'none';
+    gui = new GUI(); //
+    gui.domElement.style.display = 'none'; //
 
-    gui.add(settings, 'clockRunning').name('Run Clock');
-    gui.add(settings, 'showDateTime').name('Show Date & Time').onChange(value => {
-        digitalDate.style.display = value ? 'block' : 'none';
-        digitalClock.style.display = value ? 'block' : 'none';
+    gui.add(settings, 'clockRunning').name('Run Clock'); //
+    gui.add(settings, 'showDateTime').name('Show Date & Time').onChange(value => { //
+        digitalDate.style.display = value ? 'block' : 'none'; //
+        digitalClock.style.display = value ? 'block' : 'none'; //
     });
 
-    gui.add(settings, 'tiltEnabled').name('Enable Tilt').onChange(value => {
-        if (value) { enableTilt(); } else { disableTilt(); }
+    gui.add(settings, 'tiltEnabled').name('Enable Tilt').onChange(value => { //
+        if (value) { enableTilt(); } else { disableTilt(); } //
     });
-    gui.add(settings, 'soundEnabled').name('Enable Sound').onChange(value => {
-        tickSound.volume = value ? 0.2 : 0.0;
+    gui.add(settings, 'soundEnabled').name('Enable Sound').onChange(value => { //
+        tickSound.volume = value ? 0.2 : 0.0; //
     });
-    gui.add(settings, 'showFPS').name('Show FPS').onChange(value => {
-        fpsCounter.style.display = value ? 'block' : 'none';
+    gui.add(settings, 'showFPS').name('Show FPS').onChange(value => { //
+        fpsCounter.style.display = value ? 'block' : 'none'; //
     });
-    gui.add(settings, 'beatRate', 0.5, 5.0, 0.1).name('Beat Rate / Sec');
-    gui.add(settings, 'resetClock').name('Reset Clock');
-    gui.add(settings, 'resetCamera').name('Reset Camera');
+    gui.add(settings, 'beatRate', 0.5, 5.0, 0.1).name('Beat Rate / Sec'); //
+    gui.add(settings, 'resetClock').name('Reset Clock'); //
+    gui.add(settings, 'resetCamera').name('Reset Camera'); //
 
     // --- Console Log Sub-Menu ---
-    const consoleFolder = gui.addFolder('Console Log Outputs');
-    consoleFolder.close();
-    const listMeshesController = consoleFolder.add(settings, 'listMeshBodies').name('List All Mesh Bodies');
-    listMeshesController.onChange(value => {
-        if (value) {
-            if (clockModel && Object.keys(collectedParts).length > 0) {
-                console.log("--- All Mesh Bodies in GLTF Model ---");
-                const meshNames = Object.keys(collectedParts).sort();
-                meshNames.forEach(name => console.log(name));
-                console.log(`--- Total: ${meshNames.length} meshes ---`);
+    const consoleFolder = gui.addFolder('Console Log Outputs'); //
+    consoleFolder.close(); //
+    const listMeshesController = consoleFolder.add(settings, 'listMeshBodies').name('List All Mesh Bodies'); //
+    listMeshesController.onChange(value => { //
+        if (value) { //
+            if (clockModel && Object.keys(collectedParts).length > 0) { //
+                console.log("--- All Mesh Bodies in GLTF Model ---"); //
+                const meshNames = Object.keys(collectedParts).sort(); //
+                meshNames.forEach(name => console.log(name)); //
+                console.log(`--- Total: ${meshNames.length} meshes ---`); //
             } else {
-                console.warn("Model not yet loaded. Cannot list mesh bodies.");
+                console.warn("Model not yet loaded. Cannot list mesh bodies."); //
             }
-            setTimeout(() => {
-                settings.listMeshBodies = false;
-                listMeshesController.updateDisplay();
-            }, 200);
+            setTimeout(() => { //
+                settings.listMeshBodies = false; //
+                listMeshesController.updateDisplay(); //
+            }, 200); //
         }
     });
     
-    const showMinMaxController = consoleFolder.add(settings, 'showMinMaxWheelAngles').name('Show Min/Max Wheel');
-    showMinMaxController.onChange(value => {
-        if (value) {
-            if (balanceWheel && balanceWheelAngles.start !== null) {
-                console.log("--- Balance Wheel & Roller Jewel Angles (degrees) ---");
-                console.log(`Starting Angle: ${balanceWheelAngles.start.toFixed(2)}`);
-                console.log(`Min Angle Seen: ${balanceWheelAngles.min.toFixed(2)}`);
-                console.log(`Max Angle Seen: ${balanceWheelAngles.max.toFixed(2)}`);
+    const showMinMaxController = consoleFolder.add(settings, 'showMinMaxWheelAngles').name('Show Min/Max Wheel'); //
+    showMinMaxController.onChange(value => { //
+        if (value) { //
+            if (balanceWheel && balanceWheelAngles.start !== null) { //
+                console.log("--- Balance Wheel & Roller Jewel Angles (degrees) ---"); //
+                console.log(`Starting Angle: ${balanceWheelAngles.start.toFixed(2)}`); //
+                console.log(`Min Angle Seen: ${balanceWheelAngles.min.toFixed(2)}`); //
+                console.log(`Max Angle Seen: ${balanceWheelAngles.max.toFixed(2)}`); //
             } else {
-                console.warn("Balance wheel not yet loaded or clock hasn't run. Cannot show angles.");
+                console.warn("Balance wheel not yet loaded or clock hasn't run. Cannot show angles."); //
             }
-             setTimeout(() => {
-                settings.showMinMaxWheelAngles = false;
-                showMinMaxController.updateDisplay();
-            }, 200);
+             setTimeout(() => { //
+                settings.showMinMaxWheelAngles = false; //
+                showMinMaxController.updateDisplay(); //
+            }, 200); //
         }
     });
 
     // Listeners for GUI toggle
-    window.addEventListener('mousedown', onPointerDown);
-    window.addEventListener('mouseup', onPointerUp);
-    window.addEventListener('touchstart', onPointerDown, { passive: true });
-    window.addEventListener('touchend', onPointerUp);
+    window.addEventListener('mousedown', onPointerDown); //
+    window.addEventListener('mouseup', onPointerUp); //
+    window.addEventListener('touchstart', onPointerDown, { passive: true }); //
+    window.addEventListener('touchend', onPointerUp); //
 
-    function onPointerDown(event) {
-        const pointer = event.touches ? event.touches[0] : event;
-        pointerDownTime = Date.now();
-        pointerDownPos.set(pointer.clientX, pointer.clientY);
+    function onPointerDown(event) { //
+        const pointer = event.touches ? event.touches[0] : event; //
+        pointerDownTime = Date.now(); //
+        pointerDownPos.set(pointer.clientX, pointer.clientY); //
     }
 
-    function onPointerUp(event) {
-        if (!pointerDownTime) return;
+    function onPointerUp(event) { //
+        if (!pointerDownTime) return; //
 
-        const isTouchEvent = !!event.changedTouches;
-        const pointer = isTouchEvent ? event.changedTouches[0] : event;
+        const isTouchEvent = !!event.changedTouches; //
+        const pointer = isTouchEvent ? event.changedTouches[0] : event; //
 
-        const duration = Date.now() - pointerDownTime;
-        const distance = pointerDownPos.distanceTo(new THREE.Vector2(pointer.clientX, pointer.clientY));
+        const duration = Date.now() - pointerDownTime; //
+        const distance = pointerDownPos.distanceTo(new THREE.Vector2(pointer.clientX, pointer.clientY)); //
         
-        pointerDownTime = null;
+        pointerDownTime = null; //
 
-        if (duration < 200 && distance < 15) {
-            if (gui.domElement.contains(pointer.target)) return;
+        if (duration < 200 && distance < 15) { //
+            if (gui.domElement.contains(pointer.target)) return; //
             
-            if (isTouchEvent) {
-                event.preventDefault();
+            if (isTouchEvent) { //
+                event.preventDefault(); //
             }
             
-            gui.domElement.style.display = (gui.domElement.style.display === 'none') ? 'block' : 'none';
+            gui.domElement.style.display = (gui.domElement.style.display === 'none') ? 'block' : 'none'; //
         }
     }
 
     // Initialize clock
-    settings.resetClock();
+    settings.resetClock(); //
 });
 
 // --- Scene Setup ---
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const scene = new THREE.Scene(); //
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000); //
+const renderer = new THREE.WebGLRenderer({ antialias: true }); //
 
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.7;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.VSMShadowMap;
-document.body.appendChild(renderer.domElement);
+renderer.setPixelRatio(window.devicePixelRatio); //
+renderer.setSize(window.innerWidth, window.innerHeight); //
+renderer.outputColorSpace = THREE.SRGBColorSpace; //
+renderer.toneMapping = THREE.ACESFilmicToneMapping; //
+renderer.toneMappingExposure = 0.7; //
+renderer.shadowMap.enabled = true; //
+renderer.shadowMap.type = THREE.VSMShadowMap; //
+document.body.appendChild(renderer.domElement); //
 
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
+const controls = new OrbitControls(camera, renderer.domElement); //
+controls.enableDamping = true; //
 
-controls.addEventListener('start', () => {
-    isUserInteracting = true;
-    isResettingCamera = false;
+controls.addEventListener('start', () => { //
+    isUserInteracting = true; //
+    isResettingCamera = false; //
 });
-controls.addEventListener('end', () => {
-    isUserInteracting = false;
+controls.addEventListener('end', () => { //
+    isUserInteracting = false; //
 });
 
-const loadingManager = new THREE.LoadingManager();
-loadingManager.onLoad = () => {
-    console.log("All assets loaded successfully.");
-    layoutScene();
+const loadingManager = new THREE.LoadingManager(); //
+loadingManager.onLoad = () => { //
+    console.log("All assets loaded successfully."); //
+    layoutScene(); //
 };
 
-const rgbeLoader = new RGBELoader(loadingManager).setPath('textures/');
-rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => {
-    texture.mapping = THREE.EquirectangularReflectionMapping;
-    scene.environment = texture;
+const rgbeLoader = new RGBELoader(loadingManager).setPath('textures/'); //
+rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => { //
+    texture.mapping = THREE.EquirectangularReflectionMapping; //
+    scene.environment = texture; //
 });
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
-dirLight.position.set(10, 28, 25);
-dirLight.castShadow = true;
-dirLight.shadow.mapSize.width = 2048;
-dirLight.shadow.mapSize.height = 2048;
-const d = 15;
-dirLight.shadow.camera.left = -d;
-dirLight.shadow.camera.right = d;
-dirLight.shadow.camera.top = d;
-dirLight.shadow.camera.bottom = -d;
-dirLight.shadow.bias = -0.001;
-dirLight.shadow.normalBias = 0.01;
-scene.add(dirLight);
-scene.add(dirLight.target);
+const dirLight = new THREE.DirectionalLight(0xffffff, 2.5); //
+dirLight.position.set(10, 28, 25); //
+dirLight.castShadow = true; //
+dirLight.shadow.mapSize.width = 2048; //
+dirLight.shadow.mapSize.height = 2048; //
+const d = 15; //
+dirLight.shadow.camera.left = -d; //
+dirLight.shadow.camera.right = d; //
+dirLight.shadow.camera.top = d; //
+dirLight.shadow.camera.bottom = -d; //
+dirLight.shadow.bias = -0.001; //
+dirLight.shadow.normalBias = 0.01; //
+scene.add(dirLight); //
+scene.add(dirLight.target); //
 
 // --- Create a master "clockUnit" group ---
-const clockUnit = new THREE.Group();
-clockUnit.position.z = 0;
+const clockUnit = new THREE.Group(); //
+clockUnit.position.z = 0; //
 
-const zShift = 1.0;
+const zShift = 1.0; //
 
 // --- PBR Material Definitions ---
-const textureLoader = new THREE.TextureLoader(loadingManager).setPath('textures/');
-const woodBaseColor = textureLoader.load('Wood03_2K_BaseColor.png');
-const woodNormal = textureLoader.load('Wood03_2K_Normal.png');
-const woodRoughness = textureLoader.load('Wood03_2K_Roughness.png');
-const woodHeight = textureLoader.load('Wood03_2K_Height.png');
-woodBaseColor.colorSpace = THREE.SRGBColorSpace;
-const wallMaterial = new THREE.MeshStandardMaterial({
-    map: woodBaseColor, normalMap: woodNormal, roughnessMap: woodRoughness,
-    displacementMap: woodHeight, displacementScale: 0.05
+const textureLoader = new THREE.TextureLoader(loadingManager).setPath('textures/'); //
+const woodBaseColor = textureLoader.load('Wood03_2K_BaseColor.png'); //
+const woodNormal = textureLoader.load('Wood03_2K_Normal.png'); //
+const woodRoughness = textureLoader.load('Wood03_2K_Roughness.png'); //
+const woodHeight = textureLoader.load('Wood03_2K_Height.png'); //
+woodBaseColor.colorSpace = THREE.SRGBColorSpace; //
+const wallMaterial = new THREE.MeshStandardMaterial({ //
+    map: woodBaseColor, normalMap: woodNormal, roughnessMap: woodRoughness, //
+    displacementMap: woodHeight, displacementScale: 0.05 //
 });
-const steelBaseColor = textureLoader.load('BrushedIron02_2K_BaseColor.png');
-const steelNormal = textureLoader.load('BrushedIron02_2K_Normal.png');
-const steelRoughness = textureLoader.load('BrushedIron02_2K_Roughness.png');
-steelBaseColor.colorSpace = THREE.SRGBColorSpace;
-const steelTextures = [steelBaseColor, steelNormal, steelRoughness];
-steelTextures.forEach(texture => {
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
+const steelBaseColor = textureLoader.load('BrushedIron02_2K_BaseColor.png'); //
+const steelNormal = textureLoader.load('BrushedIron02_2K_Normal.png'); //
+const steelRoughness = textureLoader.load('BrushedIron02_2K_Roughness.png'); //
+steelBaseColor.colorSpace = THREE.SRGBColorSpace; //
+const steelTextures = [steelBaseColor, steelNormal, steelRoughness]; //
+steelTextures.forEach(texture => { //
+    texture.wrapS = THREE.RepeatWrapping; //
+    texture.wrapT = THREE.RepeatWrapping; //
 });
-const brushedSteelMaterial = new THREE.MeshStandardMaterial({
-    map: steelBaseColor, normalMap: steelNormal, roughnessMap: steelRoughness,
-    metalness: 0.9, roughness: 0.4, color: 0xe0e0e0
+const brushedSteelMaterial = new THREE.MeshStandardMaterial({ //
+    map: steelBaseColor, normalMap: steelNormal, roughnessMap: steelRoughness, //
+    metalness: 0.9, roughness: 0.4, color: 0xe0e0e0 //
 });
-function cloneMaterialWithTextures(material) {
-    const newMaterial = material.clone();
-    newMaterial.map = material.map.clone();
-    newMaterial.normalMap = material.normalMap.clone();
-    newMaterial.roughnessMap = material.roughnessMap.clone();
-    newMaterial.displacementMap = material.displacementMap.clone();
-    return newMaterial;
+function cloneMaterialWithTextures(material) { //
+    const newMaterial = material.clone(); //
+    newMaterial.map = material.map.clone(); //
+    newMaterial.normalMap = material.normalMap.clone(); //
+    newMaterial.roughnessMap = material.roughnessMap.clone(); //
+    newMaterial.displacementMap = material.displacementMap.clone(); //
+    return newMaterial; //
 }
-const topBottomMaterial = cloneMaterialWithTextures(wallMaterial);
-const leftRightMaterial = cloneMaterialWithTextures(wallMaterial);
-const allWallTextures = [
-    wallMaterial.map, wallMaterial.normalMap, wallMaterial.roughnessMap, wallMaterial.displacementMap,
-    topBottomMaterial.map, topBottomMaterial.normalMap, topBottomMaterial.roughnessMap, topBottomMaterial.displacementMap,
-    leftRightMaterial.map, leftRightMaterial.normalMap, leftRightMaterial.roughnessMap, leftRightMaterial.displacementMap
+const topBottomMaterial = cloneMaterialWithTextures(wallMaterial); //
+const leftRightMaterial = cloneMaterialWithTextures(wallMaterial); //
+const allWallTextures = [ //
+    wallMaterial.map, wallMaterial.normalMap, wallMaterial.roughnessMap, wallMaterial.displacementMap, //
+    topBottomMaterial.map, topBottomMaterial.normalMap, topBottomMaterial.roughnessMap, topBottomMaterial.displacementMap, //
+    leftRightMaterial.map, leftRightMaterial.normalMap, leftRightMaterial.roughnessMap, leftRightMaterial.displacementMap //
 ];
-allWallTextures.forEach(texture => {
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
+allWallTextures.forEach(texture => { //
+    texture.wrapS = THREE.RepeatWrapping; //
+    texture.wrapT = THREE.RepeatWrapping; //
 });
-const wallGeometry = new THREE.PlaneGeometry(1, 1, 100, 100);
-const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-wall.receiveShadow = true;
-const wallThickness = 0.01;
-const boxGroup = new THREE.Group();
-scene.add(boxGroup);
-boxGroup.add(wall);
-boxGroup.add(clockUnit);
-const topWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial);
-const bottomWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial);
-const leftWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial);
-const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial);
-[topWall, bottomWall, leftWall, rightWall].forEach(w => {
-    w.castShadow = true;
-    w.receiveShadow = true;
-    boxGroup.add(w);
+const wallGeometry = new THREE.PlaneGeometry(1, 1, 100, 100); //
+const wall = new THREE.Mesh(wallGeometry, wallMaterial); //
+wall.receiveShadow = true; //
+const wallThickness = 0.01; //
+const boxGroup = new THREE.Group(); //
+scene.add(boxGroup); //
+boxGroup.add(wall); //
+boxGroup.add(clockUnit); //
+const topWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial); //
+const bottomWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial); //
+const leftWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial); //
+const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial); //
+[topWall, bottomWall, leftWall, rightWall].forEach(w => { //
+    w.castShadow = true; //
+    w.receiveShadow = true; //
+    boxGroup.add(w); //
 });
 
 // --- Materials for GLB parts ---
-const brassMaterial = new THREE.MeshStandardMaterial({ color: 0xED9149, metalness: 0.95, roughness: 0.1 });
-const blackAluminumMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.6, roughness: 0.4 });
-const lumeMaterial = new THREE.MeshStandardMaterial({ color: 0x90ee90, emissive: 0x90ee90, emissiveIntensity: 0.6, roughness: 0.8, transparent: true, opacity: 0.5 });
-const polishedAluminumMaterial = new THREE.MeshStandardMaterial({ color: 0xe5e5e5, metalness: 0.98, roughness: 0.1 });
+const brassMaterial = new THREE.MeshStandardMaterial({ color: 0xED9149, metalness: 0.95, roughness: 0.1 }); //
+const blackAluminumMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.6, roughness: 0.4 }); //
+const lumeMaterial = new THREE.MeshStandardMaterial({ color: 0x90ee90, emissive: 0x90ee90, emissiveIntensity: 0.6, roughness: 0.8, transparent: true, opacity: 0.5 }); //
+const polishedAluminumMaterial = new THREE.MeshStandardMaterial({ color: 0xe5e5e5, metalness: 0.98, roughness: 0.1 }); //
 // --- MODIFICATION START: Added purple sapphire material ---
-const purpleSapphireMaterial = new THREE.MeshStandardMaterial({
+const purpleSapphireMaterial = new THREE.MeshStandardMaterial({ //
     color: 0x6A0DAD, // Deep purple color
-    metalness: 0.1,
-    roughness: 0.05,
+    metalness: 0.1, //
+    roughness: 0.05, //
     ior: 1.77, // Index of Refraction for sapphire
     transmission: 1.0, // Allow light to pass through
-    transparent: true,
-    opacity: 0.75,
+    transparent: true, //
+    opacity: 0.75, //
     depthWrite: false // Helps with rendering transparent objects correctly
 });
 // --- MODIFICATION END ---
 
 
 // --- GLB Model Loader ---
-const gltfLoader = new GLTFLoader(loadingManager);
-gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => {
-    clockModel = gltf.scene || gltf.scenes[0];
-    if (!clockModel) {
-        console.error("GLTFLoader Error: Could not find a valid scene in the GLB file.");
-        return;
+const gltfLoader = new GLTFLoader(loadingManager); //
+gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
+    clockModel = gltf.scene || gltf.scenes[0]; //
+    if (!clockModel) { //
+        console.error("GLTFLoader Error: Could not find a valid scene in the GLB file."); //
+        return; //
     }
-    clockUnit.add(clockModel);
-    clockModel.position.set(0, 0, -4.0 + zShift);
-    clockModel.rotation.set(0, 0, 0);
-    clockModel.scale.set(modelScale, modelScale, modelScale);
+    clockUnit.add(clockModel); //
+    clockModel.position.set(0, 0, -4.0 + zShift); //
+    clockModel.rotation.set(0, 0, 0); //
+    clockModel.scale.set(modelScale, modelScale, modelScale); //
     
-    clockModel.traverse(child => {
-        if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-            collectedParts[child.name] = child;
+    clockModel.traverse(child => { //
+        if (child.isMesh) { //
+            child.castShadow = true; //
+            child.receiveShadow = true; //
+            collectedParts[child.name] = child; //
         }
     });
-    newHourHand = new THREE.Group();
-    newMinuteHand = new THREE.Group();
-    newSecondHand = new THREE.Group();
-    const hourOuter = collectedParts['HourHandOuterBody'];
-    const hourLume = collectedParts['HourHandLumeBody'];
-    if (hourOuter) newHourHand.add(hourOuter);
-    if (hourLume) newHourHand.add(hourLume);
-    const minuteOuter = collectedParts['MinuteHandOuterBody'];
-    const minuteLume = collectedParts['MinuteHandLumeBody'];
-    if (minuteOuter) newMinuteHand.add(minuteOuter);
-    if (minuteLume) newMinuteHand.add(minuteLume);
-    const secondOuter = collectedParts['SecondsHandOuterBody'];
-    const secondLume = collectedParts['SecondsHandLumeBody'];
-    if (secondOuter) newSecondHand.add(secondOuter);
-    if (secondLume) newSecondHand.add(secondLume);
-    clockModel.add(newHourHand);
-    clockModel.add(newMinuteHand);
-    for (const name in collectedParts) {
-        const part = collectedParts[name];
-        if (name.startsWith('HourHandOuterBody') || name.startsWith('MinuteHandOuterBody') || name.startsWith('SecondsHandOuterBody')) { part.material = blackAluminumMaterial; }
-        else if (name.startsWith('HourHandLumeBody') || name.startsWith('MinuteHandLumeBody') || name.startsWith('SecondsHandLumeBody') || name.includes('PipLumeBody')) { part.material = lumeMaterial; }
+    newHourHand = new THREE.Group(); //
+    newMinuteHand = new THREE.Group(); //
+    newSecondHand = new THREE.Group(); //
+    const hourOuter = collectedParts['HourHandOuterBody']; //
+    const hourLume = collectedParts['HourHandLumeBody']; //
+    if (hourOuter) newHourHand.add(hourOuter); //
+    if (hourLume) newHourHand.add(hourLume); //
+    const minuteOuter = collectedParts['MinuteHandOuterBody']; //
+    const minuteLume = collectedParts['MinuteHandLumeBody']; //
+    if (minuteOuter) newMinuteHand.add(minuteOuter); //
+    if (minuteLume) newMinuteHand.add(minuteLume); //
+    const secondOuter = collectedParts['SecondsHandOuterBody']; //
+    const secondLume = collectedParts['SecondsHandLumeBody']; //
+    if (secondOuter) newSecondHand.add(secondOuter); //
+    if (secondLume) newSecondHand.add(secondLume); //
+    clockModel.add(newHourHand); //
+    clockModel.add(newMinuteHand); //
+    for (const name in collectedParts) { //
+        const part = collectedParts[name]; //
+        if (name.startsWith('HourHandOuterBody') || name.startsWith('MinuteHandOuterBody') || name.startsWith('SecondsHandOuterBody')) { part.material = blackAluminumMaterial; } //
+        else if (name.startsWith('HourHandLumeBody') || name.startsWith('MinuteHandLumeBody') || name.startsWith('SecondsHandLumeBody') || name.includes('PipLumeBody')) { part.material = lumeMaterial; } //
         // --- MODIFICATION START: Added rule to apply sapphire material to all jewel parts ---
-        else if (name.includes('Jewel')) {
-            part.material = purpleSapphireMaterial;
+        else if (name.includes('Jewel')) { //
+            part.material = purpleSapphireMaterial; //
         }
         // --- MODIFICATION END ---
-        else if ([
-            'BalancingBridgeBody', 'BarrelBridge_Body', 'BarrelDrum_Gear_Body', 
-            'PalletBridgeBody', 'RollerTable', 'TrainWheelBridgeBody'
+        else if ([ //
+            'BalancingBridgeBody', 'BarrelBridge_Body', 'BarrelDrum_Gear_Body', //
+            'PalletBridgeBody', 'RollerTable', 'TrainWheelBridgeBody' //
         ].includes(name)) { 
-            part.material = brushedSteelMaterial; 
+            part.material = brushedSteelMaterial;  //
         }
-        else if ([
-            'BarrelArborBody', 'BarrelMainSpringBody', 'ClickBody', 'CrownWheelBody', 
-            'DriverCannonPinion_Gear_Body', 'HairSpringBody', 'Incabloc1_1', 'Incabloc1_Base', 
-            'Incabloc2_2', 'IncablocDisc_2', 'PalletForkBody', 'RatchetWheelBody', 
-            'RegulatorCurvePin_1', 'RegulatorCurvePin_2', 'RegulatorPiece1_Body', 'RegulatorPiece2_Body', 
-            'RegulatorPiece3_Body', 'SettingLeverJumperBody', 'SettingLever_Body', 'SettingWheelBody', 
-            'SlidingPinion', 'WindingKnob', 'WindingPinion', 'WindingStem', 'YokeBody'
+        else if ([ //
+            'BarrelArborBody', 'BarrelMainSpringBody', 'ClickBody', 'CrownWheelBody', //
+            'DriverCannonPinion_Gear_Body', 'HairSpringBody', 'Incabloc1_1', 'Incabloc1_Base', //
+            'Incabloc2_2', 'IncablocDisc_2', 'PalletForkBody', 'RatchetWheelBody', //
+            'RegulatorCurvePin_1', 'RegulatorCurvePin_2', 'RegulatorPiece1_Body', 'RegulatorPiece2_Body', //
+            'RegulatorPiece3_Body', 'SettingLeverJumperBody', 'SettingLever_Body', 'SettingWheelBody', //
+            'SlidingPinion', 'WindingKnob', 'WindingPinion', 'WindingStem', 'YokeBody' //
         ].includes(name)) { 
-            part.material = polishedAluminumMaterial; 
+            part.material = polishedAluminumMaterial;  //
         }
-        else if (name.includes('Screw')) {
-            part.material = polishedAluminumMaterial;
+        else if (name.includes('Screw')) { //
+            part.material = polishedAluminumMaterial; //
         }
         // --- MODIFICATION START: Removed "RollerJewel" from the brass material list ---
-        else if (['SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'BalanceWheelBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear'].includes(name) || name.includes('PipOuter')) { part.material = brassMaterial; }
+        else if (['SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'BalanceWheelBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear'].includes(name) || name.includes('PipOuter')) { part.material = brassMaterial; } //
         // --- MODIFICATION END ---
     }
-    const palletBridgeMesh = collectedParts['PalletBridgeBody'];
-    if (palletBridgeMesh) {
-        const transparentMaterial = palletBridgeMesh.material.clone();
-        transparentMaterial.transparent = true;
-        transparentMaterial.opacity = 0.5;
-        palletBridgeMesh.material = transparentMaterial;
+    const palletBridgeMesh = collectedParts['PalletBridgeBody']; //
+    if (palletBridgeMesh) { //
+        const transparentMaterial = palletBridgeMesh.material.clone(); //
+        transparentMaterial.transparent = true; //
+        transparentMaterial.opacity = 0.5; //
+        palletBridgeMesh.material = transparentMaterial; //
     }
-    const partsToPivot = [ 'SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'HairSpringBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear' ];
-    partsToPivot.forEach(name => {
-        const part = collectedParts[name];
-        if (part) {
-            if (name === 'HairSpringBody') {
-                hairSpringMesh = part;
-                hairSpringOriginalPositions = hairSpringMesh.geometry.attributes.position.array.slice();
-                const positions = hairSpringOriginalPositions;
-                const vertexCount = positions.length / 3;
-                let tempVertex = new THREE.Vector3();
-                part.geometry.computeBoundingBox();
-                part.geometry.boundingBox.getCenter(colletOriginalPos);
-                hairspringBounds.minZ = part.geometry.boundingBox.min.z;
-                hairspringBounds.maxZ = part.geometry.boundingBox.max.z;
+    const partsToPivot = [ 'SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'HairSpringBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear' ]; //
+    
+    // *** BEGIN UPDATED SECTION 1 ***
+    // This loop includes the new 'HairSpringBody' case with the GPU shader logic
+    partsToPivot.forEach(name => { //
+        const part = collectedParts[name]; //
+        if (part) { //
+            if (name === 'HairSpringBody') { //
+                hairSpringMesh = part; //
+                // We still need the original geometry data for calculations
+                const positions = part.geometry.attributes.position.array; //
+                const vertexCount = positions.length / 3; //
+                let tempVertex = new THREE.Vector3(); //
+                part.geometry.computeBoundingBox(); //
+                part.geometry.boundingBox.getCenter(colletOriginalPos); //
+                hairspringBounds.minZ = part.geometry.boundingBox.min.z; //
+                hairspringBounds.maxZ = part.geometry.boundingBox.max.z; //
                 let trueMaxRadius = 0;
+                // This loop still runs ONCE at load time to find the max radius
                 for (let i = 0; i < vertexCount; i++) {
-                    tempVertex.set(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
-                    const radius = tempVertex.distanceTo(colletOriginalPos);
+                    tempVertex.set(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]); //
+                    const radius = tempVertex.distanceTo(colletOriginalPos); //
                     if (radius > trueMaxRadius) {
-                        trueMaxRadius = radius;
+                        trueMaxRadius = radius; //
                     }
                 }
-                maxRadius = trueMaxRadius;
+                maxRadius = trueMaxRadius; //
+
+                // --- START SHADER MODIFICATION ---
+
+                // 1. Clone material so this shader only affects the hairspring
+                const hairspringMaterial = part.material.clone();
+                hairSpringMesh.material = hairspringMaterial;
+
+                // 2. Define the uniforms that will pass data from JS to the shader
+                const hairspringUniforms = {
+                    u_sineValue: { value: 0.0 },
+                    u_colletOriginalPos: { value: colletOriginalPos }, //
+                    u_maxRadius: { value: maxRadius }, //
+                    u_hairspringBoundsZ: { value: new THREE.Vector2(hairspringBounds.minZ, hairspringBounds.maxZ) }, //
+                    u_weightMultipliers: { value: new THREE.Vector2(hairspringAnimationSettings.bottomWeightMultiplier, hairspringAnimationSettings.topWeightMultiplier) }, //
+                    u_maxAmplitude: { value: hairspringAnimationSettings.maxAmplitude } //
+                };
+
+                // 3. Use .onBeforeCompile to inject GLSL code into the existing material
+                hairspringMaterial.onBeforeCompile = (shader) => {
+                    // Add our uniforms to the shader's list
+                    Object.assign(shader.uniforms, hairspringUniforms);
+
+                    // Add the uniform declarations to the top of the vertex shader
+                    shader.vertexShader = `
+                        uniform float u_sineValue;
+                        uniform vec3 u_colletOriginalPos;
+                        uniform float u_maxRadius;
+                        uniform vec2 u_hairspringBoundsZ; // .x = minZ, .y = maxZ
+                        uniform vec2 u_weightMultipliers; // .x = bottom, .y = top
+                        uniform float u_maxAmplitude;
+                    ` + shader.vertexShader;
+
+                    // Inject our animation logic directly after three.js defines 'transformed'
+                    // This GLSL code is a direct translation of your original JavaScript logic
+                    shader.vertexShader = shader.vertexShader.replace(
+                        '#include <begin_vertex>',
+                        `
+                        #include <begin_vertex>
+                        
+                        // --- START HAIRSPRING SHADER LOGIC ---
+                        float dist_c = distance(transformed, u_colletOriginalPos);
+                        float radial_weight = dist_c / u_maxRadius;
+                        
+                        float z_range = u_hairspringBoundsZ.y - u_hairspringBoundsZ.x;
+                        float vertical_multiplier = 0.0;
+
+                        if (z_range > 0.001) {
+                            float normalized_z = 1.0 - ((transformed.z - u_hairspringBoundsZ.x) / z_range);
+                            vertical_multiplier = mix(u_weightMultipliers.x, u_weightMultipliers.y, normalized_z);
+                        }
+
+                        float weight = clamp(radial_weight * vertical_multiplier, 0.0, 1.0);
+                        float finalAmplitude = u_sineValue * u_maxAmplitude * weight;
+                        
+                        vec3 displacementDirection = vec3(0.0);
+                        if (dist_c > 0.001) {
+                            displacementDirection = normalize(transformed - u_colletOriginalPos);
+                        }
+
+                        // Apply the displacement only to X and Z, just like your original JS logic
+                        transformed.x += displacementDirection.x * finalAmplitude;
+                        transformed.z += displacementDirection.z * finalAmplitude; 
+                        // --- END HAIRSPRING SHADER LOGIC ---
+                        `
+                    );
+
+                    // Store the shader object so we can update its uniforms in the animate loop
+                    hairSpringMesh.userData.shader = shader;
+                };
+                // --- END SHADER MODIFICATION ---
             }
-            const center = new THREE.Vector3();
-            new THREE.Box3().setFromObject(part).getCenter(center);
-            const pivot = new THREE.Group();
-            part.parent.add(pivot);
-            pivot.position.copy(center);
-            pivot.add(part);
-            part.position.sub(center);
-            switch (name) {
-                case 'SecondWheel': secondWheel = pivot; break;
-                case 'Minute_Wheel_Body': minuteWheel = pivot; break;
-                case 'HourWheel_Body': hourWheel = pivot; break;
-                case 'BalanceWheelBody':
-                    balanceWheel = pivot;
-                    const rollerJewelMesh = collectedParts['RollerJewel'];
-                    if (rollerJewelMesh) {
-                        pivot.add(rollerJewelMesh);
-                        rollerJewelMesh.position.sub(center);
+            const center = new THREE.Vector3(); //
+            new THREE.Box3().setFromObject(part).getCenter(center); //
+            const pivot = new THREE.Group(); //
+            part.parent.add(pivot); //
+            pivot.position.copy(center); //
+            pivot.add(part); //
+            part.position.sub(center); //
+            switch (name) { //
+                case 'SecondWheel': secondWheel = pivot; break; //
+                case 'Minute_Wheel_Body': minuteWheel = pivot; break; //
+                case 'HourWheel_Body': hourWheel = pivot; break; //
+                case 'BalanceWheelBody': //
+                    balanceWheel = pivot; //
+                    const rollerJewelMesh = collectedParts['RollerJewel']; //
+                    if (rollerJewelMesh) { //
+                        pivot.add(rollerJewelMesh); //
+                        rollerJewelMesh.position.sub(center); //
                     }
                     break;
-                case 'EscapeWheelBody': escapeWheel = pivot; break;
-                case 'CenterWheelBody': centerWheel = pivot; break;
-                case 'ThirdWheelBody': thirdWheel = pivot; break;
-                case 'HairSpringBody': hairSpring = pivot; break;
-                case 'SecondWheelSmallGear': secondWheelSmallGear = pivot; break;
-                case 'ThirdWheelTopGear': thirdWheelTopGear = pivot; break;
+                case 'EscapeWheelBody': escapeWheel = pivot; break; //
+                case 'CenterWheelBody': centerWheel = pivot; break; //
+                case 'ThirdWheelBody': thirdWheel = pivot; break; //
+                case 'HairSpringBody': hairSpring = pivot; break; //
+                case 'SecondWheelSmallGear': secondWheelSmallGear = pivot; break; //
+                case 'ThirdWheelTopGear': thirdWheelTopGear = pivot; break; //
             }
         }
     });
-    const palletForkBodyMesh = collectedParts['PalletForkBody'];
-    const palletJewelBodyMesh = collectedParts['Plate_Jewel_Body'];
-    if (palletForkBodyMesh && palletJewelBodyMesh) {
-        const jewelCenter = new THREE.Vector3();
-        new THREE.Box3().setFromObject(palletJewelBodyMesh).getCenter(jewelCenter);
-        const pivot = new THREE.Group();
-        palletForkBodyMesh.parent.add(pivot);
-        pivot.position.copy(jewelCenter);
-        if (collectedParts['PalletForkJewel1']) pivot.add(collectedParts['PalletForkJewel1']);
-        if (collectedParts['PalletForkJewel2']) pivot.add(collectedParts['PalletForkJewel2']);
-        pivot.add(palletForkBodyMesh);
-        pivot.children.forEach(child => child.position.sub(jewelCenter));
-        palletFork = pivot;
+    // *** END UPDATED SECTION 1 ***
+
+    const palletForkBodyMesh = collectedParts['PalletForkBody']; //
+    const palletJewelBodyMesh = collectedParts['Plate_Jewel_Body']; //
+    if (palletForkBodyMesh && palletJewelBodyMesh) { //
+        const jewelCenter = new THREE.Vector3(); //
+        new THREE.Box3().setFromObject(palletJewelBodyMesh).getCenter(jewelCenter); //
+        const pivot = new THREE.Group(); //
+        palletForkBodyMesh.parent.add(pivot); //
+        pivot.position.copy(jewelCenter); //
+        if (collectedParts['PalletForkJewel1']) pivot.add(collectedParts['PalletForkJewel1']); //
+        if (collectedParts['PalletForkJewel2']) pivot.add(collectedParts['PalletForkJewel2']); //
+        pivot.add(palletForkBodyMesh); //
+        pivot.children.forEach(child => child.position.sub(jewelCenter)); //
+        palletFork = pivot; //
+        // Set the pallet fork's initial rotation based on its starting state.
+        palletFork.rotation.z = PALLET_FORK_ANGLE * palletForkState; //
     }
 
-    if (escapeWheel) {
-        escapeWheel.rotation.z = ESCAPE_WHEEL_OFFSET;
+    if (escapeWheel) { //
+        // Set the escape wheel's initial rotation to align with the pallet fork.
+        escapeWheel.rotation.z = ESCAPE_WHEEL_OFFSET * palletForkState; //
     }
 
-    if (secondWheel) {
-        const pivot = new THREE.Group();
-        clockModel.add(pivot);
-        const center = new THREE.Vector3();
-        new THREE.Box3().setFromObject(secondWheel).getCenter(center);
-        pivot.position.copy(center);
-        pivot.add(newSecondHand);
-        newSecondHand.position.sub(center);
-        newSecondHand = pivot;
+    if (secondWheel) { //
+        const pivot = new THREE.Group(); //
+        clockModel.add(pivot); //
+        const center = new THREE.Vector3(); //
+        new THREE.Box3().setFromObject(secondWheel).getCenter(center); //
+        pivot.position.copy(center); //
+        pivot.add(newSecondHand); //
+        newSecondHand.position.sub(center); //
+        newSecondHand = pivot; //
     }
 });
 
 // --- RE-USABLE VECTORS FOR ANIMATION LOOP ---
-const p_orig = new THREE.Vector3();
-const displacementDirection = new THREE.Vector3();
+const p_orig = new THREE.Vector3(); //
+const displacementDirection = new THREE.Vector3(); //
 
 // --- SCENE LAYOUT AND UTILITY FUNCTIONS ---
-function layoutScene() {
-    camera.position.z = 60;
-    camera.updateProjectionMatrix();
-    const boxDepth = 8.5;
-    const backWallZ = -boxDepth;
-    const wallCenterZ = -boxDepth / 2;
-    const boxFrontZ = 0.0;
-    const fov = camera.fov * (Math.PI / 180);
-    const viewPlaneDistance = camera.position.z - boxFrontZ;
-    const viewPlaneHeight = 2 * Math.tan(fov / 2) * viewPlaneDistance;
-    const viewPlaneWidth = viewPlaneHeight * camera.aspect;
-    const backPlaneDistance = camera.position.z - backWallZ;
-    const backPlaneHeight = 2 * Math.tan(fov / 2) * backPlaneDistance;
-    const backPlaneWidth = backPlaneHeight * camera.aspect;
-    const unitsPerTexture = 15;
-    const wallTextures = [wallMaterial.map, wallMaterial.normalMap, wallMaterial.roughnessMap, wallMaterial.displacementMap];
-    const tbTextures = [topBottomMaterial.map, topBottomMaterial.normalMap, topBottomMaterial.roughnessMap, topBottomMaterial.displacementMap];
-    const lrTextures = [leftRightMaterial.map, leftRightMaterial.normalMap, leftRightMaterial.roughnessMap, leftRightMaterial.displacementMap];
-    wallTextures.forEach(t => t.repeat.set(backPlaneWidth / unitsPerTexture, backPlaneHeight / unitsPerTexture));
-    tbTextures.forEach(t => t.repeat.set(viewPlaneWidth / unitsPerTexture, boxDepth / unitsPerTexture));
-    lrTextures.forEach(t => t.repeat.set(boxDepth / unitsPerTexture, viewPlaneHeight / unitsPerTexture));
-    wall.position.z = backWallZ;
-    wall.scale.set(backPlaneWidth, backPlaneHeight, 1);
-    topWall.scale.set(viewPlaneWidth, boxDepth, 1);
-    topWall.position.set(0, viewPlaneHeight / 2, wallCenterZ);
-    topWall.rotation.set(Math.PI / 2, 0, 0);
-    bottomWall.scale.set(viewPlaneWidth, boxDepth, 1);
-    bottomWall.position.set(0, -viewPlaneHeight / 2, wallCenterZ);
-    bottomWall.rotation.set(-Math.PI / 2, 0, 0);
-    leftWall.scale.set(boxDepth, viewPlaneHeight, 1);
-    leftWall.position.set(-viewPlaneWidth / 2, 0, wallCenterZ);
-    leftWall.rotation.set(0, Math.PI / 2, 0);
-    rightWall.scale.set(boxDepth, viewPlaneHeight, 1);
-    rightWall.position.set(viewPlaneWidth / 2, 0, wallCenterZ);
-    rightWall.rotation.set(0, -Math.PI / 2, 0);
-    const clockNativeDiameter = 22;
-    const padding = 5;
-    const availableWidth = viewPlaneWidth - (padding * 2);
-    const availableHeight = viewPlaneHeight - (padding * 2);
-    const scale = Math.min(availableWidth, availableHeight) / clockNativeDiameter;
-    clockUnit.scale.set(scale, scale, scale);
-    const shadowVolumeBox = new THREE.Box3().setFromObject(boxGroup);
-    const shadowVolumeCenter = new THREE.Vector3();
-    shadowVolumeBox.getCenter(shadowVolumeCenter);
-    const shadowVolumeRadius = shadowVolumeBox.getSize(new THREE.Vector3()).length() / 2;
-	const paddedRadius = shadowVolumeRadius * 1.2;
-    const lightPositionOffset = { x: 10, y: 28, z: 25 };
-    dirLight.target.position.copy(shadowVolumeCenter);
-    dirLight.position.set(
-        shadowVolumeCenter.x + lightPositionOffset.x,
-        shadowVolumeCenter.y + lightPositionOffset.y,
-        shadowVolumeCenter.z + lightPositionOffset.z
+function layoutScene() { //
+    camera.position.z = 60; //
+    camera.updateProjectionMatrix(); //
+    const boxDepth = 8.5; //
+    const backWallZ = -boxDepth; //
+    const wallCenterZ = -boxDepth / 2; //
+    const boxFrontZ = 0.0; //
+    const fov = camera.fov * (Math.PI / 180); //
+    const viewPlaneDistance = camera.position.z - boxFrontZ; //
+    const viewPlaneHeight = 2 * Math.tan(fov / 2) * viewPlaneDistance; //
+    const viewPlaneWidth = viewPlaneHeight * camera.aspect; //
+    const backPlaneDistance = camera.position.z - backWallZ; //
+    const backPlaneHeight = 2 * Math.tan(fov / 2) * backPlaneDistance; //
+    const backPlaneWidth = backPlaneHeight * camera.aspect; //
+    const unitsPerTexture = 15; //
+    const wallTextures = [wallMaterial.map, wallMaterial.normalMap, wallMaterial.roughnessMap, wallMaterial.displacementMap]; //
+    const tbTextures = [topBottomMaterial.map, topBottomMaterial.normalMap, topBottomMaterial.roughnessMap, topBottomMaterial.displacementMap]; //
+    const lrTextures = [leftRightMaterial.map, leftRightMaterial.normalMap, leftRightMaterial.roughnessMap, leftRightMaterial.displacementMap]; //
+    wallTextures.forEach(t => t.repeat.set(backPlaneWidth / unitsPerTexture, backPlaneHeight / unitsPerTexture)); //
+    tbTextures.forEach(t => t.repeat.set(viewPlaneWidth / unitsPerTexture, boxDepth / unitsPerTexture)); //
+    lrTextures.forEach(t => t.repeat.set(boxDepth / unitsPerTexture, viewPlaneHeight / unitsPerTexture)); //
+    wall.position.z = backWallZ; //
+    wall.scale.set(backPlaneWidth, backPlaneHeight, 1); //
+    topWall.scale.set(viewPlaneWidth, boxDepth, 1); //
+    topWall.position.set(0, viewPlaneHeight / 2, wallCenterZ); //
+    topWall.rotation.set(Math.PI / 2, 0, 0); //
+    bottomWall.scale.set(viewPlaneWidth, boxDepth, 1); //
+    bottomWall.position.set(0, -viewPlaneHeight / 2, wallCenterZ); //
+    bottomWall.rotation.set(-Math.PI / 2, 0, 0); //
+    leftWall.scale.set(boxDepth, viewPlaneHeight, 1); //
+    leftWall.position.set(-viewPlaneWidth / 2, 0, wallCenterZ); //
+    leftWall.rotation.set(0, Math.PI / 2, 0); //
+    rightWall.scale.set(boxDepth, viewPlaneHeight, 1); //
+    rightWall.position.set(viewPlaneWidth / 2, 0, wallCenterZ); //
+    rightWall.rotation.set(0, -Math.PI / 2, 0); //
+    const clockNativeDiameter = 22; //
+    const padding = 5; //
+    const availableWidth = viewPlaneWidth - (padding * 2); //
+    const availableHeight = viewPlaneHeight - (padding * 2); //
+    const scale = Math.min(availableWidth, availableHeight) / clockNativeDiameter; //
+    clockUnit.scale.set(scale, scale, scale); //
+    const shadowVolumeBox = new THREE.Box3().setFromObject(boxGroup); //
+    const shadowVolumeCenter = new THREE.Vector3(); //
+    shadowVolumeBox.getCenter(shadowVolumeCenter); //
+    const shadowVolumeRadius = shadowVolumeBox.getSize(new THREE.Vector3()).length() / 2; //
+	const paddedRadius = shadowVolumeRadius * 1.2; //
+    const lightPositionOffset = { x: 10, y: 28, z: 25 }; //
+    dirLight.target.position.copy(shadowVolumeCenter); //
+    dirLight.position.set( //
+        shadowVolumeCenter.x + lightPositionOffset.x, //
+        shadowVolumeCenter.y + lightPositionOffset.y, //
+        shadowVolumeCenter.z + lightPositionOffset.z //
     );
-    dirLight.target.updateMatrixWorld();
-    dirLight.shadow.camera.left = -paddedRadius;
-    dirLight.shadow.camera.right = paddedRadius;
-    dirLight.shadow.camera.top = paddedRadius;
-    dirLight.shadow.camera.bottom = -paddedRadius;
-    const lightDistanceToCenter = dirLight.position.distanceTo(shadowVolumeCenter);
-    dirLight.shadow.camera.near = Math.max(0.1, lightDistanceToCenter - shadowVolumeRadius);
-    dirLight.shadow.camera.far = lightDistanceToCenter + shadowVolumeRadius;
-    dirLight.shadow.camera.updateProjectionMatrix();
+    dirLight.target.updateMatrixWorld(); //
+    dirLight.shadow.camera.left = -paddedRadius; //
+    dirLight.shadow.camera.right = paddedRadius; //
+    dirLight.shadow.camera.top = paddedRadius; //
+    dirLight.shadow.camera.bottom = -paddedRadius; //
+    const lightDistanceToCenter = dirLight.position.distanceTo(shadowVolumeCenter); //
+    dirLight.shadow.camera.near = Math.max(0.1, lightDistanceToCenter - shadowVolumeRadius); //
+    dirLight.shadow.camera.far = lightDistanceToCenter + shadowVolumeRadius; //
+    dirLight.shadow.camera.updateProjectionMatrix(); //
 }
-let tiltX = 0, tiltY = 0;
-function handleOrientation(event) {
-  tiltY = event.beta || 0;
-  tiltX = event.gamma || 0;
+let tiltX = 0, tiltY = 0; //
+function handleOrientation(event) { //
+  tiltY = event.beta || 0; //
+  tiltX = event.gamma || 0; //
 }
-function enableTilt() {
-    if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
-        DeviceOrientationEvent.requestPermission().then(permissionState => {
-            if (permissionState === 'granted') {
-                window.addEventListener('deviceorientation', handleOrientation);
+function enableTilt() { //
+    if (typeof DeviceOrientationEvent?.requestPermission === 'function') { //
+        DeviceOrientationEvent.requestPermission().then(permissionState => { //
+            if (permissionState === 'granted') { //
+                window.addEventListener('deviceorientation', handleOrientation); //
             } else {
-                settings.tiltEnabled = false;
-                gui.controllers.forEach(c => c.updateDisplay());
+                settings.tiltEnabled = false; //
+                gui.controllers.forEach(c => c.updateDisplay()); //
             }
         });
     } else {
-        window.addEventListener('deviceorientation', handleOrientation);
+        window.addEventListener('deviceorientation', handleOrientation); //
     }
 }
-function disableTilt() {
-    window.removeEventListener('deviceorientation', handleOrientation);
-    tiltX = 0;
-    tiltY = 0;
+function disableTilt() { //
+    window.removeEventListener('deviceorientation', handleOrientation); //
+    tiltX = 0; //
+    tiltY = 0; //
 }
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    layoutScene();
+window.addEventListener('resize', () => { //
+    camera.aspect = window.innerWidth / window.innerHeight; //
+    renderer.setSize(window.innerWidth, window.innerHeight); //
+    layoutScene(); //
 });
 
 // --- Animation Loop ---
-let lastFPSTime = performance.now();
-let frameCount = 0;
-const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+let lastFPSTime = performance.now(); //
+let frameCount = 0; //
+const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }; //
 
-function animate() {
-    requestAnimationFrame(animate);
+function animate() { //
+    requestAnimationFrame(animate); //
 
-    const now = performance.now();
-    const delta = clock.getDelta();
+    const now = performance.now(); //
+    const delta = clock.getDelta(); //
 
     // --- FPS Counter Logic ---
-    frameCount++;
-    if (now >= lastFPSTime + 1000) {
-        if (settings.showFPS) {
-            fpsCounter.textContent = `FPS: ${frameCount}`;
+    frameCount++; //
+    if (now >= lastFPSTime + 1000) { //
+        if (settings.showFPS) { //
+            fpsCounter.textContent = `FPS: ${frameCount}`; //
         }
-        frameCount = 0;
-        lastFPSTime = now;
+        frameCount = 0; //
+        lastFPSTime = now; //
     }
 
     // --- Camera Reset Animation Handler ---
     // Only run the animation if it's triggered AND the user isn't actively controlling the camera.
-    if (isResettingCamera && !isUserInteracting) {
-        const lerpFactor = Math.min(delta * 4.0, 1.0); 
+    if (isResettingCamera && !isUserInteracting) { //
+        const lerpFactor = Math.min(delta * 4.0, 1.0);  //
 
-        camera.position.lerp(cameraResetTargetPos, lerpFactor);
-        controls.target.lerp(cameraResetTargetTarget, lerpFactor);
+        camera.position.lerp(cameraResetTargetPos, lerpFactor); //
+        controls.target.lerp(cameraResetTargetTarget, lerpFactor); //
 
         // When the animation is very close to finishing, snap to the end and stop.
-        if (camera.position.distanceTo(cameraResetTargetPos) < 0.01) {
-            camera.position.copy(cameraResetTargetPos);
-            controls.target.copy(cameraResetTargetTarget);
-            isResettingCamera = false;
+        if (camera.position.distanceTo(cameraResetTargetPos) < 0.01) { //
+            camera.position.copy(cameraResetTargetPos); //
+            controls.target.copy(cameraResetTargetTarget); //
+            isResettingCamera = false; //
         }
     }
 
-    controls.update();
+    controls.update(); //
 
-    const time = now / 1000;
+    const time = now / 1000; //
 
     // Update UI Text (if visible)
-    if (settings.showDateTime) {
-        const nowForDate = new Date();
-        digitalDate.textContent = nowForDate.toLocaleDateString(undefined, dateOptions);
+    if (settings.showDateTime) { //
+        const nowForDate = new Date(); //
+        digitalDate.textContent = nowForDate.toLocaleDateString(undefined, dateOptions); //
 
-        const totalSeconds = Math.floor(simulatedSeconds);
-        const hours = Math.floor((totalSeconds / 3600) % 24);
-        const minutes = Math.floor((totalSeconds / 60) % 60);
-        const seconds = totalSeconds % 60;
+        const totalSeconds = Math.floor(simulatedSeconds); //
+        const hours = Math.floor((totalSeconds / 3600) % 24); //
+        const minutes = Math.floor((totalSeconds / 60) % 60); //
+        const seconds = totalSeconds % 60; //
 
-        const formattedHours = ('0' + hours).slice(-2);
-        const formattedMinutes = ('0' + minutes).slice(-2);
-        const formattedSeconds = ('0' + seconds).slice(-2);
-        digitalClock.textContent = `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
+        const formattedHours = ('0' + hours).slice(-2); //
+        const formattedMinutes = ('0' + minutes).slice(-2); //
+        const formattedSeconds = ('0' + seconds).slice(-2); //
+        digitalClock.textContent = `${formattedHours}:${formattedMinutes}:${formattedSeconds}`; //
     }
 
     // --- DRIVE TRAIN AND HANDS (driven by SIMULATED time) ---
-    const simulatedMinutes = simulatedSeconds / 60.0;
-    const simulatedHours = simulatedSeconds / 3600.0;
-    const secondHandRotation = -((simulatedSeconds / 60.0) * Math.PI * 2);
-    if (newSecondHand) newSecondHand.rotation.z = secondHandRotation;
-    if (secondWheel) secondWheel.rotation.z = secondHandRotation;
-    if (secondWheelSmallGear) secondWheelSmallGear.rotation.z = secondHandRotation;
-    const minuteHandRotation = -((simulatedMinutes / 60.0) * Math.PI * 2);
-    if (newMinuteHand) newMinuteHand.rotation.z = minuteHandRotation;
-    if (minuteWheel) minuteWheel.rotation.z = -minuteHandRotation;
-    if (centerWheel) centerWheel.rotation.z = minuteHandRotation;
-    if (thirdWheel) thirdWheel.rotation.z = ((simulatedMinutes / 7.5) * Math.PI * 2);
-    if (thirdWheelTopGear) thirdWheelTopGear.rotation.z = -((simulatedMinutes / 7.5) * Math.PI * 2);
-    const hourHandRotation = -(((simulatedHours % 12) / 12.0) * Math.PI * 2);
-    if (newHourHand) newHourHand.rotation.z = hourHandRotation;
-    if (hourWheel) hourWheel.rotation.z = -hourHandRotation;
+    const simulatedMinutes = simulatedSeconds / 60.0; //
+    const simulatedHours = simulatedSeconds / 3600.0; //
+    const secondHandRotation = -((simulatedSeconds / 60.0) * Math.PI * 2); //
+    if (newSecondHand) newSecondHand.rotation.z = secondHandRotation; //
+    if (secondWheel) secondWheel.rotation.z = secondHandRotation; //
+    if (secondWheelSmallGear) secondWheelSmallGear.rotation.z = secondHandRotation; //
+    const minuteHandRotation = -((simulatedMinutes / 60.0) * Math.PI * 2); //
+    if (newMinuteHand) newMinuteHand.rotation.z = minuteHandRotation; //
+    if (minuteWheel) minuteWheel.rotation.z = -minuteHandRotation; //
+    if (centerWheel) centerWheel.rotation.z = minuteHandRotation; //
+    if (thirdWheel) thirdWheel.rotation.z = ((simulatedMinutes / 7.5) * Math.PI * 2); //
+    if (thirdWheelTopGear) thirdWheelTopGear.rotation.z = -((simulatedMinutes / 7.5) * Math.PI * 2); //
+    const hourHandRotation = -(((simulatedHours % 12) / 12.0) * Math.PI * 2); //
+    if (newHourHand) newHourHand.rotation.z = hourHandRotation; //
+    if (hourWheel) hourWheel.rotation.z = -hourHandRotation; //
 
-    if (!settings.clockRunning) {
-        renderer.render(scene, camera);
-        return;
+    if (!settings.clockRunning) { //
+        renderer.render(scene, camera); //
+        return; //
     }
 
 
+    // *** BEGIN UPDATED SECTION 2 ***
+    // This block now contains the GPU shader uniform update for the hairspring
     // --- BALANCE WHEEL & SIMULATION LOGIC ---
-    if (balanceWheel) {
-        const frequency = settings.beatRate / 2.0;
-        const sineValue = Math.sin(time * Math.PI * 2 * frequency);
-        const amplitudeRadians = THREE.MathUtils.degToRad(290);
-        balanceWheel.rotation.z = -amplitudeRadians * sineValue;
+    if (balanceWheel) { //
+        const frequency = settings.beatRate / 2.0; //
+        const sineValue = Math.sin(time * Math.PI * 2 * frequency); //
+        const amplitudeRadians = THREE.MathUtils.degToRad(290); //
+        balanceWheel.rotation.z = -amplitudeRadians * sineValue; //
 
-        const currentAngleDeg = THREE.MathUtils.radToDeg(balanceWheel.rotation.z);
-        if (balanceWheelAngles.start === null) {
-            balanceWheelAngles.start = currentAngleDeg;
+        const currentAngleDeg = THREE.MathUtils.radToDeg(balanceWheel.rotation.z); //
+        if (balanceWheelAngles.start === null) { //
+            balanceWheelAngles.start = currentAngleDeg; //
         }
-        balanceWheelAngles.min = Math.min(balanceWheelAngles.min, currentAngleDeg);
-        balanceWheelAngles.max = Math.max(balanceWheelAngles.max, currentAngleDeg);
+        balanceWheelAngles.min = Math.min(balanceWheelAngles.min, currentAngleDeg); //
+        balanceWheelAngles.max = Math.max(balanceWheelAngles.max, currentAngleDeg); //
 
 
         // --- ESCAPEMENT LOGIC ---
-        const currentSign = Math.sign(sineValue);
-        if (currentSign !== Math.sign(previousSineValue) && !isPalletForkAnimating) {
+        const currentSign = Math.sign(sineValue); //
+        if (currentSign !== Math.sign(previousSineValue) && !isPalletForkAnimating) { //
             
-            if (previousSineValue > 0 && currentSign <= 0) {
-                palletForkState = -1;
-            } else if (previousSineValue < 0 && currentSign >= 0) {
-                palletForkState = 1;
+            if (previousSineValue > 0 && currentSign <= 0) { //
+                palletForkState = -1; //
+            } else if (previousSineValue < 0 && currentSign >= 0) { //
+                palletForkState = 1; //
             }
 
-            palletForkTargetAngle = (PALLET_FORK_ANGLE * palletForkState) + PALLET_FORK_OFFSET;
+            palletForkTargetAngle = (PALLET_FORK_ANGLE * palletForkState) + PALLET_FORK_OFFSET; //
 
-            if (settings.beatRate < 1.0) {
-                isPalletForkAnimating = true;
-                palletForkAnimStartTime = time;
-                palletForkStartAngle = palletFork.rotation.z;
+            if (settings.beatRate < 1.0) { //
+                isPalletForkAnimating = true; //
+                palletForkAnimStartTime = time; //
+                palletForkStartAngle = palletFork.rotation.z; //
             } else {
-                if (palletFork) {
-                    palletFork.rotation.z = palletForkTargetAngle;
+                if (palletFork) { //
+                    palletFork.rotation.z = palletForkTargetAngle; //
                 }
             }
 
-            if (escapeWheel) {
-                escapeWheel.rotation.z += ESCAPE_WHEEL_STEP;
+            if (escapeWheel) { //
+                // The direction of escape wheel step depends on the pallet fork's movement direction
+                escapeWheel.rotation.z += (ESCAPE_WHEEL_STEP * palletForkState); //
             }
-            simulatedSeconds += BEAT_TIME_VALUE;
-            if (tickSound && settings.soundEnabled) {
-                tickSound.currentTime = 0;
-                tickSound.play().catch(() => {});
+            simulatedSeconds += BEAT_TIME_VALUE; //
+            if (tickSound && settings.soundEnabled) { //
+                tickSound.currentTime = 0; //
+                tickSound.play().catch(() => {}); //
             }
         }
-        previousSineValue = sineValue;
+        previousSineValue = sineValue; //
 
         // --- PALLET FORK SMOOTH ANIMATION HANDLER ---
-        if (isPalletForkAnimating && palletFork) {
-            const elapsedTime = time - palletForkAnimStartTime;
-            let progress = elapsedTime / palletForkAnimDuration;
+        if (isPalletForkAnimating && palletFork) { //
+            const elapsedTime = time - palletForkAnimStartTime; //
+            let progress = elapsedTime / palletForkAnimDuration; //
 
-            if (progress >= 1.0) {
-                progress = 1.0;
-                isPalletForkAnimating = false;
+            if (progress >= 1.0) { //
+                progress = 1.0; //
+                isPalletForkAnimating = false; //
             }
             
-            const easedProgress = 1 - Math.pow(1 - progress, 3);
-            palletFork.rotation.z = THREE.MathUtils.lerp(palletForkStartAngle, palletForkTargetAngle, easedProgress);
+            const easedProgress = 1 - Math.pow(1 - progress, 3); //
+            palletFork.rotation.z = THREE.MathUtils.lerp(palletForkStartAngle, palletForkTargetAngle, easedProgress); //
         }
 
-        // --- HAIRSPRING ANIMATION ---
-        if (hairSpringMesh && hairSpringOriginalPositions && maxRadius > 0) {
-            const positions = hairSpringMesh.geometry.attributes.position;
-            const vertexCount = positions.count;
-            for (let i = 0; i < vertexCount; i++) {
-                p_orig.set(
-                    hairSpringOriginalPositions[i * 3],
-                    hairSpringOriginalPositions[i * 3 + 1],
-                    hairSpringOriginalPositions[i * 3 + 2]
-                );
-                const dist_c = p_orig.distanceTo(colletOriginalPos);
-                const radial_weight = dist_c / maxRadius;
-                const z_range = hairspringBounds.maxZ - hairspringBounds.minZ;
-                let vertical_multiplier = 0.0;
-                if (z_range > 0) {
-                    const normalized_z = 1.0 - ((p_orig.z - hairspringBounds.minZ) / z_range);
-                    vertical_multiplier = THREE.MathUtils.lerp(
-                        hairspringAnimationSettings.bottomWeightMultiplier,
-                        hairspringAnimationSettings.topWeightMultiplier,
-                        normalized_z
-                    );
-                }
-                let weight = radial_weight * vertical_multiplier;
-                weight = Math.max(0.0, Math.min(1.0, weight));
-                const finalAmplitude = sineValue * hairspringAnimationSettings.maxAmplitude * weight;
-                if (dist_c > 0.001) {
-                    displacementDirection.subVectors(p_orig, colletOriginalPos).normalize();
-                } else {
-                    displacementDirection.set(0, 0, 0);
-                }
-                const finalX = p_orig.x + displacementDirection.x * finalAmplitude;
-                const finalZ = p_orig.z + displacementDirection.z * finalAmplitude;
-                const finalY = p_orig.y;
-                positions.setXYZ(i, finalX, finalY, finalZ);
-            }
-            positions.needsUpdate = true;
+        // --- HAIRSPRING ANIMATION (GPU) ---
+        // Instead of the expensive CPU loop, just update the shader uniform.
+        // The GPU will now handle all per-vertex calculations in parallel.
+        if (hairSpringMesh && hairSpringMesh.userData.shader) {
+            hairSpringMesh.userData.shader.uniforms.u_sineValue.value = sineValue;
         }
     }
+    // *** END UPDATED SECTION 2 ***
 
-    renderer.render(scene, camera);
+    renderer.render(scene, camera); //
 }
 
 // Start the animation
-animate();
+animate(); //
