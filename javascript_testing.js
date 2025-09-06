@@ -156,7 +156,7 @@ const settings = {
     showDateTime: false,  //
     tiltEnabled: false, //
     soundEnabled: false, //
-    showFPS: false,  //
+    showFPS: true,  //
     // --- MODIFICATION START ---
     showShadowBox: true, // Add option to toggle shadow box visibility
     // --- MODIFICATION END ---
@@ -1015,4 +1015,5 @@ function animate() { //
 
 // Start the animation
 animate(); //
+
 
