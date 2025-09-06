@@ -110,6 +110,38 @@ NOTES (Will eventually move this to the ReadMe file):
 		- 3. End of cycle (0.4 Seconds): Balance wheel reaces the end of its second swing and starts back.
 */
 
+// 3D Javacript ETA 6497 Clock using three.js
+// MIT License. - Work In Progress
+// Jeff Miller 2025. Revised 9/6/25
+
+/* References and Notes
+- AI Development Support & Debugging: Google Gemini
+- HDRI: https://polyhaven.com/a/colorful_studio
+- PBR Textures: https://www.cgbookcase.com/
+- Modified ETA 6497-1 Watch Movement CAD: Steen Winther: https://grabcad.com/library/eta-6497-1-complete-watch-movement
+- ETA 6497 Custom Clock Hands and Clock Case made in Fusion 360
+- 5 Hz Tick Sound - Clock Ticking by RedDog0607: https://pixabay.com/sound-effects/clock-ticking-365218/
+- Development and Debugging Tools: Google Gemini
+- File encoding is set to UF-8
+- Local Server: python -m http.server run in a terminal in local javascript directory with index.html
+- 	http://localhost:8000 in a local browser tab
+- Single click brings up gui
+- Zoom, Pan (right mouse button or two finger touch), and rotate are supported
+- Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
+*/
+
+/*
+To Do:
+- Finish textures
+- Finish gears anamation
+- Add option to "explode parts"
+- Fix tilt mode for mobile devices 
+- Update Shadow Box to a better texture and more detail
+- Add top plate back in and make it transparent when viewed from the front
+- Add option for lower poly model to improve frame rate on mobile devices
+*/
+
+
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -133,7 +165,7 @@ const cameraResetTargetTarget = new THREE.Vector3(0, 0, 0); //
 let isUserInteracting = false; //
 
 const settings = {
-    clockRunning: false, //
+    clockRunning: true, //
     showDateTime: false,  //
     tiltEnabled: false, //
     soundEnabled: false, //
@@ -473,7 +505,7 @@ shadowBoxWalls.add(wall); // Add the back wall to our new group
 const topWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial); //
 const bottomWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial); //
 const leftWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial); //
-const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), rightRightMaterial); //
+const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial); //
 [topWall, bottomWall, leftWall, rightWall].forEach(w => { //
     w.castShadow = true; //
     w.receiveShadow = true; //
