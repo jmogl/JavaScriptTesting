@@ -145,6 +145,7 @@ NOTES (Will eventually move this to the ReadMe file):
 - Single click brings up gui
 - Zoom, Pan (right mouse button or two finger touch), and rotate are supported
 - Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
+- Adjust performance parameters including shadow mapping and pixel resolution
 */
 
 /*
@@ -157,8 +158,6 @@ To Do:
 - Add top plate back in and make it transparent when viewed from the front
 - Add option for lower poly model to improve frame rate on mobile devices
 */
-
-
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -192,6 +191,7 @@ const settings = {
     showDateTime: false,  //
     tiltEnabled: false, //
     soundEnabled: false, //
+    soundVolume: 0.2,   // Default volume
     showFPS: false,  //
     showShadowBox: true, 
     listMeshBodies: false,  //
@@ -264,23 +264,42 @@ const hairspringAnimationSettings = { //
     bottomWeightMultiplier: -0.06 //
 };
 
-// --- Sound ---
-// Path is relative (no leading '/') to work on GitHub Pages
-const tickSound = new Audio('textures/clock-ticking-5Hz.mp3'); 
-tickSound.volume = 0.0; 
-// --- MODIFICATION START: Set sound to loop ---
-tickSound.loop = true;
-// --- MODIFICATION END ---
+// --- Web Audio API for gapless looping ---
+// --- 1. Create AudioContext and global audio variables ---
+let audioContext;
+let tickAudioBuffer = null;     // This will hold the decoded sound data
+let currentTickSource = null; // This holds the "player" node
+let masterGainNode = null;      // This is our persistent volume control
 
-// Added error logging for audio file
-tickSound.addEventListener('error', (e) => {
-    console.error("--- Audio Load Error ---");
-    console.error("Failed to load clock ticking sound. Check file path ('" + tickSound.src + "') and network settings.");
-    console.error("Error details:", e);
-});
-tickSound.addEventListener('canplaythrough', () => {
-    console.log("Audio file loaded successfully and is ready to play.");
-});
+try {
+    // Create the global AudioContext and the master GainNode (volume)
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    masterGainNode = audioContext.createGain();
+    masterGainNode.gain.value = 0.0; // Start muted
+    masterGainNode.connect(audioContext.destination); // Connect gain to speakers ONCE
+} catch (e) {
+    console.error("Web Audio API is not supported in this browser.");
+}
+
+// --- 2. Asynchronously load and decode the audio file ---
+if (audioContext) {
+    fetch('textures/clock-ticking-5Hz.mp3')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status} while fetching audio file.`);
+            }
+            return response.arrayBuffer();
+        })
+        .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+        .then(decodedData => {
+            tickAudioBuffer = decodedData; // Store the high-quality buffer
+            console.log("Audio file loaded and decoded successfully (Web Audio API).");
+        })
+        .catch(e => {
+            console.error("--- Audio Load Error (Web Audio) ---");
+            console.error("Failed to fetch or decode audio file.", e);
+        });
+}
 
 
 // --- Wait for the DOM to be ready, then create and inject UI elements ---
@@ -329,24 +348,55 @@ window.addEventListener('DOMContentLoaded', () => { //
         if (value) { enableTilt(); } else { disableTilt(); } //
     });
 
-    // --- MODIFICATION START: Switched logic to a simple Play/Pause on the looping track ---
-    gui.add(settings, 'soundEnabled').name('Enable Sound').onChange(value => { 
-        if (value) {
-            // User wants sound ON
-            tickSound.volume = 0.2;
-            // This is the user gesture, so .play() will work, unlock audio,
-            // and start the looping track.
-            tickSound.play().catch(e => {
-                console.warn("Audio context failed to unlock.", e);
-            });
-        } else {
-            // User wants sound OFF
-            tickSound.pause(); // Just pause the looping track
-            tickSound.currentTime = 0; // Rewind for next time
-            tickSound.volume = 0.0; // Ensure it's silent
+    // --- Sound controls linking to Web Audio API ---
+    const soundEnabledController = gui.add(settings, 'soundEnabled').name('Enable Sound');
+
+    // 1. Create the volume slider, link its onChange to the masterGainNode
+    const volumeSliderController = gui.add(settings, 'soundVolume', 0.0, 1.0, 0.01).name('').onChange(volumeValue => {
+        if (masterGainNode) {
+            masterGainNode.gain.value = volumeValue; // Update gain in real-time
         }
     });
-    // --- MODIFICATION END ---
+
+    // 2. Hide the volume slider by default
+    volumeSliderController.domElement.style.display = settings.soundEnabled ? 'block' : 'none';
+
+    // 3. 'Enable Sound' onChange controls visibility, gain, and starts the master audio loop (once)
+    soundEnabledController.onChange(value => { 
+        if (value) {
+            // User wants sound ON
+            volumeSliderController.domElement.style.display = 'block'; // SHOW the slider
+            if (masterGainNode) {
+                masterGainNode.gain.value = settings.soundVolume; // Set gain to slider value
+            }
+
+            // Resume AudioContext if it's suspended (required by browsers)
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume(); // This IS the user gesture
+            }
+            
+            // If the audio is loaded BUT not playing yet, create and start the master loop.
+            // This only runs ONCE.
+            if (tickAudioBuffer && !currentTickSource) {
+                currentTickSource = audioContext.createBufferSource();
+                currentTickSource.buffer = tickAudioBuffer;
+                currentTickSource.loop = true; // This is the GAPLESS loop
+                
+                // --- MODIFICATION: Set initial playback rate to match current slider ---
+                currentTickSource.playbackRate.value = settings.beatRate / 5.0; 
+                // --- END MODIFICATION ---
+
+                currentTickSource.connect(masterGainNode); // Connect: Source -> Gain
+                currentTickSource.start(0); // Play the loop. It will now run forever.
+            }
+        } else {
+            // User wants sound OFF
+            volumeSliderController.domElement.style.display = 'none'; // HIDE the slider
+            if (masterGainNode) {
+                masterGainNode.gain.value = 0.0; // Just MUTE the loop. It continues silently.
+            }
+        }
+    });
 
     gui.add(settings, 'showFPS').name('Show FPS').onChange(value => { //
         fpsCounter.style.display = value ? 'block' : 'none'; //
@@ -356,7 +406,17 @@ window.addEventListener('DOMContentLoaded', () => { //
             shadowBoxWalls.visible = value;
         }
     });
-    gui.add(settings, 'beatRate', 0.5, 5.0, 0.1).name('Beat Rate / Sec'); //
+    
+    // --- MODIFICATION START: Added onChange handler to sync beat rate and audio playback rate ---
+    gui.add(settings, 'beatRate', 0.5, 5.0, 0.1).name('Beat Rate / Sec').onChange(newBeatRate => {
+        // Check if the audio player (source node) has been created yet
+        if (currentTickSource) {
+            // Update the playbackRate value based on our formula (5.0 = 100% speed)
+            currentTickSource.playbackRate.value = newBeatRate / 5.0;
+        }
+    });
+    // --- MODIFICATION END ---
+
     gui.add(settings, 'resetClock').name('Reset Clock'); //
     gui.add(settings, 'resetCamera').name('Reset Camera'); //
 
@@ -412,7 +472,6 @@ window.addEventListener('DOMContentLoaded', () => { //
         });
     });
 
-    // --- MODIFICATION: Updated slider range to 0.5 - 2.0 ---
     performanceFolder.add(settings, 'maxPixelRatio', 0.5, 2.0, 0.1).name('Pixel Ratio Cap').onChange(value => {
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, value));
     });
@@ -478,8 +537,6 @@ window.addEventListener('DOMContentLoaded', () => { //
         const distance = pointerDownPos.distanceTo(new THREE.Vector2(pointer.clientX, pointer.clientY)); //
         
         pointerDownTime = null; //
-
-        // Audio unlock logic has been removed from here
 
         if (duration < 200 && distance < 15) { //
             if (gui.domElement.contains(pointer.target)) return; //
@@ -920,8 +977,6 @@ function layoutScene() { //
     dirLight.shadow.camera.updateProjectionMatrix(); //
 
     // --- Cache all calculated light/shadow values ---
-    // We cache these settings here so we can re-create the light
-    // perfectly from the GUI onChange handler.
     _lightPosition.copy(dirLight.position);
     _lightTargetPosition.copy(dirLight.target.position);
     _shadowCameraSettings.left = dirLight.shadow.camera.left;
@@ -983,14 +1038,10 @@ function animate() { //
     }
 
     // --- Camera Reset Animation Handler ---
-    // Only run the animation if it's triggered AND the user isn't actively controlling the camera.
     if (isResettingCamera && !isUserInteracting) { //
         const lerpFactor = Math.min(delta * 4.0, 1.0);  //
-
         camera.position.lerp(cameraResetTargetPos, lerpFactor); //
         controls.target.lerp(cameraResetTargetTarget, lerpFactor); //
-
-        // When the animation is very close to finishing, snap to the end and stop.
         if (camera.position.distanceTo(cameraResetTargetPos) < 0.01) { //
             camera.position.copy(cameraResetTargetPos); //
             controls.target.copy(cameraResetTargetTarget); //
@@ -1006,12 +1057,10 @@ function animate() { //
     if (settings.showDateTime) { //
         const nowForDate = new Date(); //
         digitalDate.textContent = nowForDate.toLocaleDateString(undefined, dateOptions); //
-
         const totalSeconds = Math.floor(simulatedSeconds); //
         const hours = Math.floor((totalSeconds / 3600) % 24); //
         const minutes = Math.floor((totalSeconds / 60) % 60); //
         const seconds = totalSeconds % 60; //
-
         const formattedHours = ('0' + hours).slice(-2); //
         const formattedMinutes = ('0' + minutes).slice(-2); //
         const formattedSeconds = ('0' + seconds).slice(-2); //
@@ -1079,18 +1128,11 @@ function animate() { //
             }
 
             if (escapeWheel) { //
-                // The direction of escape wheel step depends on the pallet fork's movement direction
                 escapeWheel.rotation.z += (ESCAPE_WHEEL_STEP * palletForkState); //
             }
             simulatedSeconds += BEAT_TIME_VALUE; //
 
-            // --- MODIFICATION START: All audio .play() logic has been REMOVED from the animation loop ---
-            // The sound is now a single looping track controlled *only* by the GUI.
-            // if (tickSound && settings.soundEnabled) { //
-            //     tickSound.currentTime = 0; //
-            //     tickSound.play().catch(() => {}); //
-            // }
-            // --- MODIFICATION END ---
+            // --- ALL AUDIO LOGIC REMOVED FROM ANIMATION LOOP ---
         }
         previousSineValue = sineValue; //
 
@@ -1098,19 +1140,15 @@ function animate() { //
         if (isPalletForkAnimating && palletFork) { //
             const elapsedTime = time - palletForkAnimStartTime; //
             let progress = elapsedTime / palletForkAnimDuration; //
-
             if (progress >= 1.0) { //
                 progress = 1.0; //
                 isPalletForkAnimating = false; //
             }
-            
             const easedProgress = 1 - Math.pow(1 - progress, 3); //
             palletFork.rotation.z = THREE.MathUtils.lerp(palletForkStartAngle, palletForkTargetAngle, easedProgress); //
         }
 
         // --- HAIRSPRING ANIMATION (GPU) ---
-        // Instead of the expensive CPU loop, just update the shader uniform.
-        // The GPU will now handle all per-vertex calculations in parallel.
         if (hairSpringMesh && hairSpringMesh.userData.shader) {
             hairSpringMesh.userData.shader.uniforms.u_sineValue.value = sineValue;
         }
