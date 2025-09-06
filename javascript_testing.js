@@ -127,6 +127,38 @@ NOTES (Will eventually move this to the ReadMe file):
 - Zoom, Pan (right mouse button or two finger touch), and rotate are supported
 - Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
 */
+// 3D Javacript ETA 6497 Clock using three.js
+// MIT License. - Work In Progress
+// Jeff Miller 2025. Revised 9/6/25
+
+/* References and Notes
+- AI Development Support & Debugging: Google Gemini
+- HDRI: https://polyhaven.com/a/colorful_studio
+- PBR Textures: https://www.cgbookcase.com/
+- Modified ETA 6497-1 Watch Movement CAD: Steen Winther: https://grabcad.com/library/eta-6497-1-complete-watch-movement
+- ETA 6497 Custom Clock Hands and Clock Case made in Fusion 360
+- 5 Hz Tick Sound - Clock Ticking by RedDog0607: https://pixabay.com/sound-effects/clock-ticking-365218/
+- Development and Debugging Tools: Google Gemini
+- File encoding is set to UF-8
+- Local Server: python -m http.server run in a terminal in local javascript directory with index.html
+- 	http://localhost:8000 in a local browser tab
+- Single click brings up gui
+- Zoom, Pan (right mouse button or two finger touch), and rotate are supported
+- Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
+*/
+
+/*
+To Do:
+- Finish textures
+- Finish gears anamation
+- Add option to "explode parts"
+- Fix tilt mode for mobile devices 
+- Update Shadow Box to a better texture and more detail
+- Add top plate back in and make it transparent when viewed from the front
+- Add option for lower poly model to improve frame rate on mobile devices
+*/
+
+
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -141,7 +173,6 @@ let digitalDate, digitalClock, fpsCounter; //
 let gui; //
 let pointerDownTime; //
 let pointerDownPos = new THREE.Vector2(); //
-// NOTE: audioUnlocked flag removed. Unlock logic moved to GUI handler.
 
 // --- Variables for smooth camera reset animation ---
 const clock = new THREE.Clock();  //
@@ -236,7 +267,10 @@ const hairspringAnimationSettings = { //
 // --- Sound ---
 // Path is relative (no leading '/') to work on GitHub Pages
 const tickSound = new Audio('textures/clock-ticking-5Hz.mp3'); 
-tickSound.volume = 0.0; //
+tickSound.volume = 0.0; 
+// --- MODIFICATION START: Set sound to loop ---
+tickSound.loop = true;
+// --- MODIFICATION END ---
 
 // Added error logging for audio file
 tickSound.addEventListener('error', (e) => {
@@ -295,17 +329,21 @@ window.addEventListener('DOMContentLoaded', () => { //
         if (value) { enableTilt(); } else { disableTilt(); } //
     });
 
-    // --- MODIFICATION START: Audio unlock logic moved here ---
-    gui.add(settings, 'soundEnabled').name('Enable Sound').onChange(value => { //
-        tickSound.volume = value ? 0.2 : 0.0; //
-        
+    // --- MODIFICATION START: Switched logic to a simple Play/Pause on the looping track ---
+    gui.add(settings, 'soundEnabled').name('Enable Sound').onChange(value => { 
         if (value) {
-            // This is the user gesture. We MUST call .play() once *inside*
-            // this event handler to satisfy browser autoplay policies.
-            // This will play the first tick AND unlock future ticks
-            // from the animate() loop.
-            tickSound.currentTime = 0;
-            tickSound.play().catch(() => {}); // Play the first tick to unlock
+            // User wants sound ON
+            tickSound.volume = 0.2;
+            // This is the user gesture, so .play() will work, unlock audio,
+            // and start the looping track.
+            tickSound.play().catch(e => {
+                console.warn("Audio context failed to unlock.", e);
+            });
+        } else {
+            // User wants sound OFF
+            tickSound.pause(); // Just pause the looping track
+            tickSound.currentTime = 0; // Rewind for next time
+            tickSound.volume = 0.0; // Ensure it's silent
         }
     });
     // --- MODIFICATION END ---
@@ -441,7 +479,7 @@ window.addEventListener('DOMContentLoaded', () => { //
         
         pointerDownTime = null; //
 
-        // --- MODIFICATION: Removed audio unlock from this function ---
+        // Audio unlock logic has been removed from here
 
         if (duration < 200 && distance < 15) { //
             if (gui.domElement.contains(pointer.target)) return; //
@@ -1045,10 +1083,14 @@ function animate() { //
                 escapeWheel.rotation.z += (ESCAPE_WHEEL_STEP * palletForkState); //
             }
             simulatedSeconds += BEAT_TIME_VALUE; //
-            if (tickSound && settings.soundEnabled) { //
-                tickSound.currentTime = 0; //
-                tickSound.play().catch(() => {}); //
-            }
+
+            // --- MODIFICATION START: All audio .play() logic has been REMOVED from the animation loop ---
+            // The sound is now a single looping track controlled *only* by the GUI.
+            // if (tickSound && settings.soundEnabled) { //
+            //     tickSound.currentTime = 0; //
+            //     tickSound.play().catch(() => {}); //
+            // }
+            // --- MODIFICATION END ---
         }
         previousSineValue = sineValue; //
 
