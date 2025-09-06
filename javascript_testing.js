@@ -1,6 +1,6 @@
 // 3D Javacript ETA 6497 Clock using three.js
 // MIT License. - Work In Progress
-// Jeff Miller 2025. 9/4/25
+// Jeff Miller 2025. 9/6/25
 
 /* References and Notes
 - AI Development Support & Debugging: Google Gemini
@@ -109,25 +109,7 @@ NOTES (Will eventually move this to the ReadMe file):
 			another tooth. This ends the first pause and immediately begins the second 0.2 second pause.
 		- 3. End of cycle (0.4 Seconds): Balance wheel reaces the end of its second swing and starts back.
 */
-// 3D Javacript ETA 6497 Clock using three.js
-// MIT License. - Work In Progress
-// Jeff Miller 2025. 9/5/25
 
-/* References and Notes
-- AI Development Support & Debugging: Google Gemini
-- HDRI: https://polyhaven.com/a/colorful_studio
-- PBR Textures: https://www.cgbookcase.com/
-- Modified ETA 6497-1 Watch Movement CAD: Steen Winther: https://grabcad.com/library/eta-6497-1-complete-watch-movement
-- ETA 6497 Custom Clock Hands and Clock Case made in Fusion 360
-- 5 Hz Tick Sound - Clock Ticking by RedDog0607: https://pixabay.com/sound-effects/clock-ticking-365218/
-- Development and Debugging Tools: Google Gemini
-- File encoding is set to UF-8
-- Local Server: python -m http.server run in a terminal in local javascript directory with index.html
-- 	http://localhost:8000 in a local browser tab
-- Single click brings up gui
-- Zoom, Pan (right mouse button or two finger touch), and rotate are supported
-- Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
-*/
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -150,13 +132,15 @@ const cameraResetTargetPos = new THREE.Vector3(0, 0, 60); //
 const cameraResetTargetTarget = new THREE.Vector3(0, 0, 0); //
 let isUserInteracting = false; //
 
-// GUI Settings
 const settings = {
-    clockRunning: true, //
+    clockRunning: false, //
     showDateTime: false,  //
     tiltEnabled: false, //
     soundEnabled: false, //
     showFPS: false,  //
+    // --- MODIFICATION START ---
+    showShadowBox: true, // Add option to toggle shadow box visibility
+    // --- MODIFICATION END ---
     listMeshBodies: false,  //
     showMinMaxWheelAngles: false, //
     beatRate: 5.0,  //
@@ -187,6 +171,9 @@ let modelScale = 3.5; //
 let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring, secondWheelSmallGear, thirdWheelTopGear; //
 let newHourHand, newMinuteHand, newSecondHand; //
 let collectedParts = {};  //
+// --- MODIFICATION START ---
+let shadowBoxWalls; // This will hold the wall meshes for easy toggling
+// --- MODIFICATION END ---
 
 // --- Simulation State Variables ---
 let simulatedSeconds = 0; //
@@ -277,6 +264,14 @@ window.addEventListener('DOMContentLoaded', () => { //
     gui.add(settings, 'showFPS').name('Show FPS').onChange(value => { //
         fpsCounter.style.display = value ? 'block' : 'none'; //
     });
+    // --- MODIFICATION START ---
+    // Add a GUI option to show or hide the shadow box for performance
+    gui.add(settings, 'showShadowBox').name('Show Shadow Box').onChange(value => {
+        if (shadowBoxWalls) {
+            shadowBoxWalls.visible = value;
+        }
+    });
+    // --- MODIFICATION END ---
     gui.add(settings, 'beatRate', 0.5, 5.0, 0.1).name('Beat Rate / Sec'); //
     gui.add(settings, 'resetClock').name('Reset Clock'); //
     gui.add(settings, 'resetCamera').name('Reset Camera'); //
@@ -465,16 +460,26 @@ wall.receiveShadow = true; //
 const wallThickness = 0.01; //
 const boxGroup = new THREE.Group(); //
 scene.add(boxGroup); //
-boxGroup.add(wall); //
-boxGroup.add(clockUnit); //
+// --- MODIFICATION START ---
+// Create a new group for the shadow box walls. This allows us to toggle
+// their visibility from the GUI for performance.
+shadowBoxWalls = new THREE.Group();
+boxGroup.add(shadowBoxWalls);
+// --- MODIFICATION END ---
+boxGroup.add(clockUnit); // Add the clock itself to the main group
+// --- MODIFICATION START ---
+shadowBoxWalls.add(wall); // Add the back wall to our new group
+// --- MODIFICATION END ---
 const topWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial); //
 const bottomWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial); //
 const leftWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial); //
-const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial); //
+const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), rightRightMaterial); //
 [topWall, bottomWall, leftWall, rightWall].forEach(w => { //
     w.castShadow = true; //
     w.receiveShadow = true; //
-    boxGroup.add(w); //
+    // --- MODIFICATION START ---
+    shadowBoxWalls.add(w); // Add the four side walls to our new group
+    // --- MODIFICATION END ---
 });
 
 // --- Materials for GLB parts ---
@@ -991,6 +996,5 @@ function animate() { //
 
 // Start the animation
 animate(); //
-
 
 
