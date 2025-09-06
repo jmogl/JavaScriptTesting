@@ -108,26 +108,6 @@ NOTES (Will eventually move this to the ReadMe file):
 			through the center again, kicks the pallet fork, and unlocks the escape wheel again. The escape wheel moves	
 			another tooth. This ends the first pause and immediately begins the second 0.2 second pause.
 		- 3. End of cycle (0.4 Seconds): Balance wheel reaces the end of its second swing and starts back.
-*/
-// 3D Javacript ETA 6497 Clock using three.js
-// MIT License. - Work In Progress
-// Jeff Miller 2025. Revised 9/6/25
-
-/* References and Notes
-- AI Development Support & Debugging: Google Gemini
-- HDRI: https://polyhaven.com/a/colorful_studio
-- PBR Textures: https://www.cgbookcase.com/
-- Modified ETA 6497-1 Watch Movement CAD: Steen Winther: https://grabcad.com/library/eta-6497-1-complete-watch-movement
-- ETA 6497 Custom Clock Hands and Clock Case made in Fusion 360
-- 5 Hz Tick Sound - Clock Ticking by RedDog0607: https://pixabay.com/sound-effects/clock-ticking-365218/
-- Development and Debugging Tools: Google Gemini
-- File encoding is set to UF-8
-- Local Server: python -m http.server run in a terminal in local javascript directory with index.html
-- 	http://localhost:8000 in a local browser tab
-- Single click brings up gui
-- Zoom, Pan (right mouse button or two finger touch), and rotate are supported
-- Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
-*/
 // 3D Javacript ETA 6497 Clock using three.js
 // MIT License. - Work In Progress
 // Jeff Miller 2025. Revised 9/6/25
@@ -161,7 +141,7 @@ let digitalDate, digitalClock, fpsCounter; //
 let gui; //
 let pointerDownTime; //
 let pointerDownPos = new THREE.Vector2(); //
-let audioUnlocked = false;
+// NOTE: audioUnlocked flag removed. Unlock logic moved to GUI handler.
 
 // --- Variables for smooth camera reset animation ---
 const clock = new THREE.Clock();  //
@@ -254,12 +234,11 @@ const hairspringAnimationSettings = { //
 };
 
 // --- Sound ---
-// --- MODIFICATION START: Removed leading '/' from path to make it relative ---
-// This allows the file to be found on sub-directory hosts like GitHub Pages.
+// Path is relative (no leading '/') to work on GitHub Pages
 const tickSound = new Audio('textures/clock-ticking-5Hz.mp3'); 
 tickSound.volume = 0.0; //
 
-// --- MODIFICATION START: Added error logging for audio file ---
+// Added error logging for audio file
 tickSound.addEventListener('error', (e) => {
     console.error("--- Audio Load Error ---");
     console.error("Failed to load clock ticking sound. Check file path ('" + tickSound.src + "') and network settings.");
@@ -268,7 +247,6 @@ tickSound.addEventListener('error', (e) => {
 tickSound.addEventListener('canplaythrough', () => {
     console.log("Audio file loaded successfully and is ready to play.");
 });
-// --- MODIFICATION END ---
 
 
 // --- Wait for the DOM to be ready, then create and inject UI elements ---
@@ -316,9 +294,22 @@ window.addEventListener('DOMContentLoaded', () => { //
     gui.add(settings, 'tiltEnabled').name('Enable Tilt').onChange(value => { //
         if (value) { enableTilt(); } else { disableTilt(); } //
     });
+
+    // --- MODIFICATION START: Audio unlock logic moved here ---
     gui.add(settings, 'soundEnabled').name('Enable Sound').onChange(value => { //
         tickSound.volume = value ? 0.2 : 0.0; //
+        
+        if (value) {
+            // This is the user gesture. We MUST call .play() once *inside*
+            // this event handler to satisfy browser autoplay policies.
+            // This will play the first tick AND unlock future ticks
+            // from the animate() loop.
+            tickSound.currentTime = 0;
+            tickSound.play().catch(() => {}); // Play the first tick to unlock
+        }
     });
+    // --- MODIFICATION END ---
+
     gui.add(settings, 'showFPS').name('Show FPS').onChange(value => { //
         fpsCounter.style.display = value ? 'block' : 'none'; //
     });
@@ -342,13 +333,11 @@ window.addEventListener('DOMContentLoaded', () => { //
         
         const resolution = parseInt(value);
 
-        // Do nothing if the resolution is already correct
         if (dirLight && resolution === dirLight.shadow.mapSize.width) {
             return;
         }
 
         // --- THE "NUKE AND REBUILD" FIX ---
-        // 1. Dispose and remove the old light and its target
         if (dirLight) {
             if (dirLight.shadow.map) {
                 dirLight.shadow.map.dispose();
@@ -356,38 +345,24 @@ window.addEventListener('DOMContentLoaded', () => { //
             scene.remove(dirLight.target);
             scene.remove(dirLight);
         }
-
-        // 2. Create a brand new light with the same base properties
         const newLight = new THREE.DirectionalLight(0xffffff, 2.5);
-        newLight.position.copy(_lightPosition); // Apply cached position from layoutScene
+        newLight.position.copy(_lightPosition);
         newLight.castShadow = true;
-
-        // 3. Apply all shadow properties WITH THE NEW RESOLUTION
         newLight.shadow.mapSize.width = resolution;
         newLight.shadow.mapSize.height = resolution;
         newLight.shadow.bias = -0.001;
         newLight.shadow.normalBias = 0.01;
-
-        // 4. Apply cached shadow camera frustum settings from layoutScene
         newLight.shadow.camera.left = _shadowCameraSettings.left;
         newLight.shadow.camera.right = _shadowCameraSettings.right;
         newLight.shadow.camera.top = _shadowCameraSettings.top;
         newLight.shadow.camera.bottom = _shadowCameraSettings.bottom;
         newLight.shadow.camera.near = _shadowCameraSettings.near;
         newLight.shadow.camera.far = _shadowCameraSettings.far;
-        
-        // 5. Update the new camera's matrix
         newLight.shadow.camera.updateProjectionMatrix();
-
-        // 6. Add the new light and its target (with cached pos) to the scene
         scene.add(newLight);
         newLight.target.position.copy(_lightTargetPosition);
         scene.add(newLight.target);
-
-        // 7. Overwrite the global light variable with the new object
         dirLight = newLight;
-
-        // 8. Force all materials to recompile shaders to use the new light/map
         boxGroup.traverse((node) => {
             if (node.isMesh && node.material) {
                 if (Array.isArray(node.material)) {
@@ -397,7 +372,6 @@ window.addEventListener('DOMContentLoaded', () => { //
                 }
             }
         });
-        
     });
 
     // --- MODIFICATION: Updated slider range to 0.5 - 2.0 ---
@@ -467,14 +441,7 @@ window.addEventListener('DOMContentLoaded', () => { //
         
         pointerDownTime = null; //
 
-        // --- AUDIO UNLOCK FIX FOR MOBILE ---
-        // Mobile browsers require a user gesture to unlock audio.
-        // This 'pointerup' event is our first gesture. We'll play the 
-        // sound (which is muted by default) to satisfy the policy.
-        if (!audioUnlocked && (distance < 15)) {
-            tickSound.play().catch(() => {}); // Play and catch any error
-            audioUnlocked = true; // Only do this once
-        }
+        // --- MODIFICATION: Removed audio unlock from this function ---
 
         if (duration < 200 && distance < 15) { //
             if (gui.domElement.contains(pointer.target)) return; //
