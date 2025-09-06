@@ -130,17 +130,6 @@ NOTES (Will eventually move this to the ReadMe file):
 - Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
 */
 
-/*
-To Do:
-- Finish textures
-- Finish gears anamation
-- Add option to "explode parts"
-- Fix tilt mode for mobile devices 
-- Update Shadow Box to a better texture and more detail
-- Add top plate back in and make it transparent when viewed from the front
-- Add option for lower poly model to improve frame rate on mobile devices
-*/
-
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
@@ -168,7 +157,9 @@ const settings = {
     tiltEnabled: false, //
     soundEnabled: false, //
     showFPS: false,  //
+    // --- MODIFICATION START ---
     showShadowBox: true, // Add option to toggle shadow box visibility
+    // --- MODIFICATION END ---
     listMeshBodies: false,  //
     showMinMaxWheelAngles: false, //
     beatRate: 5.0,  //
@@ -199,7 +190,9 @@ let modelScale = 3.5; //
 let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring, secondWheelSmallGear, thirdWheelTopGear; //
 let newHourHand, newMinuteHand, newSecondHand; //
 let collectedParts = {};  //
+// --- MODIFICATION START ---
 let shadowBoxWalls; // This will hold the wall meshes for easy toggling
+// --- MODIFICATION END ---
 
 // --- Simulation State Variables ---
 let simulatedSeconds = 0; //
@@ -291,14 +284,10 @@ window.addEventListener('DOMContentLoaded', () => { //
         fpsCounter.style.display = value ? 'block' : 'none'; //
     });
     // --- MODIFICATION START ---
-    // This now calls functions to actively dispose or reload wall textures from VRAM
+    // Add a GUI option to show or hide the shadow box for performance
     gui.add(settings, 'showShadowBox').name('Show Shadow Box').onChange(value => {
-        if (value) {
-            // User wants it ON - reload textures
-            reloadWallTextures();
-        } else {
-            // User wants it OFF - dispose textures
-            disposeWallTextures();
+        if (shadowBoxWalls) {
+            shadowBoxWalls.visible = value;
         }
     });
     // --- MODIFICATION END ---
@@ -443,10 +432,6 @@ const zShift = 1.0; //
 
 // --- PBR Material Definitions ---
 const textureLoader = new THREE.TextureLoader(loadingManager).setPath('textures/'); //
-// --- MODIFICATION START ---
-// Create a separate loader for on-demand reloading that is not tied to the main loading manager
-const onDemandTextureLoader = new THREE.TextureLoader().setPath('textures/');
-// --- MODIFICATION END ---
 const woodBaseColor = textureLoader.load('Wood03_2K_BaseColor.png'); //
 const woodNormal = textureLoader.load('Wood03_2K_Normal.png'); //
 const woodRoughness = textureLoader.load('Wood03_2K_Roughness.png'); //
@@ -479,10 +464,7 @@ function cloneMaterialWithTextures(material) { //
 }
 const topBottomMaterial = cloneMaterialWithTextures(wallMaterial); //
 const leftRightMaterial = cloneMaterialWithTextures(wallMaterial); //
-// --- MODIFICATION START ---
-// Change to 'let' so we can overwrite this array with new texture objects upon reload
-let allWallTextures = [ //
-// --- MODIFICATION END ---
+const allWallTextures = [ //
     wallMaterial.map, wallMaterial.normalMap, wallMaterial.roughnessMap, wallMaterial.displacementMap, //
     topBottomMaterial.map, topBottomMaterial.normalMap, topBottomMaterial.roughnessMap, topBottomMaterial.displacementMap, //
     leftRightMaterial.map, leftRightMaterial.normalMap, leftRightMaterial.roughnessMap, leftRightMaterial.displacementMap //
@@ -497,20 +479,26 @@ wall.receiveShadow = true; //
 const wallThickness = 0.01; //
 const boxGroup = new THREE.Group(); //
 scene.add(boxGroup); //
+// --- MODIFICATION START ---
 // Create a new group for the shadow box walls. This allows us to toggle
 // their visibility from the GUI for performance.
 shadowBoxWalls = new THREE.Group();
 boxGroup.add(shadowBoxWalls);
+// --- MODIFICATION END ---
 boxGroup.add(clockUnit); // Add the clock itself to the main group
+// --- MODIFICATION START ---
 shadowBoxWalls.add(wall); // Add the back wall to our new group
+// --- MODIFICATION END ---
 const topWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial); //
 const bottomWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial); //
 const leftWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial); //
-const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial); // <-- Corrected typo
+const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial); //
 [topWall, bottomWall, leftWall, rightWall].forEach(w => { //
     w.castShadow = true; //
     w.receiveShadow = true; //
+    // --- MODIFICATION START ---
     shadowBoxWalls.add(w); // Add the four side walls to our new group
+    // --- MODIFICATION END ---
 });
 
 // --- Materials for GLB parts ---
@@ -774,109 +762,6 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
 const p_orig = new THREE.Vector3(); //
 const displacementDirection = new THREE.Vector3(); //
 
-// --- MODIFICATION START ---
-// Global vars to store wall texture repeat values. layoutScene will set these.
-let wallRepeat = new THREE.Vector2(1, 1);
-let tbRepeat = new THREE.Vector2(1, 1);
-let lrRepeat = new THREE.Vector2(1, 1);
-
-/**
- * Disposes all 12 texture maps used by the shadow box walls to free VRAM.
- */
-function disposeWallTextures() {
-    // allWallTextures was created at init and holds references to all 12 texture objects
-    allWallTextures.forEach(texture => {
-        if (texture) texture.dispose();
-    });
-
-    // Null out the maps on the materials
-    wallMaterial.map = null;
-    wallMaterial.normalMap = null;
-    wallMaterial.roughnessMap = null;
-    wallMaterial.displacementMap = null;
-
-    topBottomMaterial.map = null;
-    topBottomMaterial.normalMap = null;
-    topBottomMaterial.roughnessMap = null;
-    topBottomMaterial.displacementMap = null;
-
-    leftRightMaterial.map = null;
-    leftRightMaterial.normalMap = null;
-    leftRightMaterial.roughnessMap = null;
-    leftRightMaterial.displacementMap = null;
-
-    // Tell three.js to update the material
-    wallMaterial.needsUpdate = true;
-    topBottomMaterial.needsUpdate = true;
-    leftRightMaterial.needsUpdate = true;
-
-    if (shadowBoxWalls) shadowBoxWalls.visible = false;
-    console.log("Shadow box textures disposed.");
-}
-
-/**
- * Reloads all 12 texture maps for the shadow box walls.
- */
-function reloadWallTextures() {
-    // 1. Load the 4 base textures again using the on-demand loader
-    const woodBaseColor = onDemandTextureLoader.load('Wood03_2K_BaseColor.png');
-    const woodNormal = onDemandTextureLoader.load('Wood03_2K_Normal.png');
-    const woodRoughness = onDemandTextureLoader.load('Wood03_2K_Roughness.png');
-    const woodHeight = onDemandTextureLoader.load('Wood03_2K_Height.png');
-    woodBaseColor.colorSpace = THREE.SRGBColorSpace;
-
-    // 2. Assign them to the main wall material
-    wallMaterial.map = woodBaseColor;
-    wallMaterial.normalMap = woodNormal;
-    wallMaterial.roughnessMap = woodRoughness;
-    wallMaterial.displacementMap = woodHeight;
-
-    // 3. Clone these new textures for the other materials (per the original logic)
-    topBottomMaterial.map = woodBaseColor.clone();
-    topBottomMaterial.normalMap = woodNormal.clone();
-    topBottomMaterial.roughnessMap = woodRoughness.clone();
-    topBottomMaterial.displacementMap = woodHeight.clone();
-
-    leftRightMaterial.map = woodBaseColor.clone();
-    leftRightMaterial.normalMap = woodNormal.clone();
-    leftRightMaterial.roughnessMap = woodRoughness.clone();
-    leftRightMaterial.displacementMap = woodHeight.clone();
-
-    // 4. Create the new list of ALL texture objects (so we can dispose of them next time)
-    // This overwrites the global 'allWallTextures' array with the new texture instances.
-    allWallTextures = [
-        wallMaterial.map, wallMaterial.normalMap, wallMaterial.roughnessMap, wallMaterial.displacementMap,
-        topBottomMaterial.map, topBottomMaterial.normalMap, topBottomMaterial.roughnessMap, topBottomMaterial.displacementMap,
-        leftRightMaterial.map, leftRightMaterial.normalMap, leftRightMaterial.roughnessMap, leftRightMaterial.displacementMap
-    ];
-
-    // 5. Apply all wrap and repeat settings
-    allWallTextures.forEach(texture => {
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-    });
-
-    // 6. Apply specific repeats (using the values saved by layoutScene)
-    [wallMaterial.map, wallMaterial.normalMap, wallMaterial.roughnessMap, wallMaterial.displacementMap].forEach(t => {
-        if (t) t.repeat.copy(wallRepeat);
-    });
-    [topBottomMaterial.map, topBottomMaterial.normalMap, topBottomMaterial.roughnessMap, topBottomMaterial.displacementMap].forEach(t => {
-        if (t) t.repeat.copy(tbRepeat);
-    });
-    [leftRightMaterial.map, leftRightMaterial.normalMap, leftRightMaterial.roughnessMap, leftRightMaterial.displacementMap].forEach(t => {
-        if (t) t.repeat.copy(lrRepeat);
-    });
-
-    // 7. Tell materials to update and show the wall
-    wallMaterial.needsUpdate = true;
-    topBottomMaterial.needsUpdate = true;
-    leftRightMaterial.needsUpdate = true;
-    
-    if (shadowBoxWalls) shadowBoxWalls.visible = true;
-    console.log("Shadow box textures reloaded.");
-}
-// --- MODIFICATION END ---
-
 // --- SCENE LAYOUT AND UTILITY FUNCTIONS ---
 function layoutScene() { //
     camera.position.z = 60; //
@@ -893,23 +778,12 @@ function layoutScene() { //
     const backPlaneHeight = 2 * Math.tan(fov / 2) * backPlaneDistance; //
     const backPlaneWidth = backPlaneHeight * camera.aspect; //
     const unitsPerTexture = 15; //
-
-    // --- MODIFICATION START ---
-    // Store the calculated repeat values globally so we can re-apply them if textures are reloaded
-    wallRepeat.set(backPlaneWidth / unitsPerTexture, backPlaneHeight / unitsPerTexture);
-    tbRepeat.set(viewPlaneWidth / unitsPerTexture, boxDepth / unitsPerTexture);
-    lrRepeat.set(boxDepth / unitsPerTexture, viewPlaneHeight / unitsPerTexture);
-
     const wallTextures = [wallMaterial.map, wallMaterial.normalMap, wallMaterial.roughnessMap, wallMaterial.displacementMap]; //
     const tbTextures = [topBottomMaterial.map, topBottomMaterial.normalMap, topBottomMaterial.roughnessMap, topBottomMaterial.displacementMap]; //
     const lrTextures = [leftRightMaterial.map, leftRightMaterial.normalMap, leftRightMaterial.roughnessMap, leftRightMaterial.displacementMap]; //
-
-    // Apply repeats from the global vars
-    wallTextures.forEach(t => { if (t) t.repeat.copy(wallRepeat); });
-    tbTextures.forEach(t => { if (t) t.repeat.copy(tbRepeat); });
-    lrTextures.forEach(t => { if (t) t.repeat.copy(lrRepeat); });
-    // --- MODIFICATION END ---
-
+    wallTextures.forEach(t => t.repeat.set(backPlaneWidth / unitsPerTexture, backPlaneHeight / unitsPerTexture)); //
+    tbTextures.forEach(t => t.repeat.set(viewPlaneWidth / unitsPerTexture, boxDepth / unitsPerTexture)); //
+    lrTextures.forEach(t => t.repeat.set(boxDepth / unitsPerTexture, viewPlaneHeight / unitsPerTexture)); //
     wall.position.z = backWallZ; //
     wall.scale.set(backPlaneWidth, backPlaneHeight, 1); //
     topWall.scale.set(viewPlaneWidth, boxDepth, 1); //
