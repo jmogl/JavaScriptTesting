@@ -128,6 +128,25 @@ NOTES (Will eventually move this to the ReadMe file):
 - Zoom, Pan (right mouse button or two finger touch), and rotate are supported
 - Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
 */
+// 3D Javacript ETA 6497 Clock using three.js
+// MIT License. - Work In Progress
+// Jeff Miller 2025. Revised 9/6/25
+
+/* References and Notes
+- AI Development Support & Debugging: Google Gemini
+- HDRI: https://polyhaven.com/a/colorful_studio
+- PBR Textures: https://www.cgbookcase.com/
+- Modified ETA 6497-1 Watch Movement CAD: Steen Winther: https://grabcad.com/library/eta-6497-1-complete-watch-movement
+- ETA 6497 Custom Clock Hands and Clock Case made in Fusion 360
+- 5 Hz Tick Sound - Clock Ticking by RedDog0607: https://pixabay.com/sound-effects/clock-ticking-365218/
+- Development and Debugging Tools: Google Gemini
+- File encoding is set to UF-8
+- Local Server: python -m http.server run in a terminal in local javascript directory with index.html
+- 	http://localhost:8000 in a local browser tab
+- Single click brings up gui
+- Zoom, Pan (right mouse button or two finger touch), and rotate are supported
+- Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
+*/
 
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -142,9 +161,7 @@ let digitalDate, digitalClock, fpsCounter; //
 let gui; //
 let pointerDownTime; //
 let pointerDownPos = new THREE.Vector2(); //
-// --- MODIFICATION START: Add flag for mobile audio unlock ---
 let audioUnlocked = false;
-// --- MODIFICATION END ---
 
 // --- Variables for smooth camera reset animation ---
 const clock = new THREE.Clock();  //
@@ -237,8 +254,22 @@ const hairspringAnimationSettings = { //
 };
 
 // --- Sound ---
-const tickSound = new Audio('/textures/clock-ticking-5Hz.mp3'); //
+// --- MODIFICATION START: Removed leading '/' from path to make it relative ---
+// This allows the file to be found on sub-directory hosts like GitHub Pages.
+const tickSound = new Audio('textures/clock-ticking-5Hz.mp3'); 
 tickSound.volume = 0.0; //
+
+// --- MODIFICATION START: Added error logging for audio file ---
+tickSound.addEventListener('error', (e) => {
+    console.error("--- Audio Load Error ---");
+    console.error("Failed to load clock ticking sound. Check file path ('" + tickSound.src + "') and network settings.");
+    console.error("Error details:", e);
+});
+tickSound.addEventListener('canplaythrough', () => {
+    console.log("Audio file loaded successfully and is ready to play.");
+});
+// --- MODIFICATION END ---
+
 
 // --- Wait for the DOM to be ready, then create and inject UI elements ---
 window.addEventListener('DOMContentLoaded', () => { //
@@ -369,9 +400,8 @@ window.addEventListener('DOMContentLoaded', () => { //
         
     });
 
-    // --- MODIFICATION START: Update slider range to 0.5 - 2.0 ---
+    // --- MODIFICATION: Updated slider range to 0.5 - 2.0 ---
     performanceFolder.add(settings, 'maxPixelRatio', 0.5, 2.0, 0.1).name('Pixel Ratio Cap').onChange(value => {
-    // --- MODIFICATION END ---
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, value));
     });
 
@@ -437,7 +467,7 @@ window.addEventListener('DOMContentLoaded', () => { //
         
         pointerDownTime = null; //
 
-        // --- MODIFICATION START: AUDIO UNLOCK FIX FOR MOBILE ---
+        // --- AUDIO UNLOCK FIX FOR MOBILE ---
         // Mobile browsers require a user gesture to unlock audio.
         // This 'pointerup' event is our first gesture. We'll play the 
         // sound (which is muted by default) to satisfy the policy.
@@ -445,7 +475,6 @@ window.addEventListener('DOMContentLoaded', () => { //
             tickSound.play().catch(() => {}); // Play and catch any error
             audioUnlocked = true; // Only do this once
         }
-        // --- MODIFICATION END ---
 
         if (duration < 200 && distance < 15) { //
             if (gui.domElement.contains(pointer.target)) return; //
