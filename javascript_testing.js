@@ -130,6 +130,19 @@ NOTES (Will eventually move this to the ReadMe file):
 - Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
 */
 
+/*
+To Do:
+- Finish textures
+- Finish gears anamation
+- Add option to "explode parts"
+- Fix tilt mode for mobile devices 
+- Update Shadow Box to a better texture and more detail
+- Add top plate back in and make it transparent when viewed from the front
+- Add option for lower poly model to improve frame rate on mobile devices
+*/
+
+
+
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
@@ -152,7 +165,7 @@ const cameraResetTargetTarget = new THREE.Vector3(0, 0, 0); //
 let isUserInteracting = false; //
 
 const settings = {
-    clockRunning: false, //
+    clockRunning: true, //
     showDateTime: false,  //
     tiltEnabled: false, //
     soundEnabled: false, //
