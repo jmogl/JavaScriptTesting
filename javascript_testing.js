@@ -150,8 +150,9 @@ const cameraResetTargetPos = new THREE.Vector3(0, 0, 60); //
 const cameraResetTargetTarget = new THREE.Vector3(0, 0, 0); //
 let isUserInteracting = false; //
 
+// GUI Settings
 const settings = {
-    clockRunning: false, //
+    clockRunning: true, //
     showDateTime: false,  //
     tiltEnabled: false, //
     soundEnabled: false, //
@@ -990,5 +991,6 @@ function animate() { //
 
 // Start the animation
 animate(); //
+
 
 
