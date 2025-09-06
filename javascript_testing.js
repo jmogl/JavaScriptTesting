@@ -109,7 +109,6 @@ NOTES (Will eventually move this to the ReadMe file):
 			another tooth. This ends the first pause and immediately begins the second 0.2 second pause.
 		- 3. End of cycle (0.4 Seconds): Balance wheel reaces the end of its second swing and starts back.
 */
-
 // 3D Javacript ETA 6497 Clock using three.js
 // MIT License. - Work In Progress
 // Jeff Miller 2025. Revised 9/6/25
@@ -130,19 +129,6 @@ NOTES (Will eventually move this to the ReadMe file):
 - Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
 */
 
-/*
-To Do:
-- Finish textures
-- Finish gears anamation
-- Add option to "explode parts"
-- Fix tilt mode for mobile devices 
-- Update Shadow Box to a better texture and more detail
-- Add top plate back in and make it transparent when viewed from the front
-- Add option for lower poly model to improve frame rate on mobile devices
-*/
-
-
-
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
@@ -156,6 +142,9 @@ let digitalDate, digitalClock, fpsCounter; //
 let gui; //
 let pointerDownTime; //
 let pointerDownPos = new THREE.Vector2(); //
+// --- MODIFICATION START: Add flag for mobile audio unlock ---
+let audioUnlocked = false;
+// --- MODIFICATION END ---
 
 // --- Variables for smooth camera reset animation ---
 const clock = new THREE.Clock();  //
@@ -164,18 +153,24 @@ const cameraResetTargetPos = new THREE.Vector3(0, 0, 60); //
 const cameraResetTargetTarget = new THREE.Vector3(0, 0, 0); //
 let isUserInteracting = false; //
 
+// --- Cache variables for light replacement ---
+let _lightPosition = new THREE.Vector3();
+let _lightTargetPosition = new THREE.Vector3();
+let _shadowCameraSettings = {};
+
+
 const settings = {
     clockRunning: true, //
     showDateTime: false,  //
     tiltEnabled: false, //
     soundEnabled: false, //
-    showFPS: true,  //
-    // --- MODIFICATION START ---
-    showShadowBox: true, // Add option to toggle shadow box visibility
-    // --- MODIFICATION END ---
+    showFPS: false,  //
+    showShadowBox: true, 
     listMeshBodies: false,  //
     showMinMaxWheelAngles: false, //
     beatRate: 5.0,  //
+    shadowResolution: 2048, // Default is 2048
+    maxPixelRatio: 1.5,
     resetCamera: () => { //
         if (isResettingCamera) return; //
         isResettingCamera = true; //
@@ -190,7 +185,7 @@ const settings = {
         balanceWheelAngles = { start: null, min: Infinity, max: -Infinity }; //
         
         gui.controllers.forEach(c => { //
-            if (c.property === 'beatRate') { //
+            if (c.property === 'beatRate') {
                 c.updateDisplay(); //
             }
         });
@@ -203,9 +198,7 @@ let modelScale = 3.5; //
 let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel, thirdWheel, palletFork, hairSpring, secondWheelSmallGear, thirdWheelTopGear; //
 let newHourHand, newMinuteHand, newSecondHand; //
 let collectedParts = {};  //
-// --- MODIFICATION START ---
 let shadowBoxWalls; // This will hold the wall meshes for easy toggling
-// --- MODIFICATION END ---
 
 // --- Simulation State Variables ---
 let simulatedSeconds = 0; //
@@ -273,6 +266,8 @@ window.addEventListener('DOMContentLoaded', () => { //
         display: 'none' //
     });
 
+    fpsCounter.style.display = settings.showFPS ? 'block' : 'none';
+
     document.body.appendChild(digitalDate); //
     document.body.appendChild(digitalClock); //
     document.body.appendChild(fpsCounter); //
@@ -296,17 +291,89 @@ window.addEventListener('DOMContentLoaded', () => { //
     gui.add(settings, 'showFPS').name('Show FPS').onChange(value => { //
         fpsCounter.style.display = value ? 'block' : 'none'; //
     });
-    // --- MODIFICATION START ---
-    // Add a GUI option to show or hide the shadow box for performance
     gui.add(settings, 'showShadowBox').name('Show Shadow Box').onChange(value => {
         if (shadowBoxWalls) {
             shadowBoxWalls.visible = value;
         }
     });
-    // --- MODIFICATION END ---
     gui.add(settings, 'beatRate', 0.5, 5.0, 0.1).name('Beat Rate / Sec'); //
     gui.add(settings, 'resetClock').name('Reset Clock'); //
     gui.add(settings, 'resetCamera').name('Reset Camera'); //
+
+    // --- Performance Settings Sub-Menu ---
+    const performanceFolder = gui.addFolder('Performance Settings');
+    
+    performanceFolder.add(settings, 'shadowResolution', { 
+        'Low (1024x1024)': 1024, 
+        'High (2048x2048)': 2048,
+        'Ultra (4096x4096)': 4096
+    }).name('Shadow Resolution').onChange(value => {
+        
+        const resolution = parseInt(value);
+
+        // Do nothing if the resolution is already correct
+        if (dirLight && resolution === dirLight.shadow.mapSize.width) {
+            return;
+        }
+
+        // --- THE "NUKE AND REBUILD" FIX ---
+        // 1. Dispose and remove the old light and its target
+        if (dirLight) {
+            if (dirLight.shadow.map) {
+                dirLight.shadow.map.dispose();
+            }
+            scene.remove(dirLight.target);
+            scene.remove(dirLight);
+        }
+
+        // 2. Create a brand new light with the same base properties
+        const newLight = new THREE.DirectionalLight(0xffffff, 2.5);
+        newLight.position.copy(_lightPosition); // Apply cached position from layoutScene
+        newLight.castShadow = true;
+
+        // 3. Apply all shadow properties WITH THE NEW RESOLUTION
+        newLight.shadow.mapSize.width = resolution;
+        newLight.shadow.mapSize.height = resolution;
+        newLight.shadow.bias = -0.001;
+        newLight.shadow.normalBias = 0.01;
+
+        // 4. Apply cached shadow camera frustum settings from layoutScene
+        newLight.shadow.camera.left = _shadowCameraSettings.left;
+        newLight.shadow.camera.right = _shadowCameraSettings.right;
+        newLight.shadow.camera.top = _shadowCameraSettings.top;
+        newLight.shadow.camera.bottom = _shadowCameraSettings.bottom;
+        newLight.shadow.camera.near = _shadowCameraSettings.near;
+        newLight.shadow.camera.far = _shadowCameraSettings.far;
+        
+        // 5. Update the new camera's matrix
+        newLight.shadow.camera.updateProjectionMatrix();
+
+        // 6. Add the new light and its target (with cached pos) to the scene
+        scene.add(newLight);
+        newLight.target.position.copy(_lightTargetPosition);
+        scene.add(newLight.target);
+
+        // 7. Overwrite the global light variable with the new object
+        dirLight = newLight;
+
+        // 8. Force all materials to recompile shaders to use the new light/map
+        boxGroup.traverse((node) => {
+            if (node.isMesh && node.material) {
+                if (Array.isArray(node.material)) {
+                    node.material.forEach(mat => mat.needsUpdate = true);
+                } else {
+                    node.material.needsUpdate = true;
+                }
+            }
+        });
+        
+    });
+
+    // --- MODIFICATION START: Update slider range to 0.5 - 2.0 ---
+    performanceFolder.add(settings, 'maxPixelRatio', 0.5, 2.0, 0.1).name('Pixel Ratio Cap').onChange(value => {
+    // --- MODIFICATION END ---
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, value));
+    });
 
     // --- Console Log Sub-Menu ---
     const consoleFolder = gui.addFolder('Console Log Outputs'); //
@@ -370,6 +437,16 @@ window.addEventListener('DOMContentLoaded', () => { //
         
         pointerDownTime = null; //
 
+        // --- MODIFICATION START: AUDIO UNLOCK FIX FOR MOBILE ---
+        // Mobile browsers require a user gesture to unlock audio.
+        // This 'pointerup' event is our first gesture. We'll play the 
+        // sound (which is muted by default) to satisfy the policy.
+        if (!audioUnlocked && (distance < 15)) {
+            tickSound.play().catch(() => {}); // Play and catch any error
+            audioUnlocked = true; // Only do this once
+        }
+        // --- MODIFICATION END ---
+
         if (duration < 200 && distance < 15) { //
             if (gui.domElement.contains(pointer.target)) return; //
             
@@ -390,7 +467,8 @@ const scene = new THREE.Scene(); //
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000); //
 const renderer = new THREE.WebGLRenderer({ antialias: true }); //
 
-renderer.setPixelRatio(window.devicePixelRatio); //
+// Set pixel ratio based on the settings object for performance tuning.
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, settings.maxPixelRatio)); // Original was window.devicePixelRatio
 renderer.setSize(window.innerWidth, window.innerHeight); //
 renderer.outputColorSpace = THREE.SRGBColorSpace; //
 renderer.toneMapping = THREE.ACESFilmicToneMapping; //
@@ -422,11 +500,12 @@ rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => { //
     scene.environment = texture; //
 });
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 2.5); //
+let dirLight = new THREE.DirectionalLight(0xffffff, 2.5); // Changed to let
 dirLight.position.set(10, 28, 25); //
 dirLight.castShadow = true; //
-dirLight.shadow.mapSize.width = 2048; //
-dirLight.shadow.mapSize.height = 2048; //
+// Set initial shadow resolution from the settings object
+dirLight.shadow.mapSize.width = settings.shadowResolution; 
+dirLight.shadow.mapSize.height = settings.shadowResolution; 
 const d = 15; //
 dirLight.shadow.camera.left = -d; //
 dirLight.shadow.camera.right = d; //
@@ -492,16 +571,12 @@ wall.receiveShadow = true; //
 const wallThickness = 0.01; //
 const boxGroup = new THREE.Group(); //
 scene.add(boxGroup); //
-// --- MODIFICATION START ---
 // Create a new group for the shadow box walls. This allows us to toggle
 // their visibility from the GUI for performance.
 shadowBoxWalls = new THREE.Group();
 boxGroup.add(shadowBoxWalls);
-// --- MODIFICATION END ---
 boxGroup.add(clockUnit); // Add the clock itself to the main group
-// --- MODIFICATION START ---
 shadowBoxWalls.add(wall); // Add the back wall to our new group
-// --- MODIFICATION END ---
 const topWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial); //
 const bottomWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial); //
 const leftWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial); //
@@ -509,9 +584,7 @@ const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), lef
 [topWall, bottomWall, leftWall, rightWall].forEach(w => { //
     w.castShadow = true; //
     w.receiveShadow = true; //
-    // --- MODIFICATION START ---
     shadowBoxWalls.add(w); // Add the four side walls to our new group
-    // --- MODIFICATION END ---
 });
 
 // --- Materials for GLB parts ---
@@ -519,7 +592,6 @@ const brassMaterial = new THREE.MeshStandardMaterial({ color: 0xED9149, metalnes
 const blackAluminumMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.6, roughness: 0.4 }); //
 const lumeMaterial = new THREE.MeshStandardMaterial({ color: 0x90ee90, emissive: 0x90ee90, emissiveIntensity: 0.6, roughness: 0.8, transparent: true, opacity: 0.5 }); //
 const polishedAluminumMaterial = new THREE.MeshStandardMaterial({ color: 0xe5e5e5, metalness: 0.98, roughness: 0.1 }); //
-// --- MODIFICATION START: Added purple sapphire material ---
 const purpleSapphireMaterial = new THREE.MeshStandardMaterial({ //
     color: 0x6A0DAD, // Deep purple color
     metalness: 0.1, //
@@ -530,7 +602,6 @@ const purpleSapphireMaterial = new THREE.MeshStandardMaterial({ //
     opacity: 0.75, //
     depthWrite: false // Helps with rendering transparent objects correctly
 });
-// --- MODIFICATION END ---
 
 
 // --- GLB Model Loader ---
@@ -574,11 +645,9 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
         const part = collectedParts[name]; //
         if (name.startsWith('HourHandOuterBody') || name.startsWith('MinuteHandOuterBody') || name.startsWith('SecondsHandOuterBody')) { part.material = blackAluminumMaterial; } //
         else if (name.startsWith('HourHandLumeBody') || name.startsWith('MinuteHandLumeBody') || name.startsWith('SecondsHandLumeBody') || name.includes('PipLumeBody')) { part.material = lumeMaterial; } //
-        // --- MODIFICATION START: Added rule to apply sapphire material to all jewel parts ---
         else if (name.includes('Jewel')) { //
             part.material = purpleSapphireMaterial; //
         }
-        // --- MODIFICATION END ---
         else if ([ //
             'BalancingBridgeBody', 'BarrelBridge_Body', 'BarrelDrum_Gear_Body', //
             'PalletBridgeBody', 'RollerTable', 'TrainWheelBridgeBody' //
@@ -598,9 +667,7 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
         else if (name.includes('Screw')) { //
             part.material = polishedAluminumMaterial; //
         }
-        // --- MODIFICATION START: Removed "RollerJewel" from the brass material list ---
         else if (['SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'BalanceWheelBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear'].includes(name) || name.includes('PipOuter')) { part.material = brassMaterial; } //
-        // --- MODIFICATION END ---
     }
     const palletBridgeMesh = collectedParts['PalletBridgeBody']; //
     if (palletBridgeMesh) { //
@@ -611,14 +678,11 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
     }
     const partsToPivot = [ 'SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'HairSpringBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear' ]; //
     
-    // *** BEGIN UPDATED SECTION 1 ***
-    // This loop includes the new 'HairSpringBody' case with the GPU shader logic
     partsToPivot.forEach(name => { //
         const part = collectedParts[name]; //
         if (part) { //
             if (name === 'HairSpringBody') { //
                 hairSpringMesh = part; //
-                // We still need the original geometry data for calculations
                 const positions = part.geometry.attributes.position.array; //
                 const vertexCount = positions.length / 3; //
                 let tempVertex = new THREE.Vector3(); //
@@ -627,7 +691,6 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
                 hairspringBounds.minZ = part.geometry.boundingBox.min.z; //
                 hairspringBounds.maxZ = part.geometry.boundingBox.max.z; //
                 let trueMaxRadius = 0;
-                // This loop still runs ONCE at load time to find the max radius
                 for (let i = 0; i < vertexCount; i++) {
                     tempVertex.set(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]); //
                     const radius = tempVertex.distanceTo(colletOriginalPos); //
@@ -637,13 +700,9 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
                 }
                 maxRadius = trueMaxRadius; //
 
-                // --- START SHADER MODIFICATION ---
-
-                // 1. Clone material so this shader only affects the hairspring
                 const hairspringMaterial = part.material.clone();
                 hairSpringMesh.material = hairspringMaterial;
 
-                // 2. Define the uniforms that will pass data from JS to the shader
                 const hairspringUniforms = {
                     u_sineValue: { value: 0.0 },
                     u_colletOriginalPos: { value: colletOriginalPos }, //
@@ -653,12 +712,9 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
                     u_maxAmplitude: { value: hairspringAnimationSettings.maxAmplitude } //
                 };
 
-                // 3. Use .onBeforeCompile to inject GLSL code into the existing material
                 hairspringMaterial.onBeforeCompile = (shader) => {
-                    // Add our uniforms to the shader's list
                     Object.assign(shader.uniforms, hairspringUniforms);
 
-                    // Add the uniform declarations to the top of the vertex shader
                     shader.vertexShader = `
                         uniform float u_sineValue;
                         uniform vec3 u_colletOriginalPos;
@@ -668,14 +724,11 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
                         uniform float u_maxAmplitude;
                     ` + shader.vertexShader;
 
-                    // Inject our animation logic directly after three.js defines 'transformed'
-                    // This GLSL code is a direct translation of your original JavaScript logic
                     shader.vertexShader = shader.vertexShader.replace(
                         '#include <begin_vertex>',
                         `
                         #include <begin_vertex>
                         
-                        // --- START HAIRSPRING SHADER LOGIC ---
                         float dist_c = distance(transformed, u_colletOriginalPos);
                         float radial_weight = dist_c / u_maxRadius;
                         
@@ -695,17 +748,13 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
                             displacementDirection = normalize(transformed - u_colletOriginalPos);
                         }
 
-                        // Apply the displacement only to X and Z, just like your original JS logic
                         transformed.x += displacementDirection.x * finalAmplitude;
                         transformed.z += displacementDirection.z * finalAmplitude; 
-                        // --- END HAIRSPRING SHADER LOGIC ---
                         `
                     );
 
-                    // Store the shader object so we can update its uniforms in the animate loop
                     hairSpringMesh.userData.shader = shader;
                 };
-                // --- END SHADER MODIFICATION ---
             }
             const center = new THREE.Vector3(); //
             new THREE.Box3().setFromObject(part).getCenter(center); //
@@ -735,7 +784,6 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
             }
         }
     });
-    // *** END UPDATED SECTION 1 ***
 
     const palletForkBodyMesh = collectedParts['PalletForkBody']; //
     const palletJewelBodyMesh = collectedParts['Plate_Jewel_Body']; //
@@ -750,12 +798,10 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
         pivot.add(palletForkBodyMesh); //
         pivot.children.forEach(child => child.position.sub(jewelCenter)); //
         palletFork = pivot; //
-        // Set the pallet fork's initial rotation based on its starting state.
         palletFork.rotation.z = PALLET_FORK_ANGLE * palletForkState; //
     }
 
     if (escapeWheel) { //
-        // Set the escape wheel's initial rotation to align with the pallet fork.
         escapeWheel.rotation.z = ESCAPE_WHEEL_OFFSET * palletForkState; //
     }
 
@@ -838,6 +884,18 @@ function layoutScene() { //
     dirLight.shadow.camera.near = Math.max(0.1, lightDistanceToCenter - shadowVolumeRadius); //
     dirLight.shadow.camera.far = lightDistanceToCenter + shadowVolumeRadius; //
     dirLight.shadow.camera.updateProjectionMatrix(); //
+
+    // --- Cache all calculated light/shadow values ---
+    // We cache these settings here so we can re-create the light
+    // perfectly from the GUI onChange handler.
+    _lightPosition.copy(dirLight.position);
+    _lightTargetPosition.copy(dirLight.target.position);
+    _shadowCameraSettings.left = dirLight.shadow.camera.left;
+    _shadowCameraSettings.right = dirLight.shadow.camera.right;
+    _shadowCameraSettings.top = dirLight.shadow.camera.top;
+    _shadowCameraSettings.bottom = dirLight.shadow.camera.bottom;
+    _shadowCameraSettings.near = dirLight.shadow.camera.near;
+    _shadowCameraSettings.far = dirLight.shadow.camera.far;
 }
 let tiltX = 0, tiltY = 0; //
 function handleOrientation(event) { //
@@ -949,8 +1007,6 @@ function animate() { //
     }
 
 
-    // *** BEGIN UPDATED SECTION 2 ***
-    // This block now contains the GPU shader uniform update for the hairspring
     // --- BALANCE WHEEL & SIMULATION LOGIC ---
     if (balanceWheel) { //
         const frequency = settings.beatRate / 2.0; //
@@ -1021,12 +1077,9 @@ function animate() { //
             hairSpringMesh.userData.shader.uniforms.u_sineValue.value = sineValue;
         }
     }
-    // *** END UPDATED SECTION 2 ***
 
     renderer.render(scene, camera); //
 }
 
 // Start the animation
 animate(); //
-
-
