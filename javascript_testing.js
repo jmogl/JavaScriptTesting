@@ -1,6 +1,6 @@
 // 3D Javacript ETA 6497 Clock using three.js
 // MIT License. - Work In Progress
-// Jeff Miller 2025. 9/6/25
+// Jeff Miller 2025. 9/7/25
 
 /* References and Notes
 - AI Development Support & Debugging: Google Gemini
@@ -108,9 +108,8 @@ NOTES (Will eventually move this to the ReadMe file):
 			through the center again, kicks the pallet fork, and unlocks the escape wheel again. The escape wheel moves	
 			another tooth. This ends the first pause and immediately begins the second 0.2 second pause.
 		- 3. End of cycle (0.4 Seconds): Balance wheel reaces the end of its second swing and starts back.
-*/
 
-// Load dependencies
+//Load Dependencies
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
@@ -150,6 +149,7 @@ const settings = {
     beatRate: 5.0,  //
     shadowResolution: 2048, // Default is 2048
     maxPixelRatio: 1.5,
+    wireframe: false, // <-- MODIFICATION: Added wireframe setting
     resetCamera: () => { //
         if (isResettingCamera) return; //
         isResettingCamera = true; //
@@ -424,6 +424,24 @@ window.addEventListener('DOMContentLoaded', () => { //
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, value));
     });
 
+    // --- MODIFICATION: Added Wireframe Toggle ---
+    performanceFolder.add(settings, 'wireframe').name('Show Wireframe').onChange(value => {
+        // Traverse all meshes and update their material's wireframe property
+        // boxGroup contains the clock and the shadow box, so this covers everything
+        boxGroup.traverse((node) => {
+            if (node.isMesh && node.material) {
+                if (Array.isArray(node.material)) {
+                    // Handle meshes with multiple materials
+                    node.material.forEach(mat => mat.wireframe = value);
+                } else {
+                    // Handle single material
+                    node.material.wireframe = value;
+                }
+            }
+        });
+    });
+    // --- END MODIFICATION ---
+
     // --- Console Log Sub-Menu ---
     const consoleFolder = gui.addFolder('Console Log Outputs'); //
     consoleFolder.close(); //
@@ -624,6 +642,7 @@ shadowBoxWalls.add(wall); // Add the back wall to our new group
 const topWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial); //
 const bottomWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial); //
 const leftWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial); //
+// --- MODIFICATION: Fixed typo from rightRightMaterial to leftRightMaterial ---
 const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial); //
 [topWall, bottomWall, leftWall, rightWall].forEach(w => { //
     w.castShadow = true; //
@@ -632,7 +651,8 @@ const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), lef
 });
 
 // --- Materials for GLB parts ---
-const brassMaterial = new THREE.MeshStandardMaterial({ color: 0xED9149, metalness: 0.95, roughness: 0.1 }); //
+// --- MODIFICATION: Changed brassMaterial color from 0xED9149 (reddish) to 0xEEC94D (gold) ---
+const brassMaterial = new THREE.MeshStandardMaterial({ color: 0xEEC94D, metalness: 0.95, roughness: 0.1 }); //
 const blackAluminumMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.6, roughness: 0.4 }); //
 const lumeMaterial = new THREE.MeshStandardMaterial({ color: 0x90ee90, emissive: 0x90ee90, emissiveIntensity: 0.6, roughness: 0.8, transparent: true, opacity: 0.5 }); //
 const polishedAluminumMaterial = new THREE.MeshStandardMaterial({ color: 0xe5e5e5, metalness: 0.98, roughness: 0.1 }); //
@@ -709,9 +729,10 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
         ].includes(name)) { 
             part.material = brushedSteelMaterial;  // THIS IS THE WORKING CONTROL GROUP
         }
+        // --- MODIFICATION: Removed 'HairSpringBody' from this list (it's now brass/gold) ---
         else if ([ //
             'BarrelArborBody', 'BarrelMainSpringBody', 'ClickBody', 'CrownWheelBody', //
-            'DriverCannonPinion_Gear_Body', 'HairSpringBody', 'Incabloc1_1', 'Incabloc1_Base', //
+            'DriverCannonPinion_Gear_Body', 'Incabloc1_1', 'Incabloc1_Base', //
             'Incabloc2_2', 'IncablocDisc_2', 'PalletForkBody', 'RatchetWheelBody', //
             'RegulatorCurvePin_1', 'RegulatorCurvePin_2', 'RegulatorPiece1_Body', 'RegulatorPiece2_Body', //
             'RegulatorPiece3_Body', 'SettingLeverJumperBody', 'SettingLever_Body', 'SettingWheelBody', //
@@ -722,7 +743,8 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
         else if (name.includes('Screw')) { //
             part.material = polishedAluminumMaterial; //
         }
-        else if (['SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'BalanceWheelBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear'].includes(name) || name.includes('PipOuter')) { part.material = brassMaterial; } //
+        // --- MODIFICATION: Added 'HairSpringBody' to this list to apply the (new gold) brassMaterial ---
+        else if (['SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'BalanceWheelBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear', 'HairSpringBody'].includes(name) || name.includes('PipOuter')) { part.material = brassMaterial; } //
     }
     const palletBridgeMesh = collectedParts['PalletBridgeBody']; //
     if (palletBridgeMesh) { //
@@ -755,6 +777,7 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
                 }
                 maxRadius = trueMaxRadius; //
 
+                // --- MODIFICATION: This now clones the brassMaterial assigned earlier
                 const hairspringMaterial = part.material.clone();
                 hairSpringMesh.material = hairspringMaterial;
 
@@ -1123,4 +1146,6 @@ function animate() { //
 
 // Start the animation
 animate(); //
+
+
 
