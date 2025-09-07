@@ -108,7 +108,7 @@ NOTES (Will eventually move this to the ReadMe file):
 			through the center again, kicks the pallet fork, and unlocks the escape wheel again. The escape wheel moves	
 			another tooth. This ends the first pause and immediately begins the second 0.2 second pause.
 		- 3. End of cycle (0.4 Seconds): Balance wheel reaces the end of its second swing and starts back.
-
+*/
 
 // Load dependencies
 import * as THREE from 'three';
@@ -1123,3 +1123,4 @@ function animate() { //
 
 // Start the animation
 animate(); //
+
