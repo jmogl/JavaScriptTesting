@@ -108,57 +108,9 @@ NOTES (Will eventually move this to the ReadMe file):
 			through the center again, kicks the pallet fork, and unlocks the escape wheel again. The escape wheel moves	
 			another tooth. This ends the first pause and immediately begins the second 0.2 second pause.
 		- 3. End of cycle (0.4 Seconds): Balance wheel reaces the end of its second swing and starts back.
-// 3D Javacript ETA 6497 Clock using three.js
-// MIT License. - Work In Progress
-// Jeff Miller 2025. Revised 9/6/25
 
-/* References and Notes
-- AI Development Support & Debugging: Google Gemini
-- HDRI: https://polyhaven.com/a/colorful_studio
-- PBR Textures: https://www.cgbookcase.com/
-- Modified ETA 6497-1 Watch Movement CAD: Steen Winther: https://grabcad.com/library/eta-6497-1-complete-watch-movement
-- ETA 6497 Custom Clock Hands and Clock Case made in Fusion 360
-- 5 Hz Tick Sound - Clock Ticking by RedDog0607: https://pixabay.com/sound-effects/clock-ticking-365218/
-- Development and Debugging Tools: Google Gemini
-- File encoding is set to UF-8
-- Local Server: python -m http.server run in a terminal in local javascript directory with index.html
-- 	http://localhost:8000 in a local browser tab
-- Single click brings up gui
-- Zoom, Pan (right mouse button or two finger touch), and rotate are supported
-- Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
-*/
-// 3D Javacript ETA 6497 Clock using three.js
-// MIT License. - Work In Progress
-// Jeff Miller 2025. Revised 9/6/25
 
-/* References and Notes
-- AI Development Support & Debugging: Google Gemini
-- HDRI: https://polyhaven.com/a/colorful_studio
-- PBR Textures: https://www.cgbookcase.com/
-- Modified ETA 6497-1 Watch Movement CAD: Steen Winther: https://grabcad.com/library/eta-6497-1-complete-watch-movement
-- ETA 6497 Custom Clock Hands and Clock Case made in Fusion 360
-- 5 Hz Tick Sound - Clock Ticking by RedDog0607: https://pixabay.com/sound-effects/clock-ticking-365218/
-- Development and Debugging Tools: Google Gemini
-- File encoding is set to UF-8
-- Local Server: python -m http.server run in a terminal in local javascript directory with index.html
-- 	http://localhost:8000 in a local browser tab
-- Single click brings up gui
-- Zoom, Pan (right mouse button or two finger touch), and rotate are supported
-- Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
-- Adjust performance parameters including shadow mapping and pixel resolution
-*/
-
-/*
-To Do:
-- Finish textures
-- Finish gears anamation
-- Add option to "explode parts"
-- Fix tilt mode for mobile devices 
-- Update Shadow Box to a better texture and more detail
-- Add top plate back in and make it transparent when viewed from the front
-- Add option for lower poly model to improve frame rate on mobile devices
-*/
-
+// Load dependencies
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
@@ -195,7 +147,6 @@ const settings = {
     showFPS: false,  //
     showShadowBox: true, 
     listMeshBodies: false,  //
-    showMinMaxWheelAngles: false, //
     beatRate: 5.0,  //
     shadowResolution: 2048, // Default is 2048
     maxPixelRatio: 1.5,
@@ -376,15 +327,13 @@ window.addEventListener('DOMContentLoaded', () => { //
             }
             
             // If the audio is loaded BUT not playing yet, create and start the master loop.
-            // This only runs ONCE.
             if (tickAudioBuffer && !currentTickSource) {
                 currentTickSource = audioContext.createBufferSource();
                 currentTickSource.buffer = tickAudioBuffer;
                 currentTickSource.loop = true; // This is the GAPLESS loop
                 
-                // --- MODIFICATION: Set initial playback rate to match current slider ---
+                // Set initial playback rate to match current slider
                 currentTickSource.playbackRate.value = settings.beatRate / 5.0; 
-                // --- END MODIFICATION ---
 
                 currentTickSource.connect(masterGainNode); // Connect: Source -> Gain
                 currentTickSource.start(0); // Play the loop. It will now run forever.
@@ -407,7 +356,7 @@ window.addEventListener('DOMContentLoaded', () => { //
         }
     });
     
-    // --- MODIFICATION START: Added onChange handler to sync beat rate and audio playback rate ---
+    // Added onChange handler to sync beat rate and audio playback rate
     gui.add(settings, 'beatRate', 0.5, 5.0, 0.1).name('Beat Rate / Sec').onChange(newBeatRate => {
         // Check if the audio player (source node) has been created yet
         if (currentTickSource) {
@@ -415,7 +364,6 @@ window.addEventListener('DOMContentLoaded', () => { //
             currentTickSource.playbackRate.value = newBeatRate / 5.0;
         }
     });
-    // --- MODIFICATION END ---
 
     gui.add(settings, 'resetClock').name('Reset Clock'); //
     gui.add(settings, 'resetCamera').name('Reset Camera'); //
@@ -497,24 +445,6 @@ window.addEventListener('DOMContentLoaded', () => { //
         }
     });
     
-    const showMinMaxController = consoleFolder.add(settings, 'showMinMaxWheelAngles').name('Show Min/Max Wheel'); //
-    showMinMaxController.onChange(value => { //
-        if (value) { //
-            if (balanceWheel && balanceWheelAngles.start !== null) { //
-                console.log("--- Balance Wheel & Roller Jewel Angles (degrees) ---"); //
-                console.log(`Starting Angle: ${balanceWheelAngles.start.toFixed(2)}`); //
-                console.log(`Min Angle Seen: ${balanceWheelAngles.min.toFixed(2)}`); //
-                console.log(`Max Angle Seen: ${balanceWheelAngles.max.toFixed(2)}`); //
-            } else {
-                console.warn("Balance wheel not yet loaded or clock hasn't run. Cannot show angles."); //
-            }
-             setTimeout(() => { //
-                settings.showMinMaxWheelAngles = false; //
-                showMinMaxController.updateDisplay(); //
-            }, 200); //
-        }
-    });
-
     // Listeners for GUI toggle
     window.addEventListener('mousedown', onPointerDown); //
     window.addEventListener('mouseup', onPointerUp); //
@@ -637,6 +567,29 @@ const brushedSteelMaterial = new THREE.MeshStandardMaterial({ //
     map: steelBaseColor, normalMap: steelNormal, roughnessMap: steelRoughness, //
     metalness: 0.9, roughness: 0.4, color: 0xe0e0e0 //
 });
+
+// --- MODIFICATION START: Reverted materials back to their intended (non-debug) properties ---
+const lightBrushedSteelMaterial = new THREE.MeshStandardMaterial({
+    map: steelBaseColor,        // Use the same texture
+    normalMap: steelNormal,     // Use the same normal map
+    roughnessMap: steelRoughness, // Use the same roughness map
+    metalness: 1.0,             // This is the intended value
+    roughness: 0.15,            // This is the intended value
+    color: 0xe0e0e0,            // Keep the same base color
+    normalScale: new THREE.Vector2(0.3, 0.3) // This is the intended value
+});
+
+const mediumBrushedSteelMaterial = new THREE.MeshStandardMaterial({
+    map: steelBaseColor,        // Use the same texture
+    normalMap: steelNormal,     // Use the same normal map
+    roughnessMap: steelRoughness, // Use the same roughness map
+    metalness: 0.95,            // This is the intended value
+    roughness: 0.3375,          // This is the intended value
+    color: 0xe0e0e0,            // Keep the same base color
+    normalScale: new THREE.Vector2(1.0, 1.0) // This is the intended value
+});
+// --- MODIFICATION END ---
+
 function cloneMaterialWithTextures(material) { //
     const newMaterial = material.clone(); //
     newMaterial.map = material.map.clone(); //
@@ -739,11 +692,22 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
         else if (name.includes('Jewel')) { //
             part.material = purpleSapphireMaterial; //
         }
+        // --- MODIFICATION: Assign materials to case parts (removed geometry calculations) ---
+        else if (name === 'CaseCenterRingBody' || name === 'CaseCrownClipBase' || name === 'CaseCrownClipRing') {
+            // NOTE: Removed computeVertexNormals/computeTangents. Textures will only 
+            // appear if the model parts have UV coordinates from the export.
+            part.material = lightBrushedSteelMaterial; // Apply light material
+        }
+        else if (name === 'CaseBottomBody' || name === 'CaseTopBody') {
+            // NOTE: Removed computeVertexNormals/computeTangents.
+            part.material = mediumBrushedSteelMaterial; // Apply new medium material
+        }
+        // --- MODIFICATION END ---
         else if ([ //
             'BalancingBridgeBody', 'BarrelBridge_Body', 'BarrelDrum_Gear_Body', //
             'PalletBridgeBody', 'RollerTable', 'TrainWheelBridgeBody' //
         ].includes(name)) { 
-            part.material = brushedSteelMaterial;  //
+            part.material = brushedSteelMaterial;  // THIS IS THE WORKING CONTROL GROUP
         }
         else if ([ //
             'BarrelArborBody', 'BarrelMainSpringBody', 'ClickBody', 'CrownWheelBody', //
