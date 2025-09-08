@@ -111,7 +111,6 @@ NOTES (Will eventually move this to the ReadMe file):
 */
 
 //Load Dependencies
-
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
@@ -160,22 +159,52 @@ const settings = {
         isResettingCamera = true; //
     },
     resetClock: () => { //
-        settings.beatRate = 5.0; //
+        settings.beatRate = 5.0; // Resets beat rate slider value
         
-        // --- MODIFICATION: Set clock mechanism to a "zero" start position ---
-        // This ensures a consistent starting state for gear alignment every time.
-        simulatedSeconds = 0;
+        // --- MODIFICATION: ADD FULL ESCAPEMENT STATE RESET ---
+        // This resets the entire mechanism to its default "zero" state, fixing the sync bug.
+        settings.startPhaseOffsetDeg = 0.0; 
+        settings.escapeWheelOffsetDeg = 0.0;
+        STARTING_PHASE_OFFSET = 0.0;
+        ESCAPE_WHEEL_OFFSET = 0.0;
+        palletForkState = -1; // Default starting state
+        previousSineValue = -palletForkState; // Default starting sine (opposite of state)
+        
+        if (palletFork) {
+             // Manually set pallet mesh back to its default "zero" position
+             palletFork.rotation.z = (PALLET_FORK_ANGLE * palletForkState) + PALLET_FORK_OFFSET;
+        }
+        // --- END ESCAPEMENT RESET ---
+
+        // Reset simulation tick counter back to zero
         simulationTotalTicks = 0;
         
-        balanceWheelAngles = { start: null, min: Infinity, max: -Infinity }; //
+        // --- MODIFICATION: Calculate and set real-time offsets for HANDS only ---
+        const now = new Date();
+        const realHours12 = now.getHours() % 12; // 0-11
+        const realMinutes = now.getMinutes(); // 0-59
+        const realSeconds = now.getSeconds(); // 0-59
+        const realMillis = now.getMilliseconds(); // 0-999
+
+        // Get fractional time for smooth initial positioning
+        const totalRealSecondsWithFraction = realSeconds + (realMillis / 1000.0);
+        const totalRealMinutesWithFraction = realMinutes + (totalRealSecondsWithFraction / 60.0);
+        const totalRealHoursWithFraction = realHours12 + (totalRealMinutesWithFraction / 60.0);
+    
+        // Calculate and store the initial rotation offsets (CCW is negative)
+        initialSecondRotationOffset = -((totalRealSecondsWithFraction / 60.0) * Math.PI * 2);
+        initialMinuteRotationOffset = -((totalRealMinutesWithFraction / 60.0) * Math.PI * 2);
+        initialHourRotationOffset = -((totalRealHoursWithFraction / 12.0) * Math.PI * 2);
+        // --- END HAND OFFSET CALCULATION ---
         
-        gui.controllers.forEach(c => { //
-            if (c.property === 'beatRate') {
-                c.updateDisplay(); //
-            }
+        balanceWheelAngles = { start: null, min: Infinity, max: -Infinity }; // Reset balance wheel metrics
+        
+        // Update all GUI sliders to show the new "zeroed" values
+        gui.controllers.forEach(c => { 
+            c.updateDisplay(); // This will now correctly update beatRate, startPhase, AND escapeOffset sliders
         });
         
-        // Update gears to reflect the zero position immediately
+        // Run updateClockGears to put all gears (and hands) in their final start position
         updateClockGears();
     }
 };
@@ -187,6 +216,11 @@ let secondWheel, minuteWheel, hourWheel, balanceWheel, escapeWheel, centerWheel,
 let newHourHand, newMinuteHand, newSecondHand; //
 let collectedParts = {};  //
 let shadowBoxWalls; // This will hold the wall meshes for easy toggling
+
+// --- MODIFICATION: Add global offsets for hands ---
+let initialSecondRotationOffset = 0;
+let initialMinuteRotationOffset = 0;
+let initialHourRotationOffset = 0;
 
 // --- Simulation State Variables ---
 let simulatedSeconds = 0; //
@@ -960,23 +994,29 @@ function updateClockGears() {
     const simulatedMinutes = simulatedSeconds / 60.0;
     const simulatedHours = simulatedSeconds / 3600.0; 
     
-    // Drive ALL hands AND gears from this single, unified time source.
+    // --- MODIFICATION: Calculate simulation rotations (which start from 0) ---
     const secondHandRotation = -((simulatedSeconds / 60.0) * Math.PI * 2); // CCW
-    if (newSecondHand) newSecondHand.rotation.z = secondHandRotation; 
+    const minuteHandRotation = -((simulatedMinutes / 60.0) * Math.PI * 2);
+    const hourHandRotation = -(((simulatedHours % 12) / 12.0) * Math.PI * 2);
+
+    // --- MODIFICATION: Apply simulation rotation PLUS real-time offset to HANDS ---
+    if (newSecondHand) newSecondHand.rotation.z = initialSecondRotationOffset + secondHandRotation; 
+    if (newMinuteHand) newMinuteHand.rotation.z = initialMinuteRotationOffset + minuteHandRotation; 
+    if (newHourHand) newHourHand.rotation.z = initialHourRotationOffset + hourHandRotation; 
+
+    // --- MODIFICATION: Apply ONLY pure simulation rotation to GEARS ---
+    // This keeps the gear train mechanically synced with the escapement, which also starts at 0.
     if (secondWheel) secondWheel.rotation.z = secondHandRotation; 
     if (secondWheelSmallGear) secondWheelSmallGear.rotation.z = secondHandRotation; 
     
-    const minuteHandRotation = -((simulatedMinutes / 60.0) * Math.PI * 2);
-    if (newMinuteHand) newMinuteHand.rotation.z = minuteHandRotation; 
     if (minuteWheel) minuteWheel.rotation.z = -minuteHandRotation; // CW
     if (centerWheel) centerWheel.rotation.z = minuteHandRotation; // CCW
     
     if (thirdWheel) thirdWheel.rotation.z = ((simulatedMinutes / 7.5) * Math.PI * 2); // CW
     if (thirdWheelTopGear) thirdWheelTopGear.rotation.z = -((simulatedMinutes / 7.5) * Math.PI * 2); // CCW
 
-    const hourHandRotation = -(((simulatedHours % 12) / 12.0) * Math.PI * 2);
-    if (newHourHand) newHourHand.rotation.z = hourHandRotation; 
     if (hourWheel) hourWheel.rotation.z = -hourHandRotation; // CW
+
 
     // --- THIS IS THE FINAL CORRECT LOGIC ---
     if (escapeWheel) {
@@ -1235,6 +1275,7 @@ function animate() { //
 
 // Start the animation
 animate(); //
+
 
 
 
