@@ -108,8 +108,10 @@ NOTES (Will eventually move this to the ReadMe file):
 			through the center again, kicks the pallet fork, and unlocks the escape wheel again. The escape wheel moves	
 			another tooth. This ends the first pause and immediately begins the second 0.2 second pause.
 		- 3. End of cycle (0.4 Seconds): Balance wheel reaces the end of its second swing and starts back.
+*/
 
 //Load Dependencies
+
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
@@ -150,16 +152,20 @@ const settings = {
     shadowResolution: 2048, // Default is 2048
     maxPixelRatio: 1.5,
     wireframe: false, // <-- MODIFICATION: Added wireframe setting
+    // --- MODIFICATION: Default values set to 0 ---
+    startPhaseOffsetDeg: 0.0, // Defaulting to 0 degrees
+    escapeWheelOffsetDeg: 0.0, // Defaulting to 0 degrees
     resetCamera: () => { //
         if (isResettingCamera) return; //
         isResettingCamera = true; //
     },
     resetClock: () => { //
         settings.beatRate = 5.0; //
-        const now = new Date(); //
         
-        const totalSecondsSinceMidnight = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds() + (now.getMilliseconds() / 1000); //
-        simulatedSeconds = totalSecondsSinceMidnight; //
+        // --- MODIFICATION: Set clock mechanism to a "zero" start position ---
+        // This ensures a consistent starting state for gear alignment every time.
+        simulatedSeconds = 0;
+        simulationTotalTicks = 0;
         
         balanceWheelAngles = { start: null, min: Infinity, max: -Infinity }; //
         
@@ -168,6 +174,9 @@ const settings = {
                 c.updateDisplay(); //
             }
         });
+        
+        // Update gears to reflect the zero position immediately
+        updateClockGears();
     }
 };
 
@@ -181,19 +190,26 @@ let shadowBoxWalls; // This will hold the wall meshes for easy toggling
 
 // --- Simulation State Variables ---
 let simulatedSeconds = 0; //
+// --- MODIFICATION: Add discrete counter. This is now the SINGLE SOURCE OF TRUTH for time.
+let simulationTotalTicks = 0;
 // Set the starting direction of the pallet fork: 1 for CCW, -1 for CW.
 let palletForkState = -1; //
 // Synchronize the balance wheel's starting phase with the pallet fork's state.
 // This should be the opposite of palletForkState.
 let previousSineValue = -palletForkState; //
 let balanceWheelAngles = { start: null, min: Infinity, max: -Infinity }; //
-const PALLET_FORK_ANGLE = THREE.MathUtils.degToRad(9); //
+// --- MODIFICATION: Changed from 9 degrees to 5 degrees per user request ---
+const PALLET_FORK_ANGLE = THREE.MathUtils.degToRad(5); //
 const PALLET_FORK_OFFSET = THREE.MathUtils.degToRad(0); //
-// A 15-tooth escape wheel requires 30 beats/steps for a full revolution.
-const ESCAPE_WHEEL_STEP = (Math.PI * 2) / 30;  //
-// This offset aligns a tooth with the pallet fork at its starting 9-degree rotation.
-const ESCAPE_WHEEL_OFFSET = ESCAPE_WHEEL_STEP / 2; //
-const BEAT_TIME_VALUE = 1.0 / 5.0;  //
+// A 15-tooth escape wheel requires 30 beats/steps for a full revolution. (360 / 30 = 12 degrees)
+const ESCAPE_WHEEL_STEP = (Math.PI * 2) / 30;  // This is 12 degrees in radians
+
+// --- MODIFICATION: Default offset value set to 0.0 ---
+let ESCAPE_WHEEL_OFFSET = 0.0; //
+// --- MODIFICATION: Default phase value set to 0.0 ---
+let STARTING_PHASE_OFFSET = 0.0;
+// This constant defines the canonical time duration of a single tick.
+const BEAT_TIME_VALUE = 1.0 / 5.0;  // This is the time (in seconds) per beat/tick
 
 // --- Pallet Fork Animation State ---
 let isPalletForkAnimating = false; //
@@ -365,6 +381,35 @@ window.addEventListener('DOMContentLoaded', () => { //
         }
     });
 
+    // --- MODIFICATION: Added temporary slider for STARTING_PHASE_OFFSET ---
+    // --- MODIFICATION: Slider logic simplified. It only sets global variables. ---
+    // --- The animate() loop now does all calculations every frame, preventing conflicts. ---
+    gui.add(settings, 'startPhaseOffsetDeg', 0.0, 180.0, 0.1).name('Start Phase (Deg)').onChange(degrees => {
+        STARTING_PHASE_OFFSET = THREE.MathUtils.degToRad(degrees);
+        const newStartSineVal = Math.sin(STARTING_PHASE_OFFSET);
+        previousSineValue = newStartSineVal;
+        palletForkState = (newStartSineVal >= 0) ? -1 : 1; // Update global state
+        
+        // Set pallet fork mesh position (this is still needed)
+        if (palletFork) {
+             palletFork.rotation.z = (PALLET_FORK_ANGLE * palletForkState) + PALLET_FORK_OFFSET;
+        }
+        // NO escape wheel logic needed here. updateClockGears() will handle on next tick.
+        // But we need to update the alignment *now*.
+        updateClockGears();
+    });
+    // --- END MODIFICATION ---
+
+    // --- MODIFICATION: Added temporary slider for ESCAPE_WHEEL_OFFSET ---
+    // --- MODIFICATION: Slider logic simplified to only set the global offset variable. ---
+    gui.add(settings, 'escapeWheelOffsetDeg', 0.0, 180.0, 0.1).name('Escape Wheel Offset').onChange(degrees => {
+        // Just update the global variable. 
+        ESCAPE_WHEEL_OFFSET = THREE.MathUtils.degToRad(degrees);
+        // Call updateClockGears() to reflect the change immediately without waiting for a tick
+        updateClockGears();
+    });
+    // --- END MODIFICATION ---
+
     gui.add(settings, 'resetClock').name('Reset Clock'); //
     gui.add(settings, 'resetCamera').name('Reset Camera'); //
 
@@ -499,6 +544,7 @@ window.addEventListener('DOMContentLoaded', () => { //
 
     // Initialize clock
     settings.resetClock(); //
+    updateClockGears(); // Run once on init to set all gears
 });
 
 // --- Scene Setup ---
@@ -876,6 +922,7 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
         pivot.add(palletForkBodyMesh); //
         pivot.children.forEach(child => child.position.sub(jewelCenter)); //
         palletFork = pivot; //
+        // --- MODIFICATION: Reverted to original. Offset is now handled by sine wave phase shift. ---
         palletFork.rotation.z = PALLET_FORK_ANGLE * palletForkState; //
     }
 
@@ -898,6 +945,53 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
 // --- RE-USABLE VECTORS FOR ANIMATION LOOP ---
 const p_orig = new THREE.Vector3(); //
 const displacementDirection = new THREE.Vector3(); //
+
+// --- MODIFICATION: Function to update all gear rotations based on a discrete tick ---
+function updateClockGears() {
+    
+    // --- MODIFICATION: Single Source of Truth ---
+    // ALL time/rotation is derived from the discrete tick counter.
+    const totalTicks = simulationTotalTicks;
+    // Derive master "sim time" ONLY from ticks * constant beat value (0.2s).
+    // This ensures all gear ratios, hands, and displays are always mechanically synced.
+    // The "slow mo" effect happens because ticks occur less frequently in real-time.
+    const simulatedSeconds = totalTicks * BEAT_TIME_VALUE; 
+    
+    const simulatedMinutes = simulatedSeconds / 60.0;
+    const simulatedHours = simulatedSeconds / 3600.0; 
+    
+    // Drive ALL hands AND gears from this single, unified time source.
+    const secondHandRotation = -((simulatedSeconds / 60.0) * Math.PI * 2); // CCW
+    if (newSecondHand) newSecondHand.rotation.z = secondHandRotation; 
+    if (secondWheel) secondWheel.rotation.z = secondHandRotation; 
+    if (secondWheelSmallGear) secondWheelSmallGear.rotation.z = secondHandRotation; 
+    
+    const minuteHandRotation = -((simulatedMinutes / 60.0) * Math.PI * 2);
+    if (newMinuteHand) newMinuteHand.rotation.z = minuteHandRotation; 
+    if (minuteWheel) minuteWheel.rotation.z = -minuteHandRotation; // CW
+    if (centerWheel) centerWheel.rotation.z = minuteHandRotation; // CCW
+    
+    if (thirdWheel) thirdWheel.rotation.z = ((simulatedMinutes / 7.5) * Math.PI * 2); // CW
+    if (thirdWheelTopGear) thirdWheelTopGear.rotation.z = -((simulatedMinutes / 7.5) * Math.PI * 2); // CCW
+
+    const hourHandRotation = -(((simulatedHours % 12) / 12.0) * Math.PI * 2);
+    if (newHourHand) newHourHand.rotation.z = hourHandRotation; 
+    if (hourWheel) hourWheel.rotation.z = -hourHandRotation; // CW
+
+    // --- THIS IS THE FINAL CORRECT LOGIC ---
+    if (escapeWheel) {
+        // Base offset (from slider) is constant and does not flip.
+        const baseRotation = ESCAPE_WHEEL_OFFSET; 
+        
+        // Escape wheel is also driven by the master totalTicks counter.
+        // This ensures its 10:1 ratio with the secondWheel is ALWAYS preserved.
+        const trueRotation = totalTicks * ESCAPE_WHEEL_STEP;
+
+        // Final position is the sum of the constant base offset and the accumulated tick rotation.
+        escapeWheel.rotation.z = baseRotation + trueRotation;
+    }
+}
+// --- END MODIFICATION ---
 
 // --- SCENE LAYOUT AND UTILITY FUNCTIONS ---
 function layoutScene() { //
@@ -1042,9 +1136,17 @@ function animate() { //
 
     // Update UI Text (if visible)
     if (settings.showDateTime) { //
+        // NOTE: simulatedSeconds is now derived inside updateClockGears()
+        // We need to calculate it here *only* for the display.
+        // This value is canonical and is the same one used for the gears/hands.
+        const currentSimulatedSeconds = simulationTotalTicks * BEAT_TIME_VALUE;
+        const totalSeconds = Math.floor(currentSimulatedSeconds); //
+        
+        // This code uses the *real* wall clock date, which is fine.
         const nowForDate = new Date(); //
         digitalDate.textContent = nowForDate.toLocaleDateString(undefined, dateOptions); //
-        const totalSeconds = Math.floor(simulatedSeconds); //
+        
+        // This code uses the *simulated* clock time, which starts at 0.
         const hours = Math.floor((totalSeconds / 3600) % 24); //
         const minutes = Math.floor((totalSeconds / 60) % 60); //
         const seconds = totalSeconds % 60; //
@@ -1055,21 +1157,9 @@ function animate() { //
     }
 
     // --- DRIVE TRAIN AND HANDS (driven by SIMULATED time) ---
-    const simulatedMinutes = simulatedSeconds / 60.0; //
-    const simulatedHours = simulatedSeconds / 3600.0; //
-    const secondHandRotation = -((simulatedSeconds / 60.0) * Math.PI * 2); //
-    if (newSecondHand) newSecondHand.rotation.z = secondHandRotation; //
-    if (secondWheel) secondWheel.rotation.z = secondHandRotation; //
-    if (secondWheelSmallGear) secondWheelSmallGear.rotation.z = secondHandRotation; //
-    const minuteHandRotation = -((simulatedMinutes / 60.0) * Math.PI * 2); //
-    if (newMinuteHand) newMinuteHand.rotation.z = minuteHandRotation; //
-    if (minuteWheel) minuteWheel.rotation.z = -minuteHandRotation; //
-    if (centerWheel) centerWheel.rotation.z = minuteHandRotation; //
-    if (thirdWheel) thirdWheel.rotation.z = ((simulatedMinutes / 7.5) * Math.PI * 2); //
-    if (thirdWheelTopGear) thirdWheelTopGear.rotation.z = -((simulatedMinutes / 7.5) * Math.PI * 2); //
-    const hourHandRotation = -(((simulatedHours % 12) / 12.0) * Math.PI * 2); //
-    if (newHourHand) newHourHand.rotation.z = hourHandRotation; //
-    if (hourWheel) hourWheel.rotation.z = -hourHandRotation; //
+    // --- MODIFICATION: This logic is now inside updateClockGears() and is ONLY called on a tick. ---
+    // (This block is now empty)
+    // --- END MODIFICATION ---
 
     if (!settings.clockRunning) { //
         renderer.render(scene, camera); //
@@ -1080,7 +1170,7 @@ function animate() { //
     // --- BALANCE WHEEL & SIMULATION LOGIC ---
     if (balanceWheel) { //
         const frequency = settings.beatRate / 2.0; //
-        const sineValue = Math.sin(time * Math.PI * 2 * frequency); //
+        const sineValue = Math.sin((time * Math.PI * 2 * frequency) + STARTING_PHASE_OFFSET); //
         const amplitudeRadians = THREE.MathUtils.degToRad(290); //
         balanceWheel.rotation.z = -amplitudeRadians * sineValue; //
 
@@ -1103,23 +1193,16 @@ function animate() { //
             }
 
             palletForkTargetAngle = (PALLET_FORK_ANGLE * palletForkState) + PALLET_FORK_OFFSET; //
-
-            if (settings.beatRate < 1.0) { //
-                isPalletForkAnimating = true; //
-                palletForkAnimStartTime = time; //
-                palletForkStartAngle = palletFork.rotation.z; //
-            } else {
-                if (palletFork) { //
-                    palletFork.rotation.z = palletForkTargetAngle; //
-                }
-            }
-
-            if (escapeWheel) { //
-                escapeWheel.rotation.z += (ESCAPE_WHEEL_STEP * palletForkState); //
-            }
-            simulatedSeconds += BEAT_TIME_VALUE; //
-
-            // --- ALL AUDIO LOGIC REMOVED FROM ANIMATION LOOP ---
+            
+            // --- MODIFICATION: Unify logic for all beat rates. ---
+            // This is the ONLY logic that should run when a tick is *detected*.
+            // ALWAYS trigger the smooth pallet animation. The *completion* of this animation
+            // is what increments the clock tick and moves the gears. This ensures
+            // the pallet always moves *before* the escape wheel snaps, fixing the desync.
+            isPalletForkAnimating = true; 
+            palletForkAnimStartTime = time; 
+            palletForkStartAngle = palletFork.rotation.z; 
+            // (DO NOT increment tick or call updateClockGears() here)
         }
         previousSineValue = sineValue; //
 
@@ -1130,6 +1213,12 @@ function animate() { //
             if (progress >= 1.0) { //
                 progress = 1.0; //
                 isPalletForkAnimating = false; //
+                
+                // --- MODIFICATION: This is the "consequence" of the tick ---
+                // Now that the pallet animation is finished, increment the master tick
+                // counter and update the entire gear train.
+                simulationTotalTicks++;
+                updateClockGears();
             }
             const easedProgress = 1 - Math.pow(1 - progress, 3); //
             palletFork.rotation.z = THREE.MathUtils.lerp(palletForkStartAngle, palletForkTargetAngle, easedProgress); //
