@@ -1,6 +1,6 @@
 // 3D Javacript ETA 6497 Clock using three.js
 // MIT License. - Work In Progress
-// Jeff Miller 2025. 9/7/25
+// Jeff Miller 2025. 9/9/25
 
 /* References and Notes
 - AI Development Support & Debugging: Google Gemini
@@ -21,12 +21,12 @@
 /*
 To Do:
 - Finish textures
-- Finish gears anamation
+- Finish gears animation
 - Add option to "explode parts"
 - Fix tilt mode for mobile devices 
 - Update Shadow Box to a better texture and more detail
-- Add top plate back in and make it transparent when viewed from the front
 - Add option for lower poly model to improve frame rate on mobile devices
+- Clean up skeleton top alignment and third wheel support
 */
 
 /*
@@ -110,37 +110,6 @@ NOTES (Will eventually move this to the ReadMe file):
 		- 3. End of cycle (0.4 Seconds): Balance wheel reaces the end of its second swing and starts back.
 */
 
-// 3D Javacript ETA 6497 Clock using three.js
-// MIT License. - Work In Progress
-// Jeff Miller 2025. Revised 9/6/25
-
-/* References and Notes
-- AI Development Support & Debugging: Google Gemini
-- HDRI: https://polyhaven.com/a/colorful_studio
-- PBR Textures: https://www.cgbookcase.com/
-- Modified ETA 6497-1 Watch Movement CAD: Steen Winther: https://grabcad.com/library/eta-6497-1-complete-watch-movement
-- ETA 6497 Custom Clock Hands and Clock Case made in Fusion 360
-- 5 Hz Tick Sound - Clock Ticking by RedDog0607: https://pixabay.com/sound-effects/clock-ticking-365218/
-- Development and Debugging Tools: Google Gemini
-- File encoding is set to UF-8
-- Local Server: python -m http.server run in a terminal in local javascript directory with index.html
-- 	http://localhost:8000 in a local browser tab
-- Single click brings up gui
-- Zoom, Pan (right mouse button or two finger touch), and rotate are supported
-- Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
-*/
-
-/*
-To Do:
-- Finish textures
-- Finish gears anamation
-- Add option to "explode parts"
-- Fix tilt mode for mobile devices 
-- Update Shadow Box to a better texture and more detail
-- Add top plate back in and make it transparent when viewed from the front
-- Add option for lower poly model to improve frame rate on mobile devices
-*/
-
 // --- Load Dependencies ---
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -177,6 +146,7 @@ const settings = {
     soundVolume: 0.2,   // Default volume
     showFPS: false,  //
     showShadowBox: true, 
+    showSkeletonTop: true,
     listMeshBodies: false,  //
     beatRate: 5.0,  // This is the GUI-bound setting
     shadowResolution: 2048, // Default is 2048
@@ -234,12 +204,17 @@ function _resetSimulation() {
     }
     // --- END ESCAPEMENT RESET ---
 
-    // 4. Calculate new hand offsets (the clock time is still just a snap-to value)
+    // 4. Calculate new hand offsets and set simulation start time
     const now = new Date();
-    const realHours12 = now.getHours() % 12; // 0-11
-    const realMinutes = now.getMinutes(); // 0-59
-    const realSeconds = now.getSeconds(); // 0-59
-    const realMillis = now.getMilliseconds(); // 0-999
+    const realHours24 = now.getHours();
+    const realMinutes = now.getMinutes();
+    const realSeconds = now.getSeconds();
+    const realMillis = now.getMilliseconds();
+
+    // Store the starting time in seconds from midnight for the digital display.
+    simulationStartTimeInSeconds = (realHours24 * 3600) + (realMinutes * 60) + realSeconds;
+
+    const realHours12 = now.getHours() % 12; // 0-11 for hand rotation
 
     // Get fractional time for smooth initial positioning
     const totalRealSecondsWithFraction = realSeconds + (realMillis / 1000.0);
@@ -279,6 +254,7 @@ let initialHourRotationOffset = 0;
 
 // --- Simulation State Variables ---
 let simulatedSeconds = 0; //
+let simulationStartTimeInSeconds = 0;
 // --- Add discrete counter. This is now the SINGLE SOURCE OF TRUTH for time.
 let simulationTotalTicks = 0;
 // --- Add stable "live" beat rate variable for physics ---
@@ -465,6 +441,13 @@ window.addEventListener('DOMContentLoaded', () => { //
         }
     });
     
+    gui.add(settings, 'showSkeletonTop').name('Show Skeleton Top').onChange(value => {
+        const skeletonTop = collectedParts['6497_SkeltonFront'];
+        if (skeletonTop) {
+            skeletonTop.visible = value;
+        }
+    });
+
     // --- Updated slider step to 0.5 and added rounding logic ---
     gui.add(settings, 'beatRate', 0.5, 5.0, 0.5).name('Beat Rate / Sec') // Step changed to 0.5
         .onChange(newBeatRate => {
@@ -898,9 +881,15 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
             'Incabloc2_2', 'IncablocDisc_2', 'PalletForkBody', 'RatchetWheelBody', //
             'RegulatorCurvePin_1', 'RegulatorCurvePin_2', 'RegulatorPiece1_Body', 'RegulatorPiece2_Body', //
             'RegulatorPiece3_Body', 'SettingLeverJumperBody', 'SettingLever_Body', 'SettingWheelBody', //
-            'SlidingPinion', 'WindingKnob', 'WindingPinion', 'WindingStem', 'YokeBody' //
+            'SlidingPinion', 'WindingKnob', 'WindingPinion', 'WindingStem', 'YokeBody', 'YokeSpringCompressed_Body' //
         ].includes(name)) { 
             part.material = polishedAluminumMaterial;  //
+        }
+        else if (name === '6497_SkeltonFront') {
+            const transparentAluminum = polishedAluminumMaterial.clone();
+            transparentAluminum.transparent = true;
+            transparentAluminum.opacity = 0.7; // 30% transparent
+            part.material = transparentAluminum;
         }
         else if (name.includes('Screw')) { //
             part.material = polishedAluminumMaterial; //
@@ -1222,7 +1211,7 @@ window.addEventListener('resize', () => { //
 // --- Animation Loop ---
 let lastFPSTime = performance.now(); //
 let frameCount = 0; //
-const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }; //
+const dateOptions = { month: '2-digit', day: '2-digit', year: '2-digit' }; //
 
 function animate() { //
     requestAnimationFrame(animate); //
@@ -1258,25 +1247,26 @@ function animate() { //
     const time = now / 1000; //
 
     // Update UI Text (if visible)
-    if (settings.showDateTime) { //
-        // NOTE: simulatedSeconds is now derived inside updateClockGears()
-        // We need to calculate it here *only* for the display.
-        // This value is canonical and is the same one used for the gears/hands.
-        const currentSimulatedSeconds = simulationTotalTicks * BEAT_TIME_VALUE;
-        const totalSeconds = Math.floor(currentSimulatedSeconds); //
+    if (settings.showDateTime) {
+        // Get elapsed seconds from the simulation's tick counter
+        const elapsedSimulatedSeconds = simulationTotalTicks * BEAT_TIME_VALUE;
+        // Add elapsed sim time to the real start time to get the display time
+        const totalDisplaySeconds = simulationStartTimeInSeconds + elapsedSimulatedSeconds;
         
+        const totalSecondsInt = Math.floor(totalDisplaySeconds);
+
         // This code uses the *real* wall clock date, which is fine.
-        const nowForDate = new Date(); //
-        digitalDate.textContent = nowForDate.toLocaleDateString(undefined, dateOptions); //
+        const nowForDate = new Date();
+        digitalDate.textContent = nowForDate.toLocaleDateString(undefined, dateOptions);
         
-        // This code uses the *simulated* clock time, which starts at 0.
-        const hours = Math.floor((totalSeconds / 3600) % 24); //
-        const minutes = Math.floor((totalSeconds / 60) % 60); //
-        const seconds = totalSeconds % 60; //
-        const formattedHours = ('0' + hours).slice(-2); //
-        const formattedMinutes = ('0' + minutes).slice(-2); //
-        const formattedSeconds = ('0' + seconds).slice(-2); //
-        digitalClock.textContent = `${formattedHours}:${formattedMinutes}:${formattedSeconds}`; //
+        // This code now uses the *synchronized* simulated clock time.
+        const hours = Math.floor((totalSecondsInt / 3600) % 24);
+        const minutes = Math.floor((totalSecondsInt / 60) % 60);
+        const seconds = totalSecondsInt % 60;
+        const formattedHours = ('0' + hours).slice(-2);
+        const formattedMinutes = ('0' + minutes).slice(-2);
+        const formattedSeconds = ('0' + seconds).slice(-2);
+        digitalClock.textContent = `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
     }
 
     // --- DRIVE TRAIN AND HANDS (driven by SIMULATED time) ---
