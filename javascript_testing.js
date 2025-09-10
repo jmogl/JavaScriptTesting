@@ -1,3 +1,5 @@
+tttt
+
 // 3D Javacript ETA 6497 Clock using three.js
 // MIT License. - Work In Progress
 // Jeff Miller 2025. 9/9/25
@@ -1215,16 +1217,16 @@ function handleOrientation(event) { //
   tiltX = event.gamma || 0; //
 }
 
-function enableTilt() { //
+function enableTilt() {
     const startTilting = () => {
         window.addEventListener('deviceorientation', handleOrientation);
-        // Reset the camera to its default state for the tilt effect
-        settings.resetCamera();
+        // Do not reset the camera, per user request for troubleshooting.
+        // settings.resetCamera();
     };
 
-    if (typeof DeviceOrientationEvent?.requestPermission === 'function') { //
-        DeviceOrientationEvent.requestPermission().then(permissionState => { //
-            if (permissionState === 'granted') { //
+    if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission().then(permissionState => {
+            if (permissionState === 'granted') {
                 startTilting();
             } else {
                 // If permission is denied, uncheck the box in the GUI
@@ -1241,10 +1243,12 @@ function enableTilt() { //
     }
 }
 
-function disableTilt() { //
-    window.removeEventListener('deviceorientation', handleOrientation); //
-    tiltX = 0; //
-    tiltY = 0; //
+function disableTilt() {
+    window.removeEventListener('deviceorientation', handleOrientation);
+    tiltX = 0;
+    tiltY = 0;
+    // Reset the camera's focus point to the center
+    controls.target.set(0, 0, 0);
 }
 window.addEventListener('resize', () => { //
     camera.aspect = window.innerWidth / window.innerHeight; //
@@ -1286,9 +1290,8 @@ function animate() { //
     }
 
     // --- Tilt Camera Logic ---
-    if (settings.tiltEnabled && !isUserInteracting && !isResettingCamera) {
-        // Define the maximum offset from center
-        const maxTiltOffset = 2.0; 
+    if (settings.tiltEnabled && !isUserInteracting) {
+        const maxTiltOffset = 2.0;
 
         // Clamp the raw tilt values to a reasonable range (e.g., +/- 45 degrees)
         const clampedTiltX = THREE.MathUtils.clamp(tiltX, -45, 45);
@@ -1298,12 +1301,13 @@ function animate() { //
         const targetOffsetX = (clampedTiltX / 45) * maxTiltOffset;
         const targetOffsetY = (clampedTiltY / 45) * maxTiltOffset;
 
-        // Smoothly interpolate the camera position for a fluid effect
-        const lerpFactor = Math.min(delta * 2.0, 1.0); // Adjust multiplier for faster/slower smoothing
+        const targetPos = new THREE.Vector3(-targetOffsetX, targetOffsetY, 0);
         
-        // We tilt relative to the camera's default resting position
-        camera.position.x = THREE.MathUtils.lerp(camera.position.x, cameraResetTargetPos.x - targetOffsetX, lerpFactor);
-        camera.position.y = THREE.MathUtils.lerp(camera.position.y, cameraResetTargetPos.y + targetOffsetY, lerpFactor);
+        const lerpFactor = Math.min(delta * 2.0, 1.0);
+
+        // Instead of moving the camera position, we move the target it's looking at.
+        // This creates a parallax effect without fighting the user's zoom/position.
+        controls.target.lerp(targetPos, lerpFactor);
     }
 
     controls.update(); //
@@ -1398,6 +1402,7 @@ function animate() { //
 
 // Start the animation
 animate(); //
+
 
 
 
