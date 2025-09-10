@@ -1,3 +1,5 @@
+ttttt
+
 // 3D Javacript ETA 6497 Clock using three.js
 // MIT License. - Work In Progress
 // Jeff Miller 2025. 9/9/25
@@ -110,7 +112,9 @@ NOTES (Will eventually move this to the ReadMe file):
 		- 3. End of cycle (0.4 Seconds): Balance wheel reaces the end of its second swing and starts back.
 */
 
-// --- Load Dependencies ---
+// Option A
+
+// Load Dependencies
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
@@ -189,7 +193,6 @@ function _resetSimulation() {
     simulationTotalTicks = 0; 
     ESCAPE_WHEEL_OFFSET = 0.0;
     
-    // --- THIS IS THE FIX ---
     // Forcibly cancel any in-progress pallet animation to prevent a "ghost tick"
     // from firing after the reset, which would desync the gears.
     isPalletForkAnimating = false; 
@@ -277,15 +280,14 @@ const ESCAPE_WHEEL_STEP = (Math.PI * 2) / 30;  // This is 12 degrees in radians
 let ESCAPE_WHEEL_OFFSET = 0.0; //
 // --- Default phase value set to 0.0 ---
 let STARTING_PHASE_OFFSET = 0.0;
-// This constant defines the canonical time duration of a single tick.
-const BEAT_TIME_VALUE = 1.0 / 5.0;  // This is the time (in seconds) per beat/tick
 
 // --- Pallet Fork Animation State ---
-let isPalletForkAnimating = false; //
-let palletForkAnimStartTime = 0; //
-const palletForkAnimDuration = 0.08;  //
-let palletForkStartAngle = 0; //
-let palletForkTargetAngle = 0; //
+// These are no longer used by the instantaneous escapement logic but are kept for potential future use.
+let isPalletForkAnimating = false;
+let palletForkAnimStartTime = 0;
+const palletForkAnimDuration = 0.08;
+let palletForkStartAngle = 0;
+let palletForkTargetAngle = 0;
 
 
 // --- Hairspring Animation Variables ---
@@ -667,6 +669,18 @@ controls.enableDamping = true; //
 controls.addEventListener('start', () => { //
     isUserInteracting = true; //
     isResettingCamera = false; //
+
+    // If the user starts interacting while tilt is on, turn it off.
+    if (settings.tiltEnabled) {
+        settings.tiltEnabled = false;
+        disableTilt(); // This removes the event listener and resets values.
+        
+        // Find the 'Enable Tilt' controller in the GUI and update it.
+        const tiltController = gui.controllers.find(c => c.property === 'tiltEnabled');
+        if (tiltController) {
+            tiltController.updateDisplay();
+        }
+    }
 });
 controls.addEventListener('end', () => { //
     isUserInteracting = false; //
@@ -1057,10 +1071,11 @@ function updateClockGears() {
     // --- Single Source of Truth ---
     // ALL time/rotation is derived from the discrete tick counter.
     const totalTicks = simulationTotalTicks;
-    // Derive master "sim time" ONLY from ticks * constant beat value (0.2s).
-    // This ensures all gear ratios, hands, and displays are always mechanically synced.
-    // The "slow mo" effect happens because ticks occur less frequently in real-time.
-    const simulatedSeconds = totalTicks * BEAT_TIME_VALUE; 
+    
+    // FIX: Calculate time per beat dynamically from the live simulation beat rate.
+    const timePerBeat = 1.0 / simulationBeatRate;
+    // Derive master "sim time" ONLY from ticks * the correct time per beat.
+    const simulatedSeconds = totalTicks * timePerBeat; 
     
     const simulatedMinutes = simulatedSeconds / 60.0;
     const simulatedHours = simulatedSeconds / 3600.0; 
@@ -1184,17 +1199,28 @@ function handleOrientation(event) { //
   tiltX = event.gamma || 0; //
 }
 function enableTilt() { //
+    const startTilting = () => {
+        window.addEventListener('deviceorientation', handleOrientation);
+        // Reset the camera to its default state for the tilt effect
+        settings.resetCamera();
+    };
+
     if (typeof DeviceOrientationEvent?.requestPermission === 'function') { //
         DeviceOrientationEvent.requestPermission().then(permissionState => { //
             if (permissionState === 'granted') { //
-                window.addEventListener('deviceorientation', handleOrientation); //
+                startTilting();
             } else {
-                settings.tiltEnabled = false; //
-                gui.controllers.forEach(c => c.updateDisplay()); //
+                // If permission is denied, uncheck the box in the GUI
+                settings.tiltEnabled = false; 
+                const tiltController = gui.controllers.find(c => c.property === 'tiltEnabled');
+                if (tiltController) {
+                    tiltController.updateDisplay();
+                }
             }
         });
     } else {
-        window.addEventListener('deviceorientation', handleOrientation); //
+        // For non-iOS browsers that don't need permission
+        startTilting();
     }
 }
 function disableTilt() { //
@@ -1241,6 +1267,27 @@ function animate() { //
         }
     }
 
+    // --- Tilt Camera Logic ---
+    if (settings.tiltEnabled && !isUserInteracting && !isResettingCamera) {
+        // Define the maximum offset from center
+        const maxTiltOffset = 2.0; 
+
+        // Clamp the raw tilt values to a reasonable range (e.g., +/- 45 degrees)
+        const clampedTiltX = THREE.MathUtils.clamp(tiltX, -45, 45);
+        const clampedTiltY = THREE.MathUtils.clamp(tiltY, -45, 45);
+
+        // Map the clamped tilt range to our desired offset range
+        const targetOffsetX = (clampedTiltX / 45) * maxTiltOffset;
+        const targetOffsetY = (clampedTiltY / 45) * maxTiltOffset;
+
+        // Smoothly interpolate the camera position for a fluid effect
+        const lerpFactor = Math.min(delta * 2.0, 1.0); // Adjust multiplier for faster/slower smoothing
+        
+        // We tilt relative to the camera's default resting position
+        camera.position.x = THREE.MathUtils.lerp(camera.position.x, cameraResetTargetPos.x - targetOffsetX, lerpFactor);
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, cameraResetTargetPos.y + targetOffsetY, lerpFactor);
+    }
+
     controls.update(); //
 
     // This 'time' is based on wall clock, used for the pallet animation duration check
@@ -1248,8 +1295,8 @@ function animate() { //
 
     // Update UI Text (if visible)
     if (settings.showDateTime) {
-        // Get elapsed seconds from the simulation's tick counter
-        const elapsedSimulatedSeconds = simulationTotalTicks * BEAT_TIME_VALUE;
+        // FIX: Calculate time per beat dynamically for the display.
+        const elapsedSimulatedSeconds = simulationTotalTicks * (1.0 / simulationBeatRate);
         // Add elapsed sim time to the real start time to get the display time
         const totalDisplaySeconds = simulationStartTimeInSeconds + elapsedSimulatedSeconds;
         
@@ -1268,12 +1315,7 @@ function animate() { //
         const formattedSeconds = ('0' + seconds).slice(-2);
         digitalClock.textContent = `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
     }
-
-    // --- DRIVE TRAIN AND HANDS (driven by SIMULATED time) ---
-    // --- This logic is now inside updateClockGears() and is ONLY called on a tick. ---
-    // (This block is now empty)
-    // --- END ---
-
+    
     // --- This block now controls the physics clock ---
     if (settings.clockRunning) {
         simulationPhysicsTime += delta; // Only advance our custom physics clock if running
@@ -1286,7 +1328,6 @@ function animate() { //
     // --- BALANCE WHEEL & SIMULATION LOGIC ---
     if (balanceWheel) { //
         // --- Physics is now driven by our resettable 'simulationPhysicsTime' ---
-        // This prevents the physics from trying to use the rapidly changing slider value from 'settings.beatRate'.
         const frequency = simulationBeatRate / 2.0; 
         const sineValue = Math.sin((simulationPhysicsTime * Math.PI * 2 * frequency) + STARTING_PHASE_OFFSET); //
         const amplitudeRadians = THREE.MathUtils.degToRad(290); //
@@ -1300,47 +1341,33 @@ function animate() { //
         balanceWheelAngles.max = Math.max(balanceWheelAngles.max, currentAngleDeg); //
 
 
-        // --- ESCAPEMENT LOGIC ---
-        const currentSign = Math.sign(sineValue); //
-        if (currentSign !== Math.sign(previousSineValue) && !isPalletForkAnimating) { //
+        // --- NEW ESCAPEMENT LOGIC ---
+        // This version removes the animation timing and acts on every beat instantly.
+        const currentSign = Math.sign(sineValue);
+        if (currentSign !== Math.sign(previousSineValue)) {
             
-            if (previousSineValue > 0 && currentSign <= 0) { //
-                palletForkState = -1; //
-            } else if (previousSineValue < 0 && currentSign >= 0) { //
-                palletForkState = 1; //
+            // Determine which way the pallet fork should move.
+            if (previousSineValue > 0 && currentSign <= 0) {
+                palletForkState = -1;
+            } else if (previousSineValue < 0 && currentSign >= 0) {
+                palletForkState = 1;
             }
 
-            palletForkTargetAngle = (PALLET_FORK_ANGLE * palletForkState) + PALLET_FORK_OFFSET; //
-            
-            // --- Unify logic for all beat rates. ---
-            // This is the ONLY logic that should run when a tick is *detected*.
-            // ALWAYS trigger the smooth pallet animation. The *completion* of this animation
-            // is what increments the clock tick and moves the gears. This ensures
-            // the pallet always moves *before* the escape wheel snaps, fixing the desync.
-            isPalletForkAnimating = true; 
-            palletForkAnimStartTime = time; // Use wall-clock time for the animation timer
-            palletForkStartAngle = palletFork.rotation.z; 
-            // (DO NOT increment tick or call updateClockGears() here)
-        }
-        previousSineValue = sineValue; //
-
-        // --- PALLET FORK SMOOTH ANIMATION HANDLER ---
-        if (isPalletForkAnimating && palletFork) { //
-            const elapsedTime = time - palletForkAnimStartTime; // Use wall-clock time for the check
-            let progress = elapsedTime / palletForkAnimDuration; //
-            if (progress >= 1.0) { //
-                progress = 1.0; //
-                isPalletForkAnimating = false; //
-                
-                // --- This is the "consequence" of the tick ---
-                // Now that the pallet animation is finished, increment the master tick
-                // counter and update the entire gear train.
-                simulationTotalTicks++;
-                updateClockGears();
+            // This is now the single point of action for a beat.
+            if (palletFork) {
+                // 1. Calculate the target angle and SNAP the pallet fork to it.
+                const palletForkTargetAngle = (PALLET_FORK_ANGLE * palletForkState) + PALLET_FORK_OFFSET;
+                palletFork.rotation.z = palletForkTargetAngle;
             }
-            const easedProgress = 1 - Math.pow(1 - progress, 3); //
-            palletFork.rotation.z = THREE.MathUtils.lerp(palletForkStartAngle, palletForkTargetAngle, easedProgress); //
+            
+            // 2. Increment the master tick counter.
+            simulationTotalTicks++;
+            // 3. Update the entire gear train based on the new tick count.
+            updateClockGears();
         }
+        previousSineValue = sineValue;
+
+        // The timed animation handler has been completely removed.
 
         // --- HAIRSPRING ANIMATION (GPU) ---
         if (hairSpringMesh && hairSpringMesh.userData.shader) {
@@ -1353,7 +1380,6 @@ function animate() { //
 
 // Start the animation
 animate(); //
-
 
 
 
