@@ -1,3 +1,5 @@
+TTTTT
+
 // 3D Javacript ETA 6497 Clock using three.js
 // MIT License. - Work In Progress
 // Jeff Miller 2025. 9/9/25
@@ -109,8 +111,6 @@ NOTES (Will eventually move this to the ReadMe file):
 			another tooth. This ends the first pause and immediately begins the second 0.2 second pause.
 		- 3. End of cycle (0.4 Seconds): Balance wheel reaces the end of its second swing and starts back.
 */
-
-// Option A
 
 // Load Dependencies
 import * as THREE from 'three';
@@ -380,9 +380,13 @@ window.addEventListener('DOMContentLoaded', () => { //
         digitalClock.style.display = value ? 'block' : 'none'; //
     });
 
-    gui.add(settings, 'tiltEnabled').name('Enable Tilt').onChange(value => { //
-        if (value) { enableTilt(); } else { disableTilt(); } //
-    });
+    // Conditionally add the Tilt option only on mobile devices.
+    const isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || /Mobi|Android|iPhone/.test(navigator.userAgent);
+    if (isMobileDevice) {
+        gui.add(settings, 'tiltEnabled').name('Enable Tilt').onChange(value => { //
+            if (value) { enableTilt(); } else { disableTilt(); } //
+        });
+    }
 
     // --- Sound controls linking to Web Audio API ---
     const soundEnabledController = gui.add(settings, 'soundEnabled').name('Enable Sound');
@@ -607,43 +611,70 @@ window.addEventListener('DOMContentLoaded', () => { //
         }
     });
     
-    // Listeners for GUI toggle
-    window.addEventListener('mousedown', onPointerDown); //
-    window.addEventListener('mouseup', onPointerUp); //
-    window.addEventListener('touchstart', onPointerDown, { passive: true }); //
-    window.addEventListener('touchend', onPointerUp); //
+    // --- Refined Listeners for GUI toggle and Tilt Mode drag-to-disable ---
+    let dragStarted = false;
 
-    function onPointerDown(event) { //
-        const pointer = event.touches ? event.touches[0] : event; //
-        pointerDownTime = Date.now(); //
-        pointerDownPos.set(pointer.clientX, pointer.clientY); //
+    window.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', onPointerUp);
+    window.addEventListener('touchstart', onPointerDown, { passive: true });
+    window.addEventListener('touchmove', onPointerMove);
+    window.addEventListener('touchend', onPointerUp);
+
+    function onPointerDown(event) {
+        const pointer = event.touches ? event.touches[0] : event;
+        pointerDownTime = Date.now();
+        pointerDownPos.set(pointer.clientX, pointer.clientY);
+        dragStarted = false; // Reset on new press
     }
 
-    function onPointerUp(event) { //
-        if (!pointerDownTime) return; //
+    function onPointerMove(event) {
+        if (!pointerDownTime || dragStarted) return; // Not pressed or drag already detected
 
-        const isTouchEvent = !!event.changedTouches; //
-        const pointer = isTouchEvent ? event.changedTouches[0] : event; //
-
-        const duration = Date.now() - pointerDownTime; //
-        const distance = pointerDownPos.distanceTo(new THREE.Vector2(pointer.clientX, pointer.clientY)); //
+        const pointer = event.touches ? event.touches[0] : event;
+        const currentPos = new THREE.Vector2(pointer.clientX, pointer.clientY);
         
-        pointerDownTime = null; //
-
-        if (duration < 200 && distance < 15) { //
-            if (gui.domElement.contains(pointer.target)) return; //
-            
-            if (isTouchEvent) { //
-                event.preventDefault(); //
+        // If moved more than a threshold, it's a drag to move the camera
+        if (pointerDownPos.distanceTo(currentPos) > 15) {
+            dragStarted = true; // Register the drag
+            if (settings.tiltEnabled) {
+                settings.tiltEnabled = false;
+                disableTilt();
+                
+                const tiltController = gui.controllers.find(c => c.property === 'tiltEnabled');
+                if (tiltController) {
+                    tiltController.updateDisplay();
+                }
             }
-            
-            gui.domElement.style.display = (gui.domElement.style.display === 'none') ? 'block' : 'none'; //
         }
     }
 
+    function onPointerUp(event) {
+        if (!pointerDownTime) return;
+
+        // Only process as a tap for the GUI if a drag didn't occur
+        if (!dragStarted) {
+            const isTouchEvent = !!event.changedTouches;
+            const pointer = isTouchEvent ? event.changedTouches[0] : event;
+            const duration = Date.now() - pointerDownTime;
+            const distance = pointerDownPos.distanceTo(new THREE.Vector2(pointer.clientX, pointer.clientY));
+            
+            if (duration < 200 && distance < 15) {
+                if (gui.domElement.contains(pointer.target)) return;
+                if (isTouchEvent) {
+                    event.preventDefault();
+                }
+                gui.domElement.style.display = (gui.domElement.style.display === 'none') ? 'block' : 'none';
+            }
+        }
+        
+        // Reset state
+        pointerDownTime = null;
+    }
+
     // Initialize clock
-    settings.resetClock(); //
-    updateClockGears(); // Run once on init to set all gears
+    settings.resetClock();
+    updateClockGears();
 });
 
 // --- Scene Setup ---
@@ -667,18 +698,7 @@ controls.enableDamping = true; //
 controls.addEventListener('start', () => { //
     isUserInteracting = true; //
     isResettingCamera = false; //
-
-    // If the user starts interacting while tilt is on, turn it off.
-    if (settings.tiltEnabled) {
-        settings.tiltEnabled = false;
-        disableTilt(); // This removes the event listener and resets values.
-        
-        // Find the 'Enable Tilt' controller in the GUI and update it.
-        const tiltController = gui.controllers.find(c => c.property === 'tiltEnabled');
-        if (tiltController) {
-            tiltController.updateDisplay();
-        }
-    }
+    // Tilt-disabling logic has been moved to the onPointerMove handler for better precision
 });
 controls.addEventListener('end', () => { //
     isUserInteracting = false; //
@@ -1196,6 +1216,7 @@ function handleOrientation(event) { //
   tiltY = event.beta || 0; //
   tiltX = event.gamma || 0; //
 }
+
 function enableTilt() { //
     const startTilting = () => {
         window.addEventListener('deviceorientation', handleOrientation);
@@ -1221,6 +1242,7 @@ function enableTilt() { //
         startTilting();
     }
 }
+
 function disableTilt() { //
     window.removeEventListener('deviceorientation', handleOrientation); //
     tiltX = 0; //
@@ -1378,7 +1400,6 @@ function animate() { //
 
 // Start the animation
 animate(); //
-
 
 
 
