@@ -1,3 +1,4 @@
+TTTT
 // 3D Javacript ETA 6497 Clock using three.js
 // MIT License. - Work In Progress
 // Jeff Miller 2025. 9/10/25
@@ -23,9 +24,9 @@ To Do:
 - Finish textures
 - Finish gears animation
 - Add option to "explode parts"
-- Fix tilt mode for mobile devices 
+- Fix tilt mode for mobile devices - Partially working
 - Update Shadow Box to a better texture and more detail
-- Add option for lower poly model to improve frame rate on mobile devices
+- Fix texture bump detail for high quality LOD model.
 - Clean up skeleton top alignment and third wheel support
 */
 
@@ -137,6 +138,14 @@ let _lightPosition = new THREE.Vector3();
 let _lightTargetPosition = new THREE.Vector3();
 let _shadowCameraSettings = {};
 
+// --- Camera Zoom Variables ---
+let maxZoomInDistance = 30; // Default min distance
+let maxZoomOutDistance = 90; // Default max distance
+
+const modelFiles = {
+    'High Quality': 'ETA6497-1.glb',
+    'Low Quality': 'ETA6497-1_LowPoly.glb'
+};
 
 const settings = {
     clockRunning: true, //
@@ -152,6 +161,8 @@ const settings = {
     shadowResolution: 2048, // Default is 2048
     maxPixelRatio: 1.5,
     wireframe: false, // <-- Added wireframe setting
+    modelLOD: 'High Quality', // This will be overridden by device detection below
+    cameraZoom: 1.0, // Default to 1.0 (fully zoomed in)
     // --- Default values set to 0 ---
     startPhaseOffsetDeg: 0.0, // Defaulting to 0 degrees
     escapeWheelOffsetDeg: 0.0, // Defaulting to 0 degrees
@@ -173,6 +184,10 @@ const settings = {
         _resetSimulation(); // Run the core simulation reset
     },
 };
+
+// --- Set Default LOD based on device type ---
+const isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || /Mobi|Android|iPhone|iPad/.test(navigator.userAgent);
+settings.modelLOD = isMobileDevice ? 'Low Quality' : 'High Quality';
 
 // --- Core simulation reset logic ---
 // This version is simplified to be deterministic. It resets our NEW
@@ -229,9 +244,11 @@ function _resetSimulation() {
     balanceWheelAngles = { start: null, min: Infinity, max: -Infinity }; // Reset balance wheel metrics
     
     // 5. Update all GUI sliders to show the new "zeroed" values
-    gui.controllers.forEach(c => { 
-        c.updateDisplay(); // This will now correctly update beatRate, startPhase, AND escapeOffset sliders
-    });
+    if (gui) { // Check if gui is initialized
+        gui.controllers.forEach(c => { 
+            c.updateDisplay(); // This will now correctly update beatRate, startPhase, AND escapeOffset sliders
+        });
+    }
     
     // 6. Run updateClockGears to put all gear meshes in their "zero" position (synced to ticks=0)
     updateClockGears();
@@ -379,7 +396,6 @@ window.addEventListener('DOMContentLoaded', () => { //
     });
 
     // Conditionally add the Tilt option only on mobile devices.
-    const isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || /Mobi|Android|iPhone/.test(navigator.userAgent);
     if (isMobileDevice) {
         gui.add(settings, 'tiltEnabled').name('Enable Tilt').onChange(value => { //
             if (value) { enableTilt(); } else { disableTilt(); } //
@@ -476,40 +492,8 @@ window.addEventListener('DOMContentLoaded', () => { //
             // 3. NOW, reset the entire simulation to this new, stable, rounded rate.
             _resetSimulation();
         });
-
-    // --- Restored original slider logic, but expanded range to 360 ---
-    // This slider is a MANUAL debug tool. Using it WILL desync the escapement
-    // from the balance wheel's calculated phase. This is its intended purpose.
-    // The user must press "Reset Clock" to re-calculate and restore the physical sync.
-    gui.add(settings, 'startPhaseOffsetDeg', 0.0, 360.0, 0.1).name('Start Phase (Deg)').onChange(degrees => { // Range changed to 360
-        STARTING_PHASE_OFFSET = THREE.MathUtils.degToRad(degrees);
-        
-        // Calculate the state based on a "zero time" sine value
-        const newStartSineVal = Math.sin(STARTING_PHASE_OFFSET); 
-        previousSineValue = newStartSineVal;
-        palletForkState = (newStartSineVal >= 0) ? -1 : 1; // Update global state
-        
-        if (palletFork) {
-             // Manually set pallet mesh to match the new debug state
-             palletFork.rotation.z = (PALLET_FORK_ANGLE * palletForkState) + PALLET_FORK_OFFSET;
-        }
-        
-        // Manually call updateClockGears to move all gears.
-        // This forces the manual desync, which is the purpose of this debug slider.
-        updateClockGears();
-    });
-    // --- END ---
-
-
-    // --- Restored original simple slider logic ---
-    gui.add(settings, 'escapeWheelOffsetDeg', 0.0, 180.0, 0.1).name('Escape Wheel Offset').onChange(degrees => {
-        // Just update the global variable. 
-        ESCAPE_WHEEL_OFFSET = THREE.MathUtils.degToRad(degrees);
-        // Call updateClockGears() to reflect the change immediately without waiting for a tick.
-        // This manually desyncs the wheel, as intended for debugging.
-        updateClockGears();
-    });
-    // --- END ---
+    
+    gui.add(settings, 'cameraZoom', 0.0, 2.0, 0.01).name('Camera Zoom').onChange(updateCameraZoom);
 
     gui.add(settings, 'resetClock').name('Reset Clock'); //
     gui.add(settings, 'resetCamera').name('Reset Camera'); //
@@ -566,6 +550,12 @@ window.addEventListener('DOMContentLoaded', () => { //
         });
     });
 
+    performanceFolder.add(settings, 'modelLOD', ['High Quality', 'Low Quality'])
+        .name('Level of Detail')
+        .onChange(value => {
+            loadClockModel(value);
+        });
+
     performanceFolder.add(settings, 'maxPixelRatio', 0.5, 2.0, 0.1).name('Pixel Ratio Cap').onChange(value => {
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, value));
     });
@@ -588,25 +578,47 @@ window.addEventListener('DOMContentLoaded', () => { //
     });
     // --- END ---
 
-    // --- Console Log Sub-Menu ---
-    const consoleFolder = gui.addFolder('Console Log Outputs'); //
-    consoleFolder.close(); //
-    const listMeshesController = consoleFolder.add(settings, 'listMeshBodies').name('List All Mesh Bodies'); //
-    listMeshesController.onChange(value => { //
-        if (value) { //
-            if (clockModel && Object.keys(collectedParts).length > 0) { //
-                console.log("--- All Mesh Bodies in GLTF Model ---"); //
-                const meshNames = Object.keys(collectedParts).sort(); //
-                meshNames.forEach(name => console.log(name)); //
-                console.log(`--- Total: ${meshNames.length} meshes ---`); //
+    // --- Console Log / Troubleshooting Sub-Menu ---
+    const consoleFolder = gui.addFolder('Console Log Outputs / Troubleshooting');
+    consoleFolder.close();
+    const listMeshesController = consoleFolder.add(settings, 'listMeshBodies').name('List All Mesh Bodies');
+    listMeshesController.onChange(value => {
+        if (value) {
+            if (clockModel && Object.keys(collectedParts).length > 0) {
+                console.log("--- All Mesh Bodies in GLTF Model ---");
+                const meshNames = Object.keys(collectedParts).sort();
+                meshNames.forEach(name => console.log(name));
+                console.log(`--- Total: ${meshNames.length} meshes ---`);
             } else {
-                console.warn("Model not yet loaded. Cannot list mesh bodies."); //
+                console.warn("Model not yet loaded. Cannot list mesh bodies.");
             }
-            setTimeout(() => { //
-                settings.listMeshBodies = false; //
-                listMeshesController.updateDisplay(); //
-            }, 200); //
+            setTimeout(() => {
+                settings.listMeshBodies = false;
+                listMeshesController.updateDisplay();
+            }, 200);
         }
+    });
+
+    // This slider is a MANUAL debug tool. Using it WILL desync the escapement
+    // from the balance wheel's calculated phase. This is its intended purpose.
+    // The user must press "Reset Clock" to re-calculate and restore the physical sync.
+    consoleFolder.add(settings, 'startPhaseOffsetDeg', 0.0, 360.0, 0.1).name('Start Phase (Deg)').onChange(degrees => {
+        STARTING_PHASE_OFFSET = THREE.MathUtils.degToRad(degrees);
+        
+        const newStartSineVal = Math.sin(STARTING_PHASE_OFFSET); 
+        previousSineValue = newStartSineVal;
+        palletForkState = (newStartSineVal >= 0) ? -1 : 1;
+        
+        if (palletFork) {
+             palletFork.rotation.z = (PALLET_FORK_ANGLE * palletForkState) + PALLET_FORK_OFFSET;
+        }
+        
+        updateClockGears();
+    });
+
+    consoleFolder.add(settings, 'escapeWheelOffsetDeg', 0.0, 180.0, 0.1).name('Escape Wheel Offset').onChange(degrees => {
+        ESCAPE_WHEEL_OFFSET = THREE.MathUtils.degToRad(degrees);
+        updateClockGears();
     });
     
     // --- Refined Listeners for GUI toggle and Tilt Mode drag-to-disable ---
@@ -769,7 +781,7 @@ const lightBrushedSteelMaterial = new THREE.MeshStandardMaterial({
     metalness: 1.0,             // This is the intended value
     roughness: 0.15,            // This is the intended value
     color: 0xe0e0e0,            // Keep the same base color
-    normalScale: new THREE.Vector2(0.3, 0.3) // This is the intended value
+    normalScale: new THREE.Vector2(0.15, 0.15) // This is the intended value
 });
 
 const mediumBrushedSteelMaterial = new THREE.MeshStandardMaterial({
@@ -779,7 +791,7 @@ const mediumBrushedSteelMaterial = new THREE.MeshStandardMaterial({
     metalness: 0.95,            // This is the intended value
     roughness: 0.3375,          // This is the intended value
     color: 0xe0e0e0,            // Keep the same base color
-    normalScale: new THREE.Vector2(1.0, 1.0) // This is the intended value
+    normalScale: new THREE.Vector2(0.2, 0.2) // This is the intended value
 });
 // --- END ---
 
@@ -845,135 +857,127 @@ const purpleSapphireMaterial = new THREE.MeshStandardMaterial({ //
 
 // --- GLB Model Loader ---
 const gltfLoader = new GLTFLoader(loadingManager); //
-gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
-    clockModel = gltf.scene || gltf.scenes[0]; //
-    if (!clockModel) { //
-        console.error("GLTFLoader Error: Could not find a valid scene in the GLB file."); //
-        return; //
+
+function processLoadedModel(gltf) {
+    clockModel = gltf.scene || gltf.scenes[0];
+    if (!clockModel) {
+        console.error("GLTFLoader Error: Could not find a valid scene in the GLB file.");
+        return;
     }
-    clockUnit.add(clockModel); //
-    clockModel.position.set(0, 0, -4.0 + zShift); //
-    clockModel.rotation.set(0, 0, 0); //
-    clockModel.scale.set(modelScale, modelScale, modelScale); //
+    clockUnit.add(clockModel);
+    clockModel.position.set(0, 0, -4.0 + zShift);
+    clockModel.rotation.set(0, 0, 0);
+    clockModel.scale.set(modelScale, modelScale, modelScale);
     
-    clockModel.traverse(child => { //
-        if (child.isMesh) { //
-            child.castShadow = true; //
-            child.receiveShadow = true; //
-            collectedParts[child.name] = child; //
+    clockModel.traverse(child => {
+        if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            collectedParts[child.name] = child;
         }
     });
-    newHourHand = new THREE.Group(); //
-    newMinuteHand = new THREE.Group(); //
-    newSecondHand = new THREE.Group(); //
-    const hourOuter = collectedParts['HourHandOuterBody']; //
-    const hourLume = collectedParts['HourHandLumeBody']; //
-    if (hourOuter) newHourHand.add(hourOuter); //
-    if (hourLume) newHourHand.add(hourLume); //
-    const minuteOuter = collectedParts['MinuteHandOuterBody']; //
-    const minuteLume = collectedParts['MinuteHandLumeBody']; //
-    if (minuteOuter) newMinuteHand.add(minuteOuter); //
-    if (minuteLume) newMinuteHand.add(minuteLume); //
-    const secondOuter = collectedParts['SecondsHandOuterBody']; //
-    const secondLume = collectedParts['SecondsHandLumeBody']; //
-    if (secondOuter) newSecondHand.add(secondOuter); //
-    if (secondLume) newSecondHand.add(secondLume); //
-    clockModel.add(newHourHand); //
-    clockModel.add(newMinuteHand); //
-    for (const name in collectedParts) { //
-        const part = collectedParts[name]; //
-        if (name.startsWith('HourHandOuterBody') || name.startsWith('MinuteHandOuterBody') || name.startsWith('SecondsHandOuterBody')) { part.material = blackAluminumMaterial; } //
-        else if (name.startsWith('HourHandLumeBody') || name.startsWith('MinuteHandLumeBody') || name.startsWith('SecondsHandLumeBody') || name.includes('PipLumeBody')) { part.material = lumeMaterial; } //
-        else if (name.includes('Jewel')) { //
-            part.material = purpleSapphireMaterial; //
+    newHourHand = new THREE.Group();
+    newMinuteHand = new THREE.Group();
+    newSecondHand = new THREE.Group();
+    const hourOuter = collectedParts['HourHandOuterBody'];
+    const hourLume = collectedParts['HourHandLumeBody'];
+    if (hourOuter) newHourHand.add(hourOuter);
+    if (hourLume) newHourHand.add(hourLume);
+    const minuteOuter = collectedParts['MinuteHandOuterBody'];
+    const minuteLume = collectedParts['MinuteHandLumeBody'];
+    if (minuteOuter) newMinuteHand.add(minuteOuter);
+    if (minuteLume) newMinuteHand.add(minuteLume);
+    const secondOuter = collectedParts['SecondsHandOuterBody'];
+    const secondLume = collectedParts['SecondsHandLumeBody'];
+    if (secondOuter) newSecondHand.add(secondOuter);
+    if (secondLume) newSecondHand.add(secondLume);
+    clockModel.add(newHourHand);
+    clockModel.add(newMinuteHand);
+    for (const name in collectedParts) {
+        const part = collectedParts[name];
+        if (name.startsWith('HourHandOuterBody') || name.startsWith('MinuteHandOuterBody') || name.startsWith('SecondsHandOuterBody')) { part.material = blackAluminumMaterial; }
+        else if (name.startsWith('HourHandLumeBody') || name.startsWith('MinuteHandLumeBody') || name.startsWith('SecondsHandLumeBody') || name.includes('PipLumeBody')) { part.material = lumeMaterial; }
+        else if (name.includes('Jewel')) {
+            part.material = purpleSapphireMaterial;
         }
-        // --- Assign materials to case parts (removed geometry calculations) ---
         else if (name === 'CaseCenterRingBody' || name === 'CaseCrownClipBase' || name === 'CaseCrownClipRing') {
-            // NOTE: Removed computeVertexNormals/computeTangents. Textures will only 
-            // appear if the model parts have UV coordinates from the export.
-            part.material = lightBrushedSteelMaterial; // Apply light material
+            part.material = lightBrushedSteelMaterial;
         }
         else if (name === 'CaseBottomBody' || name === 'CaseTopBody') {
-            // NOTE: Removed computeVertexNormals/computeTangents.
-            part.material = mediumBrushedSteelMaterial; // Apply new medium material
+            part.material = mediumBrushedSteelMaterial;
         }
-        // --- END ---
-        else if ([ //
-            'BalancingBridgeBody', 'BarrelBridge_Body', 'BarrelDrum_Gear_Body', //
-            'PalletBridgeBody', 'RollerTable', 'TrainWheelBridgeBody' //
+        else if ([
+            'BalancingBridgeBody', 'BarrelBridge_Body', 'BarrelDrum_Gear_Body',
+            'PalletBridgeBody', 'RollerTable', 'TrainWheelBridgeBody'
         ].includes(name)) { 
-            part.material = brushedSteelMaterial;  // THIS IS THE WORKING CONTROL GROUP
+            part.material = brushedSteelMaterial;
         }
-        // --- Removed 'HairSpringBody' from this list (it's now brass/gold) ---
-        else if ([ //
-            'BarrelArborBody', 'BarrelMainSpringBody', 'ClickBody', 'CrownWheelBody', //
-            'DriverCannonPinion_Gear_Body', 'Incabloc1_1', 'Incabloc1_Base', //
-            'Incabloc2_2', 'IncablocDisc_2', 'PalletForkBody', 'RatchetWheelBody', //
-            'RegulatorCurvePin_1', 'RegulatorCurvePin_2', 'RegulatorPiece1_Body', 'RegulatorPiece2_Body', //
-            'RegulatorPiece3_Body', 'SettingLeverJumperBody', 'SettingLever_Body', 'SettingWheelBody', //
-            'SlidingPinion', 'WindingKnob', 'WindingPinion', 'WindingStem', 'YokeBody', 'YokeSpringCompressed_Body' //
+        else if ([
+            'BarrelArborBody', 'BarrelMainSpringBody', 'ClickBody', 'CrownWheelBody',
+            'DriverCannonPinion_Gear_Body', 'Incabloc1_1', 'Incabloc1_Base',
+            'Incabloc2_2', 'IncablocDisc_2', 'PalletForkBody', 'RatchetWheelBody',
+            'RegulatorCurvePin_1', 'RegulatorCurvePin_2', 'RegulatorPiece1_Body', 'RegulatorPiece2_Body',
+            'RegulatorPiece3_Body', 'SettingLeverJumperBody', 'SettingLever_Body', 'SettingWheelBody',
+            'SlidingPinion', 'WindingKnob', 'WindingPinion', 'WindingStem', 'YokeBody', 'YokeSpringCompressed_Body'
         ].includes(name)) { 
-            part.material = polishedAluminumMaterial;  //
+            part.material = polishedAluminumMaterial;
         }
         else if (name === '6497_SkeltonFront') {
             const transparentAluminum = polishedAluminumMaterial.clone();
             transparentAluminum.transparent = true;
-            transparentAluminum.opacity = 0.7; // 30% transparent
+            transparentAluminum.opacity = 0.7;
             part.material = transparentAluminum;
         }
-        else if (name.includes('Screw')) { //
-            part.material = polishedAluminumMaterial; //
+        else if (name.includes('Screw')) {
+            part.material = polishedAluminumMaterial;
         }
-        // --- Added 'HairSpringBody' to this list to apply the (new gold) brassMaterial ---
-        else if (['SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'BalanceWheelBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear', 'HairSpringBody'].includes(name) || name.includes('PipOuter')) { part.material = brassMaterial; } //
+        else if (['SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'BalanceWheelBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear', 'HairSpringBody'].includes(name) || name.includes('PipOuter')) { part.material = brassMaterial; }
     }
-    const palletBridgeMesh = collectedParts['PalletBridgeBody']; //
-    if (palletBridgeMesh) { //
-        const transparentMaterial = palletBridgeMesh.material.clone(); //
-        transparentMaterial.transparent = true; //
-        transparentMaterial.opacity = 0.5; //
-        palletBridgeMesh.material = transparentMaterial; //
+    const palletBridgeMesh = collectedParts['PalletBridgeBody'];
+    if (palletBridgeMesh) {
+        const transparentMaterial = palletBridgeMesh.material.clone();
+        transparentMaterial.transparent = true;
+        transparentMaterial.opacity = 0.5;
+        palletBridgeMesh.material = transparentMaterial;
     }
-    const partsToPivot = [ 'SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'HairSpringBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear' ]; //
+    const partsToPivot = [ 'SecondWheel', 'Minute_Wheel_Body', 'HourWheel_Body', 'BalanceWheelBody', 'EscapeWheelBody', 'CenterWheelBody', 'ThirdWheelBody', 'HairSpringBody', 'SecondWheelSmallGear', 'ThirdWheelTopGear' ];
     
-    partsToPivot.forEach(name => { //
-        const part = collectedParts[name]; //
-        if (part) { //
-            if (name === 'HairSpringBody') { //
-                hairSpringMesh = part; //
-                const positions = part.geometry.attributes.position.array; //
-                const vertexCount = positions.length / 3; //
-                let tempVertex = new THREE.Vector3(); //
-                part.geometry.computeBoundingBox(); //
-                part.geometry.boundingBox.getCenter(colletOriginalPos); //
-                hairspringBounds.minZ = part.geometry.boundingBox.min.z; //
-                hairspringBounds.maxZ = part.geometry.boundingBox.max.z; //
+    partsToPivot.forEach(name => {
+        const part = collectedParts[name];
+        if (part) {
+            if (name === 'HairSpringBody') {
+                hairSpringMesh = part;
+                const positions = part.geometry.attributes.position.array;
+                const vertexCount = positions.length / 3;
+                let tempVertex = new THREE.Vector3();
+                part.geometry.computeBoundingBox();
+                part.geometry.boundingBox.getCenter(colletOriginalPos);
+                hairspringBounds.minZ = part.geometry.boundingBox.min.z;
+                hairspringBounds.maxZ = part.geometry.boundingBox.max.z;
                 let trueMaxRadius = 0;
                 for (let i = 0; i < vertexCount; i++) {
-                    tempVertex.set(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]); //
-                    const radius = tempVertex.distanceTo(colletOriginalPos); //
+                    tempVertex.set(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+                    const radius = tempVertex.distanceTo(colletOriginalPos);
                     if (radius > trueMaxRadius) {
-                        trueMaxRadius = radius; //
+                        trueMaxRadius = radius;
                     }
                 }
-                maxRadius = trueMaxRadius; //
+                maxRadius = trueMaxRadius;
 
-                // --- This now clones the brassMaterial assigned earlier
                 const hairspringMaterial = part.material.clone();
                 hairSpringMesh.material = hairspringMaterial;
 
                 const hairspringUniforms = {
                     u_sineValue: { value: 0.0 },
-                    u_colletOriginalPos: { value: colletOriginalPos }, //
-                    u_maxRadius: { value: maxRadius }, //
-                    u_hairspringBoundsZ: { value: new THREE.Vector2(hairspringBounds.minZ, hairspringBounds.maxZ) }, //
-                    u_weightMultipliers: { value: new THREE.Vector2(hairspringAnimationSettings.bottomWeightMultiplier, hairspringAnimationSettings.topWeightMultiplier) }, //
-                    u_maxAmplitude: { value: hairspringAnimationSettings.maxAmplitude } //
+                    u_colletOriginalPos: { value: colletOriginalPos },
+                    u_maxRadius: { value: maxRadius },
+                    u_hairspringBoundsZ: { value: new THREE.Vector2(hairspringBounds.minZ, hairspringBounds.maxZ) },
+                    u_weightMultipliers: { value: new THREE.Vector2(hairspringAnimationSettings.bottomWeightMultiplier, hairspringAnimationSettings.topWeightMultiplier) },
+                    u_maxAmplitude: { value: hairspringAnimationSettings.maxAmplitude }
                 };
 
                 hairspringMaterial.onBeforeCompile = (shader) => {
                     Object.assign(shader.uniforms, hairspringUniforms);
-
                     shader.vertexShader = `
                         uniform float u_sineValue;
                         uniform vec3 u_colletOriginalPos;
@@ -982,100 +986,132 @@ gltfLoader.setPath('textures/').load('ETA6497-1.glb', (gltf) => { //
                         uniform vec2 u_weightMultipliers; // .x = bottom, .y = top
                         uniform float u_maxAmplitude;
                     ` + shader.vertexShader;
-
                     shader.vertexShader = shader.vertexShader.replace(
                         '#include <begin_vertex>',
                         `
                         #include <begin_vertex>
-                        
                         float dist_c = distance(transformed, u_colletOriginalPos);
                         float radial_weight = dist_c / u_maxRadius;
-                        
                         float z_range = u_hairspringBoundsZ.y - u_hairspringBoundsZ.x;
                         float vertical_multiplier = 0.0;
-
                         if (z_range > 0.001) {
                             float normalized_z = 1.0 - ((transformed.z - u_hairspringBoundsZ.x) / z_range);
                             vertical_multiplier = mix(u_weightMultipliers.x, u_weightMultipliers.y, normalized_z);
                         }
-
                         float weight = clamp(radial_weight * vertical_multiplier, 0.0, 1.0);
                         float finalAmplitude = u_sineValue * u_maxAmplitude * weight;
-                        
                         vec3 displacementDirection = vec3(0.0);
                         if (dist_c > 0.001) {
                             displacementDirection = normalize(transformed - u_colletOriginalPos);
                         }
-
                         transformed.x += displacementDirection.x * finalAmplitude;
                         transformed.z += displacementDirection.z * finalAmplitude; 
                         `
                     );
-
                     hairSpringMesh.userData.shader = shader;
                 };
             }
-            const center = new THREE.Vector3(); //
-            new THREE.Box3().setFromObject(part).getCenter(center); //
-            const pivot = new THREE.Group(); //
-            part.parent.add(pivot); //
-            pivot.position.copy(center); //
-            pivot.add(part); //
-            part.position.sub(center); //
-            switch (name) { //
-                case 'SecondWheel': secondWheel = pivot; break; //
-                case 'Minute_Wheel_Body': minuteWheel = pivot; break; //
-                case 'HourWheel_Body': hourWheel = pivot; break; //
-                case 'BalanceWheelBody': //
-                    balanceWheel = pivot; //
-                    const rollerJewelMesh = collectedParts['RollerJewel']; //
-                    if (rollerJewelMesh) { //
-                        pivot.add(rollerJewelMesh); //
-                        rollerJewelMesh.position.sub(center); //
+            const center = new THREE.Vector3();
+            new THREE.Box3().setFromObject(part).getCenter(center);
+            const pivot = new THREE.Group();
+            part.parent.add(pivot);
+            pivot.position.copy(center);
+            pivot.add(part);
+            part.position.sub(center);
+            switch (name) {
+                case 'SecondWheel': secondWheel = pivot; break;
+                case 'Minute_Wheel_Body': minuteWheel = pivot; break;
+                case 'HourWheel_Body': hourWheel = pivot; break;
+                case 'BalanceWheelBody':
+                    balanceWheel = pivot;
+                    const rollerJewelMesh = collectedParts['RollerJewel'];
+                    if (rollerJewelMesh) {
+                        pivot.add(rollerJewelMesh);
+                        rollerJewelMesh.position.sub(center);
                     }
                     break;
-                case 'EscapeWheelBody': escapeWheel = pivot; break; //
-                case 'CenterWheelBody': centerWheel = pivot; break; //
-                case 'ThirdWheelBody': thirdWheel = pivot; break; //
-                case 'HairSpringBody': hairSpring = pivot; break; //
-                case 'SecondWheelSmallGear': secondWheelSmallGear = pivot; break; //
-                case 'ThirdWheelTopGear': thirdWheelTopGear = pivot; break; //
+                case 'EscapeWheelBody': escapeWheel = pivot; break;
+                case 'CenterWheelBody': centerWheel = pivot; break;
+                case 'ThirdWheelBody': thirdWheel = pivot; break;
+                case 'HairSpringBody': hairSpring = pivot; break;
+                case 'SecondWheelSmallGear': secondWheelSmallGear = pivot; break;
+                case 'ThirdWheelTopGear': thirdWheelTopGear = pivot; break;
             }
         }
     });
 
-    const palletForkBodyMesh = collectedParts['PalletForkBody']; //
-    const palletJewelBodyMesh = collectedParts['Plate_Jewel_Body']; //
-    if (palletForkBodyMesh && palletJewelBodyMesh) { //
-        const jewelCenter = new THREE.Vector3(); //
-        new THREE.Box3().setFromObject(palletJewelBodyMesh).getCenter(jewelCenter); //
-        const pivot = new THREE.Group(); //
-        palletForkBodyMesh.parent.add(pivot); //
-        pivot.position.copy(jewelCenter); //
-        if (collectedParts['PalletForkJewel1']) pivot.add(collectedParts['PalletForkJewel1']); //
-        if (collectedParts['PalletForkJewel2']) pivot.add(collectedParts['PalletForkJewel2']); //
-        pivot.add(palletForkBodyMesh); //
-        pivot.children.forEach(child => child.position.sub(jewelCenter)); //
-        palletFork = pivot; //
-        // --- Reverted to original. Offset is now handled by sine wave phase shift. ---
-        palletFork.rotation.z = PALLET_FORK_ANGLE * palletForkState; //
+    const palletForkBodyMesh = collectedParts['PalletForkBody'];
+    const palletJewelBodyMesh = collectedParts['Plate_Jewel_Body'];
+    if (palletForkBodyMesh && palletJewelBodyMesh) {
+        const jewelCenter = new THREE.Vector3();
+        new THREE.Box3().setFromObject(palletJewelBodyMesh).getCenter(jewelCenter);
+        const pivot = new THREE.Group();
+        palletForkBodyMesh.parent.add(pivot);
+        pivot.position.copy(jewelCenter);
+        if (collectedParts['PalletForkJewel1']) pivot.add(collectedParts['PalletForkJewel1']);
+        if (collectedParts['PalletForkJewel2']) pivot.add(collectedParts['PalletForkJewel2']);
+        pivot.add(palletForkBodyMesh);
+        pivot.children.forEach(child => child.position.sub(jewelCenter));
+        palletFork = pivot;
+        palletFork.rotation.z = PALLET_FORK_ANGLE * palletForkState;
     }
 
-    if (escapeWheel) { //
-        escapeWheel.rotation.z = ESCAPE_WHEEL_OFFSET * palletForkState; //
+    if (escapeWheel) {
+        escapeWheel.rotation.z = ESCAPE_WHEEL_OFFSET * palletForkState;
     }
 
-    if (secondWheel) { //
-        const pivot = new THREE.Group(); //
-        clockModel.add(pivot); //
-        const center = new THREE.Vector3(); //
-        new THREE.Box3().setFromObject(secondWheel).getCenter(center); //
-        pivot.position.copy(center); //
-        pivot.add(newSecondHand); //
-        newSecondHand.position.sub(center); //
-        newSecondHand = pivot; //
+    if (secondWheel) {
+        const pivot = new THREE.Group();
+        clockModel.add(pivot);
+        const center = new THREE.Vector3();
+        new THREE.Box3().setFromObject(secondWheel).getCenter(center);
+        pivot.position.copy(center);
+        pivot.add(newSecondHand);
+        newSecondHand.position.sub(center);
+        newSecondHand = pivot;
     }
-});
+}
+
+function loadClockModel(quality) {
+    const fileName = modelFiles[quality];
+    if (!fileName) {
+        console.error("Invalid model quality specified:", quality);
+        return;
+    }
+
+    // --- 1. CLEANUP a previously loaded model ---
+    if (clockModel) {
+        clockModel.traverse(child => {
+            if (child.isMesh) {
+                if(child.geometry) child.geometry.dispose();
+                if(child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(mat => mat.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+            }
+        });
+        clockUnit.remove(clockModel);
+    }
+
+    // --- 2. RESET all state variables related to the model ---
+    clockModel = null;
+    collectedParts = {};
+    secondWheel = minuteWheel = hourWheel = balanceWheel = escapeWheel = centerWheel = thirdWheel = palletFork = hairSpring = secondWheelSmallGear = thirdWheelTopGear = null;
+    newHourHand = newMinuteHand = newSecondHand = null;
+
+    // --- 3. LOAD the new model ---
+    gltfLoader.setPath('textures/').load(fileName, (gltf) => {
+        // --- 4. PROCESS the newly loaded model ---
+        processLoadedModel(gltf);
+        // --- 5. RESET the simulation state after loading ---
+        _resetSimulation();
+    });
+}
+// Initial model load
+loadClockModel(settings.modelLOD);
 
 // --- RE-USABLE VECTORS FOR ANIMATION LOOP ---
 const p_orig = new THREE.Vector3(); //
@@ -1136,77 +1172,109 @@ function updateClockGears() {
 // --- END ---
 
 // --- SCENE LAYOUT AND UTILITY FUNCTIONS ---
-function layoutScene() { //
-    camera.position.z = 60; //
-    camera.updateProjectionMatrix(); //
-    const boxDepth = 8.5; //
-    const backWallZ = -boxDepth; //
-    const wallCenterZ = -boxDepth / 2; //
-    const boxFrontZ = 0.0; //
-    const fov = camera.fov * (Math.PI / 180); //
-    const viewPlaneDistance = camera.position.z - boxFrontZ; //
-    const viewPlaneHeight = 2 * Math.tan(fov / 2) * viewPlaneDistance; //
-    const viewPlaneWidth = viewPlaneHeight * camera.aspect; //
-    const backPlaneDistance = camera.position.z - backWallZ; //
-    const backPlaneHeight = 2 * Math.tan(fov / 2) * backPlaneDistance; //
-    const backPlaneWidth = backPlaneHeight * camera.aspect; //
-    const unitsPerTexture = 15; //
-    const wallTextures = [wallMaterial.map, wallMaterial.normalMap, wallMaterial.roughnessMap, wallMaterial.displacementMap]; //
-    const tbTextures = [topBottomMaterial.map, topBottomMaterial.normalMap, topBottomMaterial.roughnessMap, topBottomMaterial.displacementMap]; //
-    const lrTextures = [leftRightMaterial.map, leftRightMaterial.normalMap, leftRightMaterial.roughnessMap, leftRightMaterial.displacementMap]; //
-    wallTextures.forEach(t => t.repeat.set(backPlaneWidth / unitsPerTexture, backPlaneHeight / unitsPerTexture)); //
-    tbTextures.forEach(t => t.repeat.set(viewPlaneWidth / unitsPerTexture, boxDepth / unitsPerTexture)); //
-    lrTextures.forEach(t => t.repeat.set(boxDepth / unitsPerTexture, viewPlaneHeight / unitsPerTexture)); //
-    wall.position.z = backWallZ; //
-    wall.scale.set(backPlaneWidth, backPlaneHeight, 1); //
-    topWall.scale.set(viewPlaneWidth, boxDepth, 1); //
-    topWall.position.set(0, viewPlaneHeight / 2, wallCenterZ); //
-    topWall.rotation.set(Math.PI / 2, 0, 0); //
-    bottomWall.scale.set(viewPlaneWidth, boxDepth, 1); //
-    bottomWall.position.set(0, -viewPlaneHeight / 2, wallCenterZ); //
-    bottomWall.rotation.set(-Math.PI / 2, 0, 0); //
-    leftWall.scale.set(boxDepth, viewPlaneHeight, 1); //
-    leftWall.position.set(-viewPlaneWidth / 2, 0, wallCenterZ); //
-    leftWall.rotation.set(0, Math.PI / 2, 0); //
-    rightWall.scale.set(boxDepth, viewPlaneHeight, 1); //
-    rightWall.position.set(viewPlaneWidth / 2, 0, wallCenterZ); //
-    rightWall.rotation.set(0, -Math.PI / 2, 0); //
-    
-    const clockNativeDiameter = 22; // The model's native size for scaling reference.
-    
-    // Calculate padding as 5% of the view plane dimensions to ensure a consistent margin.
-    const paddingX = viewPlaneWidth * 0.05;
-    const paddingY = viewPlaneHeight * 0.05;
+function updateCameraZoom() {
+    let newZ;
+    if (settings.cameraZoom <= 1.0) {
+        // Interpolate between fully out and standard "fit to screen" zoom.
+        newZ = THREE.MathUtils.lerp(maxZoomOutDistance, maxZoomInDistance, settings.cameraZoom);
+    } else {
+        // Interpolate between "fit to screen" and a very close zoom level.
+        const extremeZoomInDistance = 5; // A very close distance.
+        // Map slider range [1.0, 2.0] to lerp t [0, 1]
+        const t = settings.cameraZoom - 1.0;
+        newZ = THREE.MathUtils.lerp(maxZoomInDistance, extremeZoomInDistance, t);
+    }
+    camera.position.z = newZ;
+    camera.updateProjectionMatrix();
+}
 
-    // The available space for the clock is the view plane minus the percentage-based padding.
-    const availableWidth = viewPlaneWidth - (paddingX * 2); 
-    const availableHeight = viewPlaneHeight - (paddingY * 2); 
+function layoutScene() {
+    // --- 1. Calculate object scales based on a fixed virtual distance ---
+    // We use a fixed distance to calculate the world-space dimensions of the scene objects (shadow box, clock).
+    // This ensures they don't change size when the actual camera zooms in or out.
+    const layoutDistance = 60.0;
+    const boxFrontZ = 0.0;
+    const fov = camera.fov * (Math.PI / 180);
 
-    // Calculate the scale factor to make the clock fit the smaller of the two available dimensions.
-    const scale = Math.min(availableWidth, availableHeight) / clockNativeDiameter; 
-    clockUnit.scale.set(scale, scale, scale); 
+    // Calculate the view plane for the fixed layout perspective.
+    const layoutViewPlaneHeight = 2 * Math.tan(fov / 2) * (layoutDistance - boxFrontZ);
+    const layoutViewPlaneWidth = layoutViewPlaneHeight * camera.aspect;
+
+    // --- 2. Scale scene objects (shadow box and clock) based on the fixed layout ---
+    const boxDepth = 8.5;
+    const backWallZ = -boxDepth;
+    const wallCenterZ = -boxDepth / 2;
+    const backPlaneDistance = layoutDistance - backWallZ;
+    const backPlaneHeight = 2 * Math.tan(fov / 2) * backPlaneDistance;
+    const backPlaneWidth = backPlaneHeight * camera.aspect;
+    const unitsPerTexture = 15;
+    const wallTextures = [wallMaterial.map, wallMaterial.normalMap, wallMaterial.roughnessMap, wallMaterial.displacementMap];
+    const tbTextures = [topBottomMaterial.map, topBottomMaterial.normalMap, topBottomMaterial.roughnessMap, topBottomMaterial.displacementMap];
+    const lrTextures = [leftRightMaterial.map, leftRightMaterial.normalMap, leftRightMaterial.roughnessMap, leftRightMaterial.displacementMap];
+    wallTextures.forEach(t => t.repeat.set(backPlaneWidth / unitsPerTexture, backPlaneHeight / unitsPerTexture));
+    tbTextures.forEach(t => t.repeat.set(layoutViewPlaneWidth / unitsPerTexture, boxDepth / unitsPerTexture));
+    lrTextures.forEach(t => t.repeat.set(boxDepth / unitsPerTexture, layoutViewPlaneHeight / unitsPerTexture));
+    wall.position.z = backWallZ;
+    wall.scale.set(backPlaneWidth, backPlaneHeight, 1);
+    topWall.scale.set(layoutViewPlaneWidth, boxDepth, 1);
+    topWall.position.set(0, layoutViewPlaneHeight / 2, wallCenterZ);
+    topWall.rotation.set(Math.PI / 2, 0, 0);
+    bottomWall.scale.set(layoutViewPlaneWidth, boxDepth, 1);
+    bottomWall.position.set(0, -layoutViewPlaneHeight / 2, wallCenterZ);
+    bottomWall.rotation.set(-Math.PI / 2, 0, 0);
+    leftWall.scale.set(boxDepth, layoutViewPlaneHeight, 1);
+    leftWall.position.set(-layoutViewPlaneWidth / 2, 0, wallCenterZ);
+    leftWall.rotation.set(0, Math.PI / 2, 0);
+    rightWall.scale.set(boxDepth, layoutViewPlaneHeight, 1);
+    rightWall.position.set(layoutViewPlaneWidth / 2, 0, wallCenterZ);
+    rightWall.rotation.set(0, -Math.PI / 2, 0);
     
-    const shadowVolumeBox = new THREE.Box3().setFromObject(boxGroup); //
-    const shadowVolumeCenter = new THREE.Vector3(); //
-    shadowVolumeBox.getCenter(shadowVolumeCenter); //
-    const shadowVolumeRadius = shadowVolumeBox.getSize(new THREE.Vector3()).length() / 2; //
-	const paddedRadius = shadowVolumeRadius * 1.2; //
-    const lightPositionOffset = { x: 10, y: 28, z: 25 }; //
-    dirLight.target.position.copy(shadowVolumeCenter); //
-    dirLight.position.set( //
-        shadowVolumeCenter.x + lightPositionOffset.x, //
-        shadowVolumeCenter.y + lightPositionOffset.y, //
-        shadowVolumeCenter.z + lightPositionOffset.z //
+    const clockNativeDiameter = 22;
+    const padding = 5;
+    const availableWidth = layoutViewPlaneWidth - (padding * 2);
+    const availableHeight = layoutViewPlaneHeight - (padding * 2);
+    const scale = Math.min(availableWidth, availableHeight) / clockNativeDiameter;
+    clockUnit.scale.set(scale, scale, scale);
+    
+    // --- 3. Calculate the camera zoom boundaries ---
+    // Now that the clock has a fixed world-space size for this layout, we calculate the camera distances.
+    const finalClockDiameter = clockNativeDiameter * scale;
+    const fovInRadians = fov; // Already in radians from above
+
+    if (camera.aspect >= 1) { // Landscape or square view
+        const requiredFrustumHeight = finalClockDiameter;
+        maxZoomInDistance = (requiredFrustumHeight / 2) / Math.tan(fovInRadians / 2);
+    } else { // Portrait view
+        const requiredFrustumWidth = finalClockDiameter;
+        const requiredFrustumHeight = requiredFrustumWidth / camera.aspect;
+        maxZoomInDistance = (requiredFrustumHeight / 2) / Math.tan(fovInRadians / 2);
+    }
+    maxZoomOutDistance = layoutDistance * 1.5; // Set the max zoom-out distance
+
+    // --- 4. Set the actual camera position and update shadows ---
+    updateCameraZoom();
+    
+    const shadowVolumeBox = new THREE.Box3().setFromObject(boxGroup);
+    const shadowVolumeCenter = new THREE.Vector3();
+    shadowVolumeBox.getCenter(shadowVolumeCenter);
+    const shadowVolumeRadius = shadowVolumeBox.getSize(new THREE.Vector3()).length() / 2;
+	const paddedRadius = shadowVolumeRadius * 1.2;
+    const lightPositionOffset = { x: 10, y: 28, z: 25 };
+    dirLight.target.position.copy(shadowVolumeCenter);
+    dirLight.position.set(
+        shadowVolumeCenter.x + lightPositionOffset.x,
+        shadowVolumeCenter.y + lightPositionOffset.y,
+        shadowVolumeCenter.z + lightPositionOffset.z
     );
-    dirLight.target.updateMatrixWorld(); //
-    dirLight.shadow.camera.left = -paddedRadius; //
-    dirLight.shadow.camera.right = paddedRadius; //
-    dirLight.shadow.camera.top = paddedRadius; //
-    dirLight.shadow.camera.bottom = -paddedRadius; //
-    const lightDistanceToCenter = dirLight.position.distanceTo(shadowVolumeCenter); //
-    dirLight.shadow.camera.near = Math.max(0.1, lightDistanceToCenter - shadowVolumeRadius); //
-    dirLight.shadow.camera.far = lightDistanceToCenter + shadowVolumeRadius; //
-    dirLight.shadow.camera.updateProjectionMatrix(); //
+    dirLight.target.updateMatrixWorld();
+    dirLight.shadow.camera.left = -paddedRadius;
+    dirLight.shadow.camera.right = paddedRadius;
+    dirLight.shadow.camera.top = paddedRadius;
+    dirLight.shadow.camera.bottom = -paddedRadius;
+    const lightDistanceToCenter = dirLight.position.distanceTo(shadowVolumeCenter);
+    dirLight.shadow.camera.near = Math.max(0.1, lightDistanceToCenter - shadowVolumeRadius);
+    dirLight.shadow.camera.far = lightDistanceToCenter + shadowVolumeRadius;
+    dirLight.shadow.camera.updateProjectionMatrix();
 
     // --- Cache all calculated light/shadow values ---
     _lightPosition.copy(dirLight.position);
@@ -1218,6 +1286,7 @@ function layoutScene() { //
     _shadowCameraSettings.near = dirLight.shadow.camera.near;
     _shadowCameraSettings.far = dirLight.shadow.camera.far;
 }
+
 let tiltX = 0, tiltY = 0; //
 function handleOrientation(event) { //
   tiltY = event.beta || 0; //
@@ -1427,5 +1496,3 @@ function animate() { //
 
 // Start the animation
 animate(); //
-
-
