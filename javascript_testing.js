@@ -111,6 +111,39 @@ NOTES (Will eventually move this to the ReadMe file):
 */
 
 // Load Dependencies
+// 3D Javacript ETA 6497 Clock using three.js
+// MIT License. - Work In Progress
+// Jeff Miller 2025. Revised 9/10/25
+
+/* References and Notes
+- AI Development Support & Debugging: Google Gemini
+- HDRI: https://polyhaven.com/a/colorful_studio
+- PBR Textures: https://www.cgbookcase.com/
+- Modified ETA 6497-1 Watch Movement CAD: Steen Winther: https://grabcad.com/library/eta-6497-1-complete-watch-movement
+- ETA 6497 Custom Clock Hands and Clock Case made in Fusion 360
+- 5 Hz Tick Sound - Clock Ticking by RedDog0607: https://pixabay.com/sound-effects/clock-ticking-365218/
+- Development and Debugging Tools: Google Gemini
+- File encoding is set to UF-8
+- Local Server: python -m http.server run in a terminal in local javascript directory with index.html
+- 	http://localhost:8000 in a local browser tab
+- Single click brings up gui
+- Zoom, Pan (right mouse button or two finger touch), and rotate are supported
+- Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
+*/
+
+/*
+To Do:
+- Finish textures
+- Finish gears anamation
+- Add option to "explode parts"
+- Fix tilt mode for mobile devices 
+- Update Shadow Box to a better texture and more detail
+- Add top plate back in and make it transparent when viewed from the front
+- Add option for lower poly model to improve frame rate on mobile devices
+*/
+
+
+
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
@@ -1245,8 +1278,11 @@ function disableTilt() {
     window.removeEventListener('deviceorientation', handleOrientation);
     tiltX = 0;
     tiltY = 0;
-    // Reset the camera's focus point to the center
-    controls.target.set(0, 0, 0);
+    // The new tilt implementation rotates the 'boxGroup' instead of moving the camera's target.
+    // Therefore, resetting the camera target here is no longer necessary and would undesirably
+    // snap the user's view if they have panned. The 'animate' loop will handle returning
+    // the boxGroup's rotation to zero smoothly.
+    // controls.target.set(0, 0, 0);
 }
 window.addEventListener('resize', () => { //
     camera.aspect = window.innerWidth / window.innerHeight; //
@@ -1289,23 +1325,38 @@ function animate() { //
 
     // --- Tilt Camera Logic ---
     if (settings.tiltEnabled && !isUserInteracting) {
-        const maxTiltOffset = 2.0;
+        const maxTilt = 15; // Max tilt angle in degrees, adapted from tilt_clock_3D.js
+        const rotationMultiplier = 0.5; // Sensitivity, adapted from tilt_clock_3D.js
 
-        // Clamp the raw tilt values to a reasonable range (e.g., +/- 45 degrees)
-        const clampedTiltX = THREE.MathUtils.clamp(tiltX, -45, 45);
-        const clampedTiltY = THREE.MathUtils.clamp(tiltY, -45, 45);
+        // Clamp the raw tilt values to prevent extreme rotation
+        const clampedTiltX = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
+        const clampedTiltY = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
 
-        // Map the clamped tilt range to our desired offset range
-        const targetOffsetX = (clampedTiltX / 45) * maxTiltOffset;
-        const targetOffsetY = (clampedTiltY / 45) * maxTiltOffset;
-
-        const targetPos = new THREE.Vector3(-targetOffsetX, targetOffsetY, 0);
+        // Calculate the target rotation based on device orientation.
+        // Gamma (tiltX, left-right) controls rotation around the Y-axis.
+        // Beta (tiltY, front-back) controls rotation around the X-axis.
+        const targetRotY = THREE.MathUtils.degToRad(clampedTiltX) * rotationMultiplier;
+        const targetRotX = THREE.MathUtils.degToRad(clampedTiltY) * rotationMultiplier;
         
         const lerpFactor = Math.min(delta * 2.0, 1.0);
 
-        // Instead of moving the camera position, we move the target it's looking at.
-        // This creates a parallax effect without fighting the user's zoom/position.
-        controls.target.lerp(targetPos, lerpFactor);
+        // Instead of moving the camera target, we rotate the 'boxGroup' which contains
+        // the clock and shadow box. This creates the desired parallax effect of looking
+        // into a stationary box.
+        boxGroup.rotation.y = THREE.MathUtils.lerp(boxGroup.rotation.y, targetRotY, lerpFactor);
+        boxGroup.rotation.x = THREE.MathUtils.lerp(boxGroup.rotation.x, targetRotX, lerpFactor);
+    } else {
+        // When tilt is disabled or the user is interacting with the controls,
+        // smoothly return the box to its default, non-tilted orientation.
+        const lerpFactor = Math.min(delta * 2.0, 1.0);
+        if (Math.abs(boxGroup.rotation.x) > 0.0001 || Math.abs(boxGroup.rotation.y) > 0.0001) {
+            boxGroup.rotation.x = THREE.MathUtils.lerp(boxGroup.rotation.x, 0, lerpFactor);
+            boxGroup.rotation.y = THREE.MathUtils.lerp(boxGroup.rotation.y, 0, lerpFactor);
+        } else {
+            // Snap to zero once close enough to prevent lingering rotations
+            boxGroup.rotation.x = 0;
+            boxGroup.rotation.y = 0;
+        }
     }
 
     controls.update(); //
@@ -1400,6 +1451,7 @@ function animate() { //
 
 // Start the animation
 animate(); //
+
 
 
 
