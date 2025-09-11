@@ -111,39 +111,6 @@ NOTES (Will eventually move this to the ReadMe file):
 */
 
 // Load Dependencies
-// 3D Javacript ETA 6497 Clock using three.js
-// MIT License. - Work In Progress
-// Jeff Miller 2025. Revised 9/10/25
-
-/* References and Notes
-- AI Development Support & Debugging: Google Gemini
-- HDRI: https://polyhaven.com/a/colorful_studio
-- PBR Textures: https://www.cgbookcase.com/
-- Modified ETA 6497-1 Watch Movement CAD: Steen Winther: https://grabcad.com/library/eta-6497-1-complete-watch-movement
-- ETA 6497 Custom Clock Hands and Clock Case made in Fusion 360
-- 5 Hz Tick Sound - Clock Ticking by RedDog0607: https://pixabay.com/sound-effects/clock-ticking-365218/
-- Development and Debugging Tools: Google Gemini
-- File encoding is set to UF-8
-- Local Server: python -m http.server run in a terminal in local javascript directory with index.html
-- 	http://localhost:8000 in a local browser tab
-- Single click brings up gui
-- Zoom, Pan (right mouse button or two finger touch), and rotate are supported
-- Slow down time! Note that you either need to reset the clock in the GUI or reload the web page to get accurate time if the beat rate is changed!
-*/
-
-/*
-To Do:
-- Finish textures
-- Finish gears anamation
-- Add option to "explode parts"
-- Fix tilt mode for mobile devices 
-- Update Shadow Box to a better texture and more detail
-- Add top plate back in and make it transparent when viewed from the front
-- Add option for lower poly model to improve frame rate on mobile devices
-*/
-
-
-
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
@@ -1204,12 +1171,21 @@ function layoutScene() { //
     rightWall.scale.set(boxDepth, viewPlaneHeight, 1); //
     rightWall.position.set(viewPlaneWidth / 2, 0, wallCenterZ); //
     rightWall.rotation.set(0, -Math.PI / 2, 0); //
-    const clockNativeDiameter = 22; //
-    const padding = 5; //
-    const availableWidth = viewPlaneWidth - (padding * 2); //
-    const availableHeight = viewPlaneHeight - (padding * 2); //
-    const scale = Math.min(availableWidth, availableHeight) / clockNativeDiameter; //
-    clockUnit.scale.set(scale, scale, scale); //
+    
+    const clockNativeDiameter = 22; // The model's native size for scaling reference.
+    
+    // Calculate padding as 5% of the view plane dimensions to ensure a consistent margin.
+    const paddingX = viewPlaneWidth * 0.05;
+    const paddingY = viewPlaneHeight * 0.05;
+
+    // The available space for the clock is the view plane minus the percentage-based padding.
+    const availableWidth = viewPlaneWidth - (paddingX * 2); 
+    const availableHeight = viewPlaneHeight - (paddingY * 2); 
+
+    // Calculate the scale factor to make the clock fit the smaller of the two available dimensions.
+    const scale = Math.min(availableWidth, availableHeight) / clockNativeDiameter; 
+    clockUnit.scale.set(scale, scale, scale); 
+    
     const shadowVolumeBox = new THREE.Box3().setFromObject(boxGroup); //
     const shadowVolumeCenter = new THREE.Vector3(); //
     shadowVolumeBox.getCenter(shadowVolumeCenter); //
@@ -1451,12 +1427,3 @@ function animate() { //
 
 // Start the animation
 animate(); //
-
-
-
-
-
-
-
-
-
