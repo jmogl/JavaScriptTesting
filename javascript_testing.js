@@ -161,7 +161,7 @@ const settings = {
     maxPixelRatio: 1.5,
     wireframe: false, // <-- Added wireframe setting
     modelLOD: 'High Quality', // This will be overridden by device detection below
-    cameraZoom: 1.0, // Default to 1.0 (fully zoomed in)
+    cameraZoom: 1.2, // Default to 1.0 (fully zoomed in)
     // --- Default values set to 0 ---
     startPhaseOffsetDeg: 0.0, // Defaulting to 0 degrees
     escapeWheelOffsetDeg: 0.0, // Defaulting to 0 degrees
@@ -1495,4 +1495,5 @@ function animate() { //
 
 // Start the animation
 animate(); //
+
 
