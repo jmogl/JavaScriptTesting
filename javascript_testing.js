@@ -1,6 +1,6 @@
 // 3D Javacript ETA 6497 Clock using three.js
 // MIT License. - Work In Progress
-// Jeff Miller 2025. 9/10/25
+// Jeff Miller 2025. 9/11/25
 
 /* References and Notes
 - AI Development Support & Debugging: Google Gemini
@@ -161,13 +161,32 @@ const settings = {
     maxPixelRatio: 1.5,
     wireframe: false, // <-- Added wireframe setting
     modelLOD: 'High Quality', // This will be overridden by device detection below
-    cameraZoom: 1.2, // Default to 1.0 (fully zoomed in)
+    cameraZoom: 1.2, // Default setting to zoom for the watch to fill the display
     // --- Default values set to 0 ---
     startPhaseOffsetDeg: 0.0, // Defaulting to 0 degrees
     escapeWheelOffsetDeg: 0.0, // Defaulting to 0 degrees
-    resetCamera: () => { //
-        if (isResettingCamera) return; //
-        isResettingCamera = true; //
+    resetCamera: () => {
+        if (isResettingCamera) return; // Prevent re-triggering during animation
+    
+        // 1. Reset the cameraZoom setting to the default value.
+        settings.cameraZoom = 1.2;
+    
+        // 2. Update the GUI slider/textbox to show the new value.
+        if (gui) {
+            const zoomController = gui.controllers.find(c => c.property === 'cameraZoom');
+            if (zoomController) {
+                zoomController.updateDisplay();
+            }
+        }
+    
+        // 3. Calculate the target Z position based on the reset zoom value.
+        const targetZ = calculateCameraZForZoom(settings.cameraZoom);
+    
+        // 4. Update the animation target with the calculated position.
+        cameraResetTargetPos.set(0, 0, targetZ);
+    
+        // 5. Start the animation.
+        isResettingCamera = true;
     },
     // --- This is now a wrapper to reset the beat rate AND the sim ---
     resetClock: () => { 
@@ -1171,18 +1190,26 @@ function updateClockGears() {
 // --- END ---
 
 // --- SCENE LAYOUT AND UTILITY FUNCTIONS ---
-function updateCameraZoom() {
+// --- START: Added helper function to centralize camera zoom calculation ---
+function calculateCameraZForZoom(zoomValue) {
     let newZ;
-    if (settings.cameraZoom <= 1.0) {
+    if (zoomValue <= 1.0) {
         // Interpolate between fully out and standard "fit to screen" zoom.
-        newZ = THREE.MathUtils.lerp(maxZoomOutDistance, maxZoomInDistance, settings.cameraZoom);
+        newZ = THREE.MathUtils.lerp(maxZoomOutDistance, maxZoomInDistance, zoomValue);
     } else {
         // Interpolate between "fit to screen" and a very close zoom level.
         const extremeZoomInDistance = 5; // A very close distance.
         // Map slider range [1.0, 2.0] to lerp t [0, 1]
-        const t = settings.cameraZoom - 1.0;
+        const t = zoomValue - 1.0;
         newZ = THREE.MathUtils.lerp(maxZoomInDistance, extremeZoomInDistance, t);
     }
+    return newZ;
+}
+// --- END ---
+
+function updateCameraZoom() {
+    // --- Refactored to use the new helper function ---
+    const newZ = calculateCameraZForZoom(settings.cameraZoom);
     camera.position.z = newZ;
     camera.updateProjectionMatrix();
 }
@@ -1495,5 +1522,6 @@ function animate() { //
 
 // Start the animation
 animate(); //
+
 
 
