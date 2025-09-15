@@ -1,13 +1,14 @@
 // 3D Javacript ETA 6497 Clock using three.js
 // MIT License. - Work In Progress
-// Jeff Miller 2025. 9/14/25
+// Jeff Miller 2025. 9/15/25
 
 /* References and Notes
 - AI Development Support & Debugging: Google Gemini
-- HDRI: https://polyhaven.com/a/colorful_studio
+- HDRI Tezxture: https://polyhaven.com/a/colorful_studio
 - PBR Textures: https://www.cgbookcase.com/
-- Modified ETA 6497-1 Watch Movement CAD: Steen Winther: https://grabcad.com/library/eta-6497-1-complete-watch-movement
-- ETA 6497 Custom Clock Hands and Clock Case made in Fusion 360
+- Modified ETA 6497-1 Watch Movement CAD model by Steen Winther: https://grabcad.com/library/eta-6497-1-complete-watch-movement
+- Modified ETA 6497 Skeleton Top CAD model by Veislav Murdrak:  https://grabcad.com/library/eta-6497-movement-1
+- Created ETA 6497 Custom Clock Hands and Clock Case made in Fusion 360
 - 5 Hz Tick Sound - Clock Ticking by RedDog0607: https://pixabay.com/sound-effects/clock-ticking-365218/
 - Development and Debugging Tools: Google Gemini
 - File encoding is set to UF-8
@@ -91,6 +92,7 @@ NOTES (Will eventually move this to the ReadMe file):
 			another tooth. This ends the first pause and immediately begins the second 0.2 second pause.
 		- 3. End of cycle (0.4 Seconds): Balance wheel reaces the end of its second swing and starts back.
 */
+
 
 // Load Dependencies
 import * as THREE from 'three';
@@ -462,7 +464,7 @@ window.addEventListener('DOMContentLoaded', () => { //
         }
     });
     
-    gui.add(settings, 'skeletonTopTransparency', 0.0, 1.0, 0.01).name('Skeleton Top Transparency').onChange(value => {
+    gui.add(settings, 'skeletonTopTransparency', 0.0, 1.0, 0.01).name('Top Opacity').onChange(value => {
         const skeletonTop = collectedParts['6497_SkeltonFront'];
         if (skeletonTop && skeletonTop.material) {
             skeletonTop.material.transparent = true;
@@ -471,7 +473,7 @@ window.addEventListener('DOMContentLoaded', () => { //
         }
     });
 
-    gui.add(settings, 'bridgeTransparency', 0.0, 1.0, 0.01).name('Bridge Transparency').onChange(value => {
+    gui.add(settings, 'bridgeTransparency', 0.0, 1.0, 0.01).name('Bottom Opacity').onChange(value => {
         // --- UPDATED: Use exact names for the meshes to modify ---
         const bridgeParts = ['BarrelBridgeBody', 'TrainWheelBridge', 'BalancingBridge'];
         bridgeParts.forEach(partName => {
@@ -1146,6 +1148,12 @@ loadClockModel(settings.modelLOD);
 const p_orig = new THREE.Vector3(); //
 const displacementDirection = new THREE.Vector3(); //
 
+// --- Define mechanical constants for the gear train, based on a 5Hz reference beat rate ---
+const TICKS_PER_SECOND_REFERENCE = 5.0;
+const TICKS_PER_MINUTE = TICKS_PER_SECOND_REFERENCE * 60; // 300
+const TICKS_PER_HOUR = TICKS_PER_MINUTE * 60; // 18,000
+const TICKS_PER_12_HOURS = TICKS_PER_HOUR * 12; // 216,000
+
 // --- Function to update all gear rotations based on a discrete tick ---
 function updateClockGears() {
     
@@ -1153,20 +1161,16 @@ function updateClockGears() {
     // ALL time/rotation is derived from the discrete tick counter.
     const totalTicks = simulationTotalTicks;
     
-    // FIX: Calculate time per beat dynamically from the live simulation beat rate.
-    const timePerBeat = 1.0 / simulationBeatRate;
-    // Derive master "sim time" ONLY from ticks * the correct time per beat.
-    const simulatedSeconds = totalTicks * timePerBeat; 
-    
-    const simulatedMinutes = simulatedSeconds / 60.0;
-    const simulatedHours = simulatedSeconds / 3600.0; 
-    
-    // --- Calculate simulation rotations (which start from 0) ---
-    const secondHandRotation = -((simulatedSeconds / 60.0) * Math.PI * 2); // CCW
-    const minuteHandRotation = -((simulatedMinutes / 60.0) * Math.PI * 2);
-    const hourHandRotation = -(((simulatedHours % 12) / 12.0) * Math.PI * 2);
+    // --- Calculate rotation based purely on the number of ticks that have occurred. ---
+    // This decouples the clock's speed from real-world time and ties it directly to the
+    // beat rate, which controls how fast ticks are generated.
+    const secondHandRotation = -((totalTicks / TICKS_PER_MINUTE) * Math.PI * 2); // CCW
+    const minuteHandRotation = -((totalTicks / TICKS_PER_HOUR) * Math.PI * 2); // CCW
+    const hourHandRotation = -((totalTicks / TICKS_PER_12_HOURS) * Math.PI * 2); // CCW
 
     // --- Apply simulation rotation PLUS real-time offset to HANDS ---
+    // The offset syncs the hands to the correct time on reset, and the tick-based
+    // rotation then moves them forward at the simulated speed.
     if (newSecondHand) newSecondHand.rotation.z = initialSecondRotationOffset + secondHandRotation; 
     if (newMinuteHand) newMinuteHand.rotation.z = initialMinuteRotationOffset + minuteHandRotation; 
     if (newHourHand) newHourHand.rotation.z = initialHourRotationOffset + hourHandRotation; 
@@ -1179,13 +1183,14 @@ function updateClockGears() {
     if (minuteWheel) minuteWheel.rotation.z = -minuteHandRotation; // CW
     if (centerWheel) centerWheel.rotation.z = minuteHandRotation; // CCW
     
-    if (thirdWheel) thirdWheel.rotation.z = ((simulatedMinutes / 7.5) * Math.PI * 2); // CW
-    if (thirdWheelTopGear) thirdWheelTopGear.rotation.z = -((simulatedMinutes / 7.5) * Math.PI * 2); // CCW
+    // Third wheel rotates once every 7.5 minutes (7.5 * 300 = 2250 ticks)
+    if (thirdWheel) thirdWheel.rotation.z = ((totalTicks / (TICKS_PER_MINUTE * 7.5)) * Math.PI * 2); // CW
+    if (thirdWheelTopGear) thirdWheelTopGear.rotation.z = -((totalTicks / (TICKS_PER_MINUTE * 7.5)) * Math.PI * 2); // CCW
 
     if (hourWheel) hourWheel.rotation.z = -hourHandRotation; // CW
 
 
-    // --- THIS IS THE FINAL CORRECT LOGIC ---
+    // --- Escape wheel logic is already correct as it's driven by totalTicks ---
     if (escapeWheel) {
         // Base offset (from slider) is constant and does not flip.
         const baseRotation = ESCAPE_WHEEL_OFFSET; 
