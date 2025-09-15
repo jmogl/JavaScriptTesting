@@ -1,6 +1,6 @@
 // 3D Javacript ETA 6497 Clock using three.js
 // MIT License. - Work In Progress
-// Jeff Miller 2025. 9/11/25
+// Jeff Miller 2025. 9/14/25
 
 /* References and Notes
 - AI Development Support & Debugging: Google Gemini
@@ -24,8 +24,6 @@ To Do:
 - Finish gears animation
 - Add option to "explode parts"
 - Fix tilt mode for mobile devices - Partially working
-- Update Shadow Box to a better texture and more detail
-- Fix texture bump detail for high quality LOD model.
 - Clean up skeleton top alignment and third wheel support
 */
 
@@ -37,34 +35,18 @@ NOTES (Will eventually move this to the ReadMe file):
 	- Note: Use "remove" instead of "delete" when removing F360 bodies and keep the history timeline.
 	- Select "Split By Group" when importing into Blender under import file dialog options to keep mesh body names
 	- Select Up Axis as -Z and Forward Axis as Y based on the orientation used in F360, may change for other models
-	- To increase curve object resolution in Blender:
-		- In Object Mode (Drop down upper left), right click part of interest
-		- In the GUI menu to the lower right, select the wrench icon and "+ Add Modifier" -> Generate -> Subdivision Surface
-			- Select Catmull-Clark for best mesh generation
-			- Levels Viewport (Note "Render" is ignored in .GLB export!): 
-			- Level 0: Original mesh.
-			- Level 1: ~4x the polygons. Great for adding a good degree of smoothness (Recommended for 3.js).
-			- Level 2: ~16x the original polygons. Use this with caution for hero objects seen up close.
-			- Level 3+: ~64x+ polygons. Avoid this for real-time applications, rarely worth it over level 2
-		- A Bevel modifyer needs to be added or mesh detail like edges, emboss, etc. are lost (ie. melt).
-			- Ensure the object is selected in Blender
-			- Select "Add Modifier" -> "Generate" -> "Bevel"
-			- Move the Bevel Modifier above the Subdivision Catmull-Clark modifier. Bevel must be run first!
-			- Limit method should be set to "Angle", 30 degrees is default. 
-			- Segments should be set to "2"
-			- Amount should be changed to a small value (default 0.1 m) to 0.002 m to start with. 
-			- Under profile, Shape should be 1.0, which makes the beveled edge bow outward. This creates a tigher "cage" 
-			  for the subdivision to work with.
-		- If Bevel and Subdivision surface doesn't maintain detail, then try using F360 to export high resolution mesh with tessellate command.
-				- Select high quality and export the mesh out as .fbx and import separately into Blender.
-				- Use scale 100
-				- Exporting .obj instead of .fbx for Movement model file since the axis changed in .fbx. Used .fbx for Case model file.
-		- I ultimately converted the case mesh using Tesselation in Fusion 360 to high quality and exported to .OBJ 
-  		Note: Be careful using F360 appearance and material properties together. It can create two separate meshes when exporting from Blender
-			- *** This may be mute depending on how well custom Blender PBR texture exporting works 
-
- -	Export .GLB, +Y transform out of Blender and save in three.js folder
-
+ 	- For high poly model:
+  		- Tesslate high quality in Fusion 360.
+		- Select "Create Quads" or texture UVs will not work properly in Blender
+  		- Import .OBJ file into Blender, but select "Split By Group" before importing or the indivudal mesh names will not be imported.
+		- In Blender, UVs will need to be created for all mesh bodies
+  		- Select the object mesh and right click. Pick "Shade Auto Smooth" so individual polygons will not be visible in JavaScript.
+		- With the object selected, hit Tab or go into the Edit mode
+  		- Select the mesh and hit L to ensure all of the faces are selected
+		- Select "U" to bring up the UV menu and select "Smart UV Project"
+  		- Select the UV editor screen from the icon with the round ball over a grid in the upper left
+		- The texture map UV should be visible. Scale it up by about 10x to get fine (less rough detail) for importing textures into JavaScript 
+		- Export .GLB, +Y transform out of Blender and save in three.js folder
 
 - ETA 6497 Watch Movement Notes:
 - https://calibercorner.com/unitas-caliber-6497/
@@ -124,6 +106,7 @@ let digitalDate, digitalClock, fpsCounter; //
 let gui; //
 let pointerDownTime; //
 let pointerDownPos = new THREE.Vector2(); //
+let environmentTexture = null; // <-- To hold the loaded HDRI texture
 
 // --- Variables for smooth camera reset animation ---
 const clock = new THREE.Clock();  //
@@ -154,8 +137,10 @@ const settings = {
     soundVolume: 0.2,   // Default volume
     showFPS: false,  //
     showShadowBox: true, 
-    showSkeletonTop: true,
+    skeletonTopTransparency: 0.75, //
+    bridgeTransparency: 0.75, //
     listMeshBodies: false,  //
+    showHDRI: false, //
     beatRate: 5.0,  // This is the GUI-bound setting
     shadowResolution: 2048, // Default is 2048
     maxPixelRatio: 1.5,
@@ -477,37 +462,39 @@ window.addEventListener('DOMContentLoaded', () => { //
         }
     });
     
-    gui.add(settings, 'showSkeletonTop').name('Show Skeleton Top').onChange(value => {
+    gui.add(settings, 'skeletonTopTransparency', 0.0, 1.0, 0.01).name('Skeleton Top Transparency').onChange(value => {
         const skeletonTop = collectedParts['6497_SkeltonFront'];
-        if (skeletonTop) {
-            skeletonTop.visible = value;
+        if (skeletonTop && skeletonTop.material) {
+            skeletonTop.material.transparent = true;
+            skeletonTop.material.opacity = value;
+            skeletonTop.visible = value > 0;
         }
     });
 
-    // --- Updated slider step to 0.5 and added rounding logic ---
-    gui.add(settings, 'beatRate', 0.5, 5.0, 0.5).name('Beat Rate / Sec') // Step changed to 0.5
+    gui.add(settings, 'bridgeTransparency', 0.0, 1.0, 0.01).name('Bridge Transparency').onChange(value => {
+        // --- UPDATED: Use exact names for the meshes to modify ---
+        const bridgeParts = ['BarrelBridgeBody', 'TrainWheelBridge', 'BalancingBridge'];
+        bridgeParts.forEach(partName => {
+            const part = collectedParts[partName];
+            if (part && part.material) {
+                part.material.transparent = true;
+                part.material.opacity = value;
+                part.visible = value > 0;
+            }
+        });
+    });
+
+    gui.add(settings, 'beatRate', 0.5, 5.0, 0.5).name('Beat Rate / Sec') 
         .onChange(newBeatRate => {
-            // --- onChange: Handle real-time audio sync ONLY ---
-            // Update the playbackRate in real-time as the slider moves.
-            // This provides audio feedback without breaking the simulation physics.
             if (currentTickSource) {
-                // Ensure the new rate is rounded for the audio feedback as well
                 const roundedRate = Math.round(newBeatRate * 2) / 2;
                 currentTickSource.playbackRate.value = roundedRate / 5.0;
             }
         })
         .onFinishChange((finalBeatRate) => {
-            // --- onFinishChange: Round value, update physics, and reset sim ---
-            
-            // 1. Round the committed value (from text box or slider) to the nearest 0.5.
             const roundedRate = Math.round(finalBeatRate * 2) / 2;
-
-            // 2. Snap the GUI setting and the live physics variable to this new rounded value.
-            // (The controller already clamps this value between 0.5 and 5.0).
             settings.beatRate = roundedRate;
             simulationBeatRate = roundedRate;
-            
-            // 3. NOW, reset the entire simulation to this new, stable, rounded rate.
             _resetSimulation();
         });
     
@@ -531,7 +518,6 @@ window.addEventListener('DOMContentLoaded', () => { //
             return;
         }
 
-        // --- THE "NUKE AND REBUILD" FIX ---
         if (dirLight) {
             if (dirLight.shadow.map) {
                 dirLight.shadow.map.dispose();
@@ -578,29 +564,23 @@ window.addEventListener('DOMContentLoaded', () => { //
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, value));
     });
 
-    // --- Added Wireframe Toggle ---
     performanceFolder.add(settings, 'wireframe').name('Show Wireframe').onChange(value => {
-        // Traverse all meshes and update their material's wireframe property
-        // boxGroup contains the clock and the shadow box, so this covers everything
         boxGroup.traverse((node) => {
             if (node.isMesh && node.material) {
                 if (Array.isArray(node.material)) {
-                    // Handle meshes with multiple materials
                     node.material.forEach(mat => mat.wireframe = value);
                 } else {
-                    // Handle single material
                     node.material.wireframe = value;
                 }
             }
         });
     });
-    // --- END ---
+    
+    // --- UPDATED: Troubleshooting Sub-Menu ---
+    const troubleshootingFolder = gui.addFolder('Troubleshooting');
+    troubleshootingFolder.close();
 
-    // --- Console Log / Troubleshooting Sub-Menu ---
-    const consoleFolder = gui.addFolder('Console Log Outputs / Troubleshooting');
-    consoleFolder.close();
-    const listMeshesController = consoleFolder.add(settings, 'listMeshBodies').name('List All Mesh Bodies');
-    listMeshesController.onChange(value => {
+    troubleshootingFolder.add(settings, 'listMeshBodies').name('List All Mesh Bodies in Console').onChange(value => {
         if (value) {
             if (clockModel && Object.keys(collectedParts).length > 0) {
                 console.log("--- All Mesh Bodies in GLTF Model ---");
@@ -612,15 +592,17 @@ window.addEventListener('DOMContentLoaded', () => { //
             }
             setTimeout(() => {
                 settings.listMeshBodies = false;
-                listMeshesController.updateDisplay();
+                const controller = troubleshootingFolder.controllers.find(c => c.property === 'listMeshBodies');
+                if (controller) controller.updateDisplay();
             }, 200);
         }
     });
 
-    // This slider is a MANUAL debug tool. Using it WILL desync the escapement
-    // from the balance wheel's calculated phase. This is its intended purpose.
-    // The user must press "Reset Clock" to re-calculate and restore the physical sync.
-    consoleFolder.add(settings, 'startPhaseOffsetDeg', 0.0, 360.0, 0.1).name('Start Phase (Deg)').onChange(degrees => {
+    troubleshootingFolder.add(settings, 'showHDRI').name('Show HDRI Background').onChange(value => {
+        scene.background = value ? environmentTexture : null;
+    });
+
+    troubleshootingFolder.add(settings, 'startPhaseOffsetDeg', 0.0, 360.0, 0.1).name('Start Phase (Deg)').onChange(degrees => {
         STARTING_PHASE_OFFSET = THREE.MathUtils.degToRad(degrees);
         
         const newStartSineVal = Math.sin(STARTING_PHASE_OFFSET); 
@@ -634,7 +616,7 @@ window.addEventListener('DOMContentLoaded', () => { //
         updateClockGears();
     });
 
-    consoleFolder.add(settings, 'escapeWheelOffsetDeg', 0.0, 180.0, 0.1).name('Escape Wheel Offset').onChange(degrees => {
+    troubleshootingFolder.add(settings, 'escapeWheelOffsetDeg', 0.0, 180.0, 0.1).name('Escape Wheel Offset').onChange(degrees => {
         ESCAPE_WHEEL_OFFSET = THREE.MathUtils.degToRad(degrees);
         updateClockGears();
     });
@@ -700,6 +682,15 @@ window.addEventListener('DOMContentLoaded', () => { //
         pointerDownTime = null;
     }
 
+    // --- Add visibility change handler to reset clock on tab focus ---
+    document.addEventListener('visibilitychange', () => {
+        // When the tab becomes visible again, reset the clock to the current time.
+        if (!document.hidden) {
+            console.log("Tab is visible again. Resetting clock to current time.");
+            _resetSimulation();
+        }
+    });
+
     // Initialize clock
     settings.resetClock();
     updateClockGears();
@@ -742,6 +733,7 @@ const rgbeLoader = new RGBELoader(loadingManager).setPath('textures/'); //
 rgbeLoader.load('PolyHaven_colorful_studio_2k.hdr', (texture) => { //
     texture.mapping = THREE.EquirectangularReflectionMapping; //
     scene.environment = texture; //
+    environmentTexture = texture; // <-- Store texture for GUI toggle
 });
 
 let dirLight = new THREE.DirectionalLight(0xffffff, 2.5); // Changed to let
@@ -762,21 +754,25 @@ scene.add(dirLight.target); //
 
 // --- Create a master "clockUnit" group ---
 const clockUnit = new THREE.Group(); //
-clockUnit.position.z = 0; //
-
-const zShift = 1.0; //
 
 // --- PBR Material Definitions ---
 const textureLoader = new THREE.TextureLoader(loadingManager).setPath('textures/'); //
-const woodBaseColor = textureLoader.load('Wood03_2K_BaseColor.png'); //
-const woodNormal = textureLoader.load('Wood03_2K_Normal.png'); //
-const woodRoughness = textureLoader.load('Wood03_2K_Roughness.png'); //
-const woodHeight = textureLoader.load('Wood03_2K_Height.png'); //
-woodBaseColor.colorSpace = THREE.SRGBColorSpace; //
-const wallMaterial = new THREE.MeshStandardMaterial({ //
-    map: woodBaseColor, normalMap: woodNormal, roughnessMap: woodRoughness, //
-    displacementMap: woodHeight, displacementScale: 0.05 //
+const parquetBaseColor = textureLoader.load('ParquetFlooring03_2K_BaseColor.png');
+const parquetNormal = textureLoader.load('ParquetFlooring03_2K_Normal.png');
+const parquetRoughness = textureLoader.load('ParquetFlooring03_2K_Roughness.png');
+const parquetHeight = textureLoader.load('ParquetFlooring03_2K_Height.png');
+const parquetAO = textureLoader.load('ParquetFlooring03_2K_AO.png'); // Ambient Occlusion
+parquetBaseColor.colorSpace = THREE.SRGBColorSpace;
+const wallMaterial = new THREE.MeshStandardMaterial({
+    map: parquetBaseColor,
+    normalMap: parquetNormal,
+    roughnessMap: parquetRoughness,
+    aoMap: parquetAO,
+    aoMapIntensity: 1.0,
+    displacementMap: parquetHeight,
+    displacementScale: 0.05
 });
+
 const steelBaseColor = textureLoader.load('BrushedIron02_2K_BaseColor.png'); //
 const steelNormal = textureLoader.load('BrushedIron02_2K_Normal.png'); //
 const steelRoughness = textureLoader.load('BrushedIron02_2K_Roughness.png'); //
@@ -791,7 +787,6 @@ const brushedSteelMaterial = new THREE.MeshStandardMaterial({ //
     metalness: 0.9, roughness: 0.4, color: 0xe0e0e0 //
 });
 
-// --- START: Reverted materials back to their intended (non-debug) properties ---
 const lightBrushedSteelMaterial = new THREE.MeshStandardMaterial({
     map: steelBaseColor,        // Use the same texture
     normalMap: steelNormal,     // Use the same normal map
@@ -811,44 +806,49 @@ const mediumBrushedSteelMaterial = new THREE.MeshStandardMaterial({
     color: 0xe0e0e0,            // Keep the same base color
     normalScale: new THREE.Vector2(0.2, 0.2) // This is the intended value
 });
-// --- END ---
 
 function cloneMaterialWithTextures(material) { //
     const newMaterial = material.clone(); //
-    newMaterial.map = material.map.clone(); //
-    newMaterial.normalMap = material.normalMap.clone(); //
-    newMaterial.roughnessMap = material.roughnessMap.clone(); //
-    newMaterial.displacementMap = material.displacementMap.clone(); //
+    newMaterial.map = material.map.clone();
+    newMaterial.normalMap = material.normalMap.clone();
+    newMaterial.roughnessMap = material.roughnessMap.clone();
+    if (material.aoMap) newMaterial.aoMap = material.aoMap.clone();
+    if (material.displacementMap) newMaterial.displacementMap = material.displacementMap.clone();
     return newMaterial; //
 }
 const topBottomMaterial = cloneMaterialWithTextures(wallMaterial); //
 const leftRightMaterial = cloneMaterialWithTextures(wallMaterial); //
-const allWallTextures = [ //
-    wallMaterial.map, wallMaterial.normalMap, wallMaterial.roughnessMap, wallMaterial.displacementMap, //
-    topBottomMaterial.map, topBottomMaterial.normalMap, topBottomMaterial.roughnessMap, topBottomMaterial.displacementMap, //
-    leftRightMaterial.map, leftRightMaterial.normalMap, leftRightMaterial.roughnessMap, leftRightMaterial.displacementMap //
+const allWallTextures = [
+    wallMaterial.map, wallMaterial.normalMap, wallMaterial.roughnessMap, wallMaterial.displacementMap, wallMaterial.aoMap,
+    topBottomMaterial.map, topBottomMaterial.normalMap, topBottomMaterial.roughnessMap, topBottomMaterial.displacementMap, topBottomMaterial.aoMap,
+    leftRightMaterial.map, leftRightMaterial.normalMap, leftRightMaterial.roughnessMap, leftRightMaterial.displacementMap, leftRightMaterial.aoMap
 ];
-allWallTextures.forEach(texture => { //
-    texture.wrapS = THREE.RepeatWrapping; //
-    texture.wrapT = THREE.RepeatWrapping; //
+allWallTextures.forEach(texture => {
+    if (texture) { // Check if texture exists before setting wrap
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+    }
 });
-const wallGeometry = new THREE.PlaneGeometry(1, 1, 100, 100); //
+
+const wallGeometry = new THREE.PlaneGeometry(1, 1, 100, 100);
+wallGeometry.setAttribute('uv2', new THREE.BufferAttribute(wallGeometry.attributes.uv.array, 2));
+
 const wall = new THREE.Mesh(wallGeometry, wallMaterial); //
 wall.receiveShadow = true; //
-const wallThickness = 0.01; //
+const wallThickness = 0.75;
 const boxGroup = new THREE.Group(); //
 scene.add(boxGroup); //
-// Create a new group for the shadow box walls. This allows us to toggle
-// their visibility from the GUI for performance.
 shadowBoxWalls = new THREE.Group();
 boxGroup.add(shadowBoxWalls);
 boxGroup.add(clockUnit); // Add the clock itself to the main group
 shadowBoxWalls.add(wall); // Add the back wall to our new group
-const topWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial); //
-const bottomWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), topBottomMaterial); //
-const leftWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial); //
-// --- Fixed typo from rightRightMaterial to leftRightMaterial ---
-const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), leftRightMaterial); //
+
+// --- REWORKED: Create placeholder meshes; geometry is now built in layoutScene() ---
+const topWall = new THREE.Mesh(new THREE.BoxGeometry(), topBottomMaterial);
+const bottomWall = new THREE.Mesh(new THREE.BoxGeometry(), topBottomMaterial);
+const leftWall = new THREE.Mesh(new THREE.BoxGeometry(), leftRightMaterial);
+const rightWall = new THREE.Mesh(new THREE.BoxGeometry(), leftRightMaterial);
+
 [topWall, bottomWall, leftWall, rightWall].forEach(w => { //
     w.castShadow = true; //
     w.receiveShadow = true; //
@@ -856,7 +856,6 @@ const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, wallThickness), lef
 });
 
 // --- Materials for GLB parts ---
-// --- Changed brassMaterial color from 0xED9149 (reddish) to 0xEEC94D (gold) ---
 const brassMaterial = new THREE.MeshStandardMaterial({ color: 0xFFD700, metalness: 0.95, roughness: 0.1 }); //
 const blackAluminumMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.6, roughness: 0.4 }); //
 const lumeMaterial = new THREE.MeshStandardMaterial({ color: 0x90ee90, emissive: 0x90ee90, emissiveIntensity: 0.6, roughness: 0.8, transparent: true, opacity: 0.5 }); //
@@ -883,7 +882,8 @@ function processLoadedModel(gltf) {
         return;
     }
     clockUnit.add(clockModel);
-    clockModel.position.set(0, 0, -4.0 + zShift);
+    // --- UPDATED: Position is now set in layoutScene to keep it relative to the box ---
+    clockModel.position.set(0, 0, 0); 
     clockModel.rotation.set(0, 0, 0);
     clockModel.scale.set(modelScale, modelScale, modelScale);
     
@@ -911,8 +911,10 @@ function processLoadedModel(gltf) {
     if (secondLume) newSecondHand.add(secondLume);
     clockModel.add(newHourHand);
     clockModel.add(newMinuteHand);
+
     for (const name in collectedParts) {
         const part = collectedParts[name];
+
         if (name.startsWith('HourHandOuterBody') || name.startsWith('MinuteHandOuterBody') || name.startsWith('SecondsHandOuterBody')) { part.material = blackAluminumMaterial; }
         else if (name.startsWith('HourHandLumeBody') || name.startsWith('MinuteHandLumeBody') || name.startsWith('SecondsHandLumeBody') || name.includes('PipLumeBody')) { part.material = lumeMaterial; }
         else if (name.includes('Jewel')) {
@@ -924,11 +926,26 @@ function processLoadedModel(gltf) {
         else if (name === 'CaseBottomBody' || name === 'CaseTopBody') {
             part.material = mediumBrushedSteelMaterial;
         }
+        else if (['BarrelBridgeBody', 'TrainWheelBridge', 'BalancingBridge'].includes(name)) {
+            const material = lightBrushedSteelMaterial.clone();
+            material.transparent = true;
+            material.opacity = settings.bridgeTransparency;
+            part.material = material;
+        }
         else if ([
-            'BalancingBridgeBody', 'BarrelBridge_Body', 'BarrelDrum_Gear_Body',
-            'PalletBridgeBody', 'RollerTable', 'TrainWheelBridgeBody'
+            'BarrelDrum_Gear_Body', 'PalletBridgeBody', 'RollerTable',
+            'BalancingBridgeBody', 'TrainWheelBridgeBody'
         ].includes(name)) { 
             part.material = brushedSteelMaterial;
+        }
+        else if (name === 'WindingKnob') {
+            part.material = lightBrushedSteelMaterial.clone();
+        }
+        else if (name === '6497_SkeltonFront') {
+            const material = lightBrushedSteelMaterial.clone();
+            material.transparent = true;
+            material.opacity = settings.skeletonTopTransparency;
+            part.material = material;
         }
         else if ([
             'BarrelArborBody', 'BarrelMainSpringBody', 'ClickBody', 'CrownWheelBody',
@@ -936,15 +953,9 @@ function processLoadedModel(gltf) {
             'Incabloc2_2', 'IncablocDisc_2', 'PalletForkBody', 'RatchetWheelBody',
             'RegulatorCurvePin_1', 'RegulatorCurvePin_2', 'RegulatorPiece1_Body', 'RegulatorPiece2_Body',
             'RegulatorPiece3_Body', 'SettingLeverJumperBody', 'SettingLever_Body', 'SettingWheelBody',
-            'SlidingPinion', 'WindingKnob', 'WindingPinion', 'WindingStem', 'YokeBody', 'YokeSpringCompressed_Body'
+            'SlidingPinion', 'WindingPinion', 'WindingStem', 'YokeBody', 'YokeSpringCompressed_Body'
         ].includes(name)) { 
             part.material = polishedAluminumMaterial;
-        }
-        else if (name === '6497_SkeltonFront') {
-            const transparentAluminum = polishedAluminumMaterial.clone();
-            transparentAluminum.transparent = true;
-            transparentAluminum.opacity = 0.7;
-            part.material = transparentAluminum;
         }
         else if (name.includes('Screw')) {
             part.material = polishedAluminumMaterial;
@@ -1215,57 +1226,69 @@ function updateCameraZoom() {
 }
 
 function layoutScene() {
-    // --- 1. Calculate object scales based on a fixed virtual distance ---
-    // We use a fixed distance to calculate the world-space dimensions of the scene objects (shadow box, clock).
-    // This ensures they don't change size when the actual camera zooms in or out.
     const layoutDistance = 60.0;
     const boxFrontZ = 0.0;
     const fov = camera.fov * (Math.PI / 180);
+    const fovInRadians = fov;
 
-    // Calculate the view plane for the fixed layout perspective.
-    const layoutViewPlaneHeight = 2 * Math.tan(fov / 2) * (layoutDistance - boxFrontZ);
-    const layoutViewPlaneWidth = layoutViewPlaneHeight * camera.aspect;
+    // --- REWORKED: Layout Logic ---
+    // 1. Determine the available screen space to calculate the box's inner dimensions.
+    const innerHeight = 2 * Math.tan(fovInRadians / 2) * (layoutDistance - boxFrontZ);
+    const innerWidth = innerHeight * camera.aspect;
 
-    // --- 2. Scale scene objects (shadow box and clock) based on the fixed layout ---
+    // 2. Build the shadow box to fit the screen.
     const boxDepth = 8.5;
-    const backWallZ = -boxDepth;
     const wallCenterZ = -boxDepth / 2;
-    const backPlaneDistance = layoutDistance - backWallZ;
-    const backPlaneHeight = 2 * Math.tan(fov / 2) * backPlaneDistance;
-    const backPlaneWidth = backPlaneHeight * camera.aspect;
-    const unitsPerTexture = 15;
-    const wallTextures = [wallMaterial.map, wallMaterial.normalMap, wallMaterial.roughnessMap, wallMaterial.displacementMap];
-    const tbTextures = [topBottomMaterial.map, topBottomMaterial.normalMap, topBottomMaterial.roughnessMap, topBottomMaterial.displacementMap];
-    const lrTextures = [leftRightMaterial.map, leftRightMaterial.normalMap, leftRightMaterial.roughnessMap, leftRightMaterial.displacementMap];
-    wallTextures.forEach(t => t.repeat.set(backPlaneWidth / unitsPerTexture, backPlaneHeight / unitsPerTexture));
-    tbTextures.forEach(t => t.repeat.set(layoutViewPlaneWidth / unitsPerTexture, boxDepth / unitsPerTexture));
-    lrTextures.forEach(t => t.repeat.set(boxDepth / unitsPerTexture, layoutViewPlaneHeight / unitsPerTexture));
-    wall.position.z = backWallZ;
-    wall.scale.set(backPlaneWidth, backPlaneHeight, 1);
-    topWall.scale.set(layoutViewPlaneWidth, boxDepth, 1);
-    topWall.position.set(0, layoutViewPlaneHeight / 2, wallCenterZ);
-    topWall.rotation.set(Math.PI / 2, 0, 0);
-    bottomWall.scale.set(layoutViewPlaneWidth, boxDepth, 1);
-    bottomWall.position.set(0, -layoutViewPlaneHeight / 2, wallCenterZ);
-    bottomWall.rotation.set(-Math.PI / 2, 0, 0);
-    leftWall.scale.set(boxDepth, layoutViewPlaneHeight, 1);
-    leftWall.position.set(-layoutViewPlaneWidth / 2, 0, wallCenterZ);
-    leftWall.rotation.set(0, Math.PI / 2, 0);
-    rightWall.scale.set(boxDepth, layoutViewPlaneHeight, 1);
-    rightWall.position.set(layoutViewPlaneWidth / 2, 0, wallCenterZ);
-    rightWall.rotation.set(0, -Math.PI / 2, 0);
+    const outerWidth = innerWidth + (2 * wallThickness);
+    const outerHeight = innerHeight + (2 * wallThickness);
+
+    wall.scale.set(outerWidth, outerHeight, 1);
+    wall.position.z = -boxDepth;
+    wall.rotation.set(0, 0, 0);
+
+    if (topWall.geometry) topWall.geometry.dispose();
+    if (bottomWall.geometry) bottomWall.geometry.dispose();
+    if (leftWall.geometry) leftWall.geometry.dispose();
+    if (rightWall.geometry) rightWall.geometry.dispose();
     
+    const topGeo = new THREE.BoxGeometry(outerWidth, wallThickness, boxDepth);
+    topGeo.setAttribute('uv2', new THREE.BufferAttribute(topGeo.attributes.uv.array, 2));
+    topWall.geometry = topGeo;
+    topWall.position.set(0, innerHeight / 2 + wallThickness / 2, wallCenterZ);
+    topWall.rotation.set(0, 0, 0);
+
+    const bottomGeo = new THREE.BoxGeometry(outerWidth, wallThickness, boxDepth);
+    bottomGeo.setAttribute('uv2', new THREE.BufferAttribute(bottomGeo.attributes.uv.array, 2));
+    bottomWall.geometry = bottomGeo;
+    bottomWall.position.set(0, -innerHeight / 2 - wallThickness / 2, wallCenterZ);
+    bottomWall.rotation.set(0, 0, 0);
+
+    const leftGeo = new THREE.BoxGeometry(wallThickness, innerHeight, boxDepth);
+    leftGeo.setAttribute('uv2', new THREE.BufferAttribute(leftGeo.attributes.uv.array, 2));
+    leftWall.geometry = leftGeo;
+    leftWall.position.set(-innerWidth / 2 - wallThickness / 2, 0, wallCenterZ);
+    leftWall.rotation.set(0, 0, 0);
+    
+    const rightGeo = new THREE.BoxGeometry(wallThickness, innerHeight, boxDepth);
+    rightGeo.setAttribute('uv2', new THREE.BufferAttribute(rightGeo.attributes.uv.array, 2));
+    rightWall.geometry = rightGeo;
+    rightWall.position.set(innerWidth / 2 + wallThickness / 2, 0, wallCenterZ);
+    rightWall.rotation.set(0, 0, 0);
+
+    // 3. Scale the clock to fit INSIDE the box's inner dimensions.
     const clockNativeDiameter = 22;
     const padding = 5;
-    const availableWidth = layoutViewPlaneWidth - (padding * 2);
-    const availableHeight = layoutViewPlaneHeight - (padding * 2);
+    const availableWidth = innerWidth - (padding * 2);
+    const availableHeight = innerHeight - (padding * 2);
     const scale = Math.min(availableWidth, availableHeight) / clockNativeDiameter;
     clockUnit.scale.set(scale, scale, scale);
-    
-    // --- 3. Calculate the camera zoom boundaries ---
-    // Now that the clock has a fixed world-space size for this layout, we calculate the camera distances.
+
+    // 4. Set the clock's Z-position to be relative to the back wall.
+    const clockOffsetFromBack = 2.25; // Moved forward 0.75 units
+    clockUnit.position.z = -boxDepth + clockOffsetFromBack;
+
+    // 5. Camera now frames the CLOCK, not the box.
     const finalClockDiameter = clockNativeDiameter * scale;
-    const fovInRadians = fov; // Already in radians from above
 
     if (camera.aspect >= 1) { // Landscape or square view
         const requiredFrustumHeight = finalClockDiameter;
@@ -1275,9 +1298,9 @@ function layoutScene() {
         const requiredFrustumHeight = requiredFrustumWidth / camera.aspect;
         maxZoomInDistance = (requiredFrustumHeight / 2) / Math.tan(fovInRadians / 2);
     }
-    maxZoomOutDistance = layoutDistance * 1.5; // Set the max zoom-out distance
+    maxZoomOutDistance = layoutDistance * 1.5;
 
-    // --- 4. Set the actual camera position and update shadows ---
+    // --- Final Updates ---
     updateCameraZoom();
     
     const shadowVolumeBox = new THREE.Box3().setFromObject(boxGroup);
@@ -1302,15 +1325,13 @@ function layoutScene() {
     dirLight.shadow.camera.far = lightDistanceToCenter + shadowVolumeRadius;
     dirLight.shadow.camera.updateProjectionMatrix();
 
-    // --- Cache all calculated light/shadow values ---
     _lightPosition.copy(dirLight.position);
     _lightTargetPosition.copy(dirLight.target.position);
-    _shadowCameraSettings.left = dirLight.shadow.camera.left;
-    _shadowCameraSettings.right = dirLight.shadow.camera.right;
-    _shadowCameraSettings.top = dirLight.shadow.camera.top;
-    _shadowCameraSettings.bottom = dirLight.shadow.camera.bottom;
-    _shadowCameraSettings.near = dirLight.shadow.camera.near;
-    _shadowCameraSettings.far = dirLight.shadow.camera.far;
+    Object.assign(_shadowCameraSettings, {
+        left: dirLight.shadow.camera.left, right: dirLight.shadow.camera.right,
+        top: dirLight.shadow.camera.top, bottom: dirLight.shadow.camera.bottom,
+        near: dirLight.shadow.camera.near, far: dirLight.shadow.camera.far
+    });
 }
 
 let tiltX = 0, tiltY = 0; //
@@ -1322,8 +1343,6 @@ function handleOrientation(event) { //
 function enableTilt() {
     const startTilting = () => {
         window.addEventListener('deviceorientation', handleOrientation);
-        // Do not reset the camera, per user request for troubleshooting.
-        // settings.resetCamera();
     };
 
     if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
@@ -1331,7 +1350,6 @@ function enableTilt() {
             if (permissionState === 'granted') {
                 startTilting();
             } else {
-                // If permission is denied, uncheck the box in the GUI
                 settings.tiltEnabled = false; 
                 const tiltController = gui.controllers.find(c => c.property === 'tiltEnabled');
                 if (tiltController) {
@@ -1340,7 +1358,6 @@ function enableTilt() {
             }
         });
     } else {
-        // For non-iOS browsers that don't need permission
         startTilting();
     }
 }
@@ -1349,11 +1366,6 @@ function disableTilt() {
     window.removeEventListener('deviceorientation', handleOrientation);
     tiltX = 0;
     tiltY = 0;
-    // The new tilt implementation rotates the 'boxGroup' instead of moving the camera's target.
-    // Therefore, resetting the camera target here is no longer necessary and would undesirably
-    // snap the user's view if they have panned. The 'animate' loop will handle returning
-    // the boxGroup's rotation to zero smoothly.
-    // controls.target.set(0, 0, 0);
 }
 window.addEventListener('resize', () => { //
     camera.aspect = window.innerWidth / window.innerHeight; //
@@ -1396,35 +1408,25 @@ function animate() { //
 
     // --- Tilt Camera Logic ---
     if (settings.tiltEnabled && !isUserInteracting) {
-        const maxTilt = 15; // Max tilt angle in degrees, adapted from tilt_clock_3D.js
-        const rotationMultiplier = 0.5; // Sensitivity, adapted from tilt_clock_3D.js
+        const maxTilt = 15; 
+        const rotationMultiplier = 0.5;
 
-        // Clamp the raw tilt values to prevent extreme rotation
         const clampedTiltX = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
         const clampedTiltY = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
 
-        // Calculate the target rotation based on device orientation.
-        // Gamma (tiltX, left-right) controls rotation around the Y-axis.
-        // Beta (tiltY, front-back) controls rotation around the X-axis.
         const targetRotY = THREE.MathUtils.degToRad(clampedTiltX) * rotationMultiplier;
         const targetRotX = THREE.MathUtils.degToRad(clampedTiltY) * rotationMultiplier;
         
         const lerpFactor = Math.min(delta * 2.0, 1.0);
 
-        // Instead of moving the camera target, we rotate the 'boxGroup' which contains
-        // the clock and shadow box. This creates the desired parallax effect of looking
-        // into a stationary box.
         boxGroup.rotation.y = THREE.MathUtils.lerp(boxGroup.rotation.y, targetRotY, lerpFactor);
         boxGroup.rotation.x = THREE.MathUtils.lerp(boxGroup.rotation.x, targetRotX, lerpFactor);
     } else {
-        // When tilt is disabled or the user is interacting with the controls,
-        // smoothly return the box to its default, non-tilted orientation.
         const lerpFactor = Math.min(delta * 2.0, 1.0);
         if (Math.abs(boxGroup.rotation.x) > 0.0001 || Math.abs(boxGroup.rotation.y) > 0.0001) {
             boxGroup.rotation.x = THREE.MathUtils.lerp(boxGroup.rotation.x, 0, lerpFactor);
             boxGroup.rotation.y = THREE.MathUtils.lerp(boxGroup.rotation.y, 0, lerpFactor);
         } else {
-            // Snap to zero once close enough to prevent lingering rotations
             boxGroup.rotation.x = 0;
             boxGroup.rotation.y = 0;
         }
@@ -1432,23 +1434,17 @@ function animate() { //
 
     controls.update(); //
 
-    // This 'time' is based on wall clock, used for the pallet animation duration check
-    const time = now / 1000; //
+    const time = now / 1000;
 
-    // Update UI Text (if visible)
     if (settings.showDateTime) {
-        // FIX: Calculate time per beat dynamically for the display.
         const elapsedSimulatedSeconds = simulationTotalTicks * (1.0 / simulationBeatRate);
-        // Add elapsed sim time to the real start time to get the display time
         const totalDisplaySeconds = simulationStartTimeInSeconds + elapsedSimulatedSeconds;
         
         const totalSecondsInt = Math.floor(totalDisplaySeconds);
 
-        // This code uses the *real* wall clock date, which is fine.
         const nowForDate = new Date();
         digitalDate.textContent = nowForDate.toLocaleDateString(undefined, dateOptions);
         
-        // This code now uses the *synchronized* simulated clock time.
         const hours = Math.floor((totalSecondsInt / 3600) % 24);
         const minutes = Math.floor((totalSecondsInt / 60) % 60);
         const seconds = totalSecondsInt % 60;
@@ -1458,70 +1454,51 @@ function animate() { //
         digitalClock.textContent = `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
     }
     
-    // --- This block now controls the physics clock ---
     if (settings.clockRunning) {
-        simulationPhysicsTime += delta; // Only advance our custom physics clock if running
+        simulationPhysicsTime += delta; 
     } else {
-        renderer.render(scene, camera); //
-        return; // Stop all physics calculations
+        renderer.render(scene, camera); 
+        return; 
     }
 
-
-    // --- BALANCE WHEEL & SIMULATION LOGIC ---
-    if (balanceWheel) { //
-        // --- Physics is now driven by our resettable 'simulationPhysicsTime' ---
+    if (balanceWheel) { 
         const frequency = simulationBeatRate / 2.0; 
-        const sineValue = Math.sin((simulationPhysicsTime * Math.PI * 2 * frequency) + STARTING_PHASE_OFFSET); //
-        const amplitudeRadians = THREE.MathUtils.degToRad(290); //
-        balanceWheel.rotation.z = -amplitudeRadians * sineValue; //
+        const sineValue = Math.sin((simulationPhysicsTime * Math.PI * 2 * frequency) + STARTING_PHASE_OFFSET); 
+        const amplitudeRadians = THREE.MathUtils.degToRad(290); 
+        balanceWheel.rotation.z = -amplitudeRadians * sineValue;
 
-        const currentAngleDeg = THREE.MathUtils.radToDeg(balanceWheel.rotation.z); //
-        if (balanceWheelAngles.start === null) { //
-            balanceWheelAngles.start = currentAngleDeg; //
+        const currentAngleDeg = THREE.MathUtils.radToDeg(balanceWheel.rotation.z); 
+        if (balanceWheelAngles.start === null) { 
+            balanceWheelAngles.start = currentAngleDeg; 
         }
-        balanceWheelAngles.min = Math.min(balanceWheelAngles.min, currentAngleDeg); //
-        balanceWheelAngles.max = Math.max(balanceWheelAngles.max, currentAngleDeg); //
+        balanceWheelAngles.min = Math.min(balanceWheelAngles.min, currentAngleDeg); 
+        balanceWheelAngles.max = Math.max(balanceWheelAngles.max, currentAngleDeg); 
 
-
-        // --- NEW ESCAPEMENT LOGIC ---
-        // This version removes the animation timing and acts on every beat instantly.
         const currentSign = Math.sign(sineValue);
         if (currentSign !== Math.sign(previousSineValue)) {
             
-            // Determine which way the pallet fork should move.
             if (previousSineValue > 0 && currentSign <= 0) {
                 palletForkState = -1;
             } else if (previousSineValue < 0 && currentSign >= 0) {
                 palletForkState = 1;
             }
 
-            // This is now the single point of action for a beat.
             if (palletFork) {
-                // 1. Calculate the target angle and SNAP the pallet fork to it.
                 const palletForkTargetAngle = (PALLET_FORK_ANGLE * palletForkState) + PALLET_FORK_OFFSET;
                 palletFork.rotation.z = palletForkTargetAngle;
             }
             
-            // 2. Increment the master tick counter.
             simulationTotalTicks++;
-            // 3. Update the entire gear train based on the new tick count.
             updateClockGears();
         }
         previousSineValue = sineValue;
 
-        // The timed animation handler has been completely removed.
-
-        // --- HAIRSPRING ANIMATION (GPU) ---
         if (hairSpringMesh && hairSpringMesh.userData.shader) {
             hairSpringMesh.userData.shader.uniforms.u_sineValue.value = sineValue;
         }
     }
 
-    renderer.render(scene, camera); //
+    renderer.render(scene, camera); 
 }
 
-// Start the animation
-animate(); //
-
-
-
+animate();
