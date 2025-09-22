@@ -116,6 +116,9 @@ const cameraResetTargetPos = new THREE.Vector3(0, 0, 60); //
 const cameraResetTargetTarget = new THREE.Vector3(0, 0, 0); //
 let isUserInteracting = false; //
 
+// --- ADDED: State flag for tilt camera reset ---
+let isReturningFromTilt = false;
+
 // --- Cache variables for light replacement ---
 let _lightPosition = new THREE.Vector3();
 let _lightTargetPosition = new THREE.Vector3();
@@ -837,12 +840,13 @@ function cloneMaterialWithTextures(material) { //
     if (material.displacementMap) newMaterial.displacementMap = material.displacementMap.clone();
     return newMaterial; //
 }
-const topBottomMaterial = cloneMaterialWithTextures(wallMaterial); //
-const leftRightMaterial = cloneMaterialWithTextures(wallMaterial); //
+// --- RENAMED and CORRECTED ---
+const topBottomWallMaterial = cloneMaterialWithTextures(wallMaterial);
+const leftRightWallMaterial = cloneMaterialWithTextures(wallMaterial);
 const allWallTextures = [
     wallMaterial.map, wallMaterial.normalMap, wallMaterial.roughnessMap, wallMaterial.displacementMap, wallMaterial.aoMap,
-    topBottomMaterial.map, topBottomMaterial.normalMap, topBottomMaterial.roughnessMap, topBottomMaterial.displacementMap, topBottomMaterial.aoMap,
-    leftRightMaterial.map, leftRightMaterial.normalMap, leftRightMaterial.roughnessMap, leftRightMaterial.displacementMap, leftRightMaterial.aoMap
+    topBottomWallMaterial.map, topBottomWallMaterial.normalMap, topBottomWallMaterial.roughnessMap, topBottomWallMaterial.displacementMap, topBottomWallMaterial.aoMap,
+    leftRightWallMaterial.map, leftRightWallMaterial.normalMap, leftRightWallMaterial.roughnessMap, leftRightWallMaterial.displacementMap, leftRightWallMaterial.aoMap
 ];
 allWallTextures.forEach(texture => {
     if (texture) { // Check if texture exists before setting wrap
@@ -865,10 +869,10 @@ boxGroup.add(clockUnit); // Add the clock itself to the main group
 shadowBoxWalls.add(wall); // Add the back wall to our new group
 
 // --- REWORKED: Create placeholder meshes; geometry is now built in layoutScene() ---
-topWall = new THREE.Mesh(new THREE.BoxGeometry(), topBottomMaterial);
-bottomWall = new THREE.Mesh(new THREE.BoxGeometry(), topBottomMaterial);
-leftWall = new THREE.Mesh(new THREE.BoxGeometry(), leftRightMaterial);
-rightWall = new THREE.Mesh(new THREE.BoxGeometry(), leftRightMaterial);
+topWall = new THREE.Mesh(new THREE.BoxGeometry(), topBottomWallMaterial);
+bottomWall = new THREE.Mesh(new THREE.BoxGeometry(), topBottomWallMaterial);
+leftWall = new THREE.Mesh(new THREE.BoxGeometry(), leftRightWallMaterial);
+rightWall = new THREE.Mesh(new THREE.BoxGeometry(), leftRightWallMaterial);
 
 [topWall, bottomWall, leftWall, rightWall].forEach(w => { //
     w.castShadow = true; //
@@ -1385,6 +1389,9 @@ function handleOrientation(event) {
 }
 
 function enableTilt() {
+    // Cancel any "return to center" animation that might be in progress.
+    isReturningFromTilt = false;
+
     const startTilting = () => {
         // This function runs once to capture the initial orientation as the 'neutral' state.
         const setNeutralOnce = (event) => {
@@ -1420,6 +1427,8 @@ function enableTilt() {
 
 function disableTilt() {
     window.removeEventListener('deviceorientation', handleOrientation);
+    // Set the flag to start the camera return animation.
+    isReturningFromTilt = true;
     // Reset tilt values and the neutral position when the feature is turned off.
     neutralTilt = { x: 0, y: 0 };
     tiltX = 0;
@@ -1464,38 +1473,42 @@ function animate() { //
         }
     }
 
-    // --- CORRECTED TILT LOGIC ---
-    // This entire block is wrapped in isMobileDevice to prevent it from ever
-    // interfering with desktop mouse controls.
-    if (isMobileDevice) {
-        // This logic runs when the user is not actively using touch controls
-        if (!isUserInteracting) {
-            let targetX = 0;
-            let targetY = 0;
+    // --- STATE-BASED TILT AND CAMERA LOGIC ---
 
-            // If tilt is enabled in the GUI, calculate the camera offset
-            if (settings.tiltEnabled) {
-                const maxTiltAngle = 30.0;
-                const maxCameraOffset = 3.5;
-
-                const clampedTiltX = THREE.MathUtils.clamp(tiltX, -maxTiltAngle, maxTiltAngle);
-                const clampedTiltY = THREE.MathUtils.clamp(tiltY, -maxTiltAngle, maxTiltAngle);
-
-                targetX = THREE.MathUtils.mapLinear(clampedTiltX, -maxTiltAngle, maxTiltAngle, maxCameraOffset, -maxCameraOffset);
-                targetY = THREE.MathUtils.mapLinear(clampedTiltY, -maxTiltAngle, maxTiltAngle, maxCameraOffset, -maxCameraOffset);
-            }
-            
-            // The target position uses the calculated X/Y, but preserves the current camera.position.z for zoom.
-            // If tilt is disabled, targetX and targetY will be 0, causing the camera to smoothly return to center.
-            const targetPosition = new THREE.Vector3(targetX, targetY, camera.position.z);
-
-            // Smoothly move the camera towards the target.
-            if (camera.position.distanceTo(targetPosition) > 0.01) {
-                camera.position.lerp(targetPosition, Math.min(delta * 4.0, 1.0));
-            }
+    // State 1: A "return-to-center" animation is active.
+    // This runs when tilt has been disabled and the user is not touching the screen.
+    if (isReturningFromTilt && !isUserInteracting) {
+        const targetPosition = new THREE.Vector3(0, 0, camera.position.z);
+        // Smoothly move camera back to the center (X=0, Y=0).
+        camera.position.lerp(targetPosition, Math.min(delta * 4.0, 1.0));
+        // When the camera is very close to center, snap it and turn off the flag.
+        if (camera.position.distanceTo(targetPosition) < 0.01) {
+            camera.position.x = 0;
+            camera.position.y = 0;
+            isReturningFromTilt = false; // Animation finished.
         }
     }
+    // State 2: The tilt effect is active.
+    // This runs only if tilt is enabled, we are NOT returning, and the user is not touching the screen.
+    else if (settings.tiltEnabled && !isUserInteracting) {
+        const maxTiltAngle = 30.0;
+        const maxCameraOffset = 3.5;
 
+        // Clamp the relative tilt values to prevent extreme movement
+        const clampedTiltX = THREE.MathUtils.clamp(tiltX, -maxTiltAngle, maxTiltAngle);
+        const clampedTiltY = THREE.MathUtils.clamp(tiltY, -maxTiltAngle, maxTiltAngle);
+
+        // Map tilt to camera offset
+        const targetX = THREE.MathUtils.mapLinear(clampedTiltX, -maxTiltAngle, maxTiltAngle, maxCameraOffset, -maxCameraOffset);
+        const targetY = THREE.MathUtils.mapLinear(clampedTiltY, -maxTiltAngle, maxTiltAngle, maxCameraOffset, -maxCameraOffset);
+        
+        const targetPosition = new THREE.Vector3(targetX, targetY, camera.position.z);
+        // Smoothly move the camera towards its tilted position
+        camera.position.lerp(targetPosition, Math.min(delta * 4.0, 1.0));
+    }
+    // If neither of the above states are active, this code does nothing to the camera,
+    // allowing OrbitControls to have full, uninterrupted control.
+    
     // The boxGroup itself does not rotate for the tilt effect.
     boxGroup.rotation.set(0, 0, 0);
 
@@ -1569,4 +1582,3 @@ function animate() { //
 }
 
 animate();
-
