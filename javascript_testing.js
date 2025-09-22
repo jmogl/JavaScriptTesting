@@ -1,3 +1,5 @@
+tttt
+
 // 3D Javacript ETA 6497 Clock using three.js
 // MIT License. - Work In Progress
 // Jeff Miller 2025. 9/21/25
@@ -92,6 +94,7 @@ NOTES (Will eventually move this to the ReadMe file):
 		- 3. End of cycle (0.4 Seconds): Balance wheel reaces the end of its second swing and starts back.
 */
 
+
 // Load Dependencies
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -176,9 +179,6 @@ const settings = {
     },
     resetCameraToBox: () => {
         if (isResettingCamera || shadowBoxOuterHeight === 0) return;
-
-        // --- ADDED: Reset wall geometry when this is pressed ---
-        resetWallGeometry();
 
         const fov = camera.fov * (Math.PI / 180); // vertical fov in radians
         const distance = (shadowBoxOuterHeight / 2) / Math.tan(fov / 2);
@@ -280,13 +280,6 @@ let newHourHand, newMinuteHand, newSecondHand; //
 let collectedParts = {};  //
 let shadowBoxWalls; // This will hold the wall meshes for easy toggling
 let topWall, bottomWall, leftWall, rightWall; // Wall meshes declared here
-
-// --- NEW: Variables for holographic tilt effect ---
-let wallMeshes = [];
-let originalWallCorners = {
-    top: [], bottom: [], left: [], right: []
-};
-
 
 // --- Add global offsets for hands ---
 let initialSecondRotationOffset = 0;
@@ -874,18 +867,16 @@ boxGroup.add(clockUnit); // Add the clock itself to the main group
 shadowBoxWalls.add(wall); // Add the back wall to our new group
 
 // --- REWORKED: Create placeholder meshes; geometry is now built in layoutScene() ---
-topWall = new THREE.Mesh(new THREE.BufferGeometry(), topBottomMaterial);
-bottomWall = new THREE.Mesh(new THREE.BufferGeometry(), topBottomMaterial);
-leftWall = new THREE.Mesh(new THREE.BufferGeometry(), leftRightMaterial);
-rightWall = new THREE.Mesh(new THREE.BufferGeometry(), leftRightMaterial);
-wallMeshes = [topWall, bottomWall, leftWall, rightWall];
+topWall = new THREE.Mesh(new THREE.BoxGeometry(), topBottomMaterial);
+bottomWall = new THREE.Mesh(new THREE.BoxGeometry(), topBottomMaterial);
+leftWall = new THREE.Mesh(new THREE.BoxGeometry(), leftRightMaterial);
+rightWall = new THREE.Mesh(new THREE.BoxGeometry(), leftRightMaterial);
 
-wallMeshes.forEach(w => { //
+[topWall, bottomWall, leftWall, rightWall].forEach(w => { //
     w.castShadow = true; //
     w.receiveShadow = true; //
-    shadowBoxWalls.add(w); // Add walls to the group for now
+    shadowBoxWalls.add(w); // Add the four side walls to our new group
 });
-
 
 // --- Materials for GLB parts ---
 const brassMaterial = new THREE.MeshStandardMaterial({ color: 0xFFD700, metalness: 0.95, roughness: 0.1 }); //
@@ -1273,38 +1264,6 @@ function updateCameraZoom() {
     camera.updateProjectionMatrix();
 }
 
-// --- NEW: Function to reset dynamic wall geometry to its original state ---
-function resetWallGeometry() {
-    if (!originalWallCorners.top.length) return; // Don't run if not initialized
-
-    const walls = [topWall, bottomWall, leftWall, rightWall];
-    const cornerKeys = ['top', 'bottom', 'left', 'right'];
-
-    walls.forEach((wall, i) => {
-        const key = cornerKeys[i];
-        const corners = originalWallCorners[key];
-        if (wall.geometry && corners.length === 4) {
-            const p0 = corners[0]; // top-left
-            const p1 = corners[1]; // top-right
-            const p2 = corners[2]; // bottom-left
-            const p3 = corners[3]; // bottom-right
-            const positions = wall.geometry.attributes.position.array;
-
-            positions.set([...p0.toArray(), ...p1.toArray(), ...p2.toArray(), ...p3.toArray()]);
-             
-            // Define vertices for 2 triangles
-            const vertices = new Float32Array([
-                ...p2.toArray(), ...p1.toArray(), ...p0.toArray(), // Triangle 1
-                ...p2.toArray(), ...p3.toArray(), ...p1.toArray()  // Triangle 2
-            ]);
-            
-            wall.geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-            wall.geometry.attributes.position.needsUpdate = true;
-            wall.geometry.computeVertexNormals();
-        }
-    });
-}
-
 function layoutScene() {
     const layoutDistance = 60.0;
     const boxFrontZ = 0.0;
@@ -1318,7 +1277,7 @@ function layoutScene() {
 
     // 2. Build the shadow box to fit the screen.
     const boxDepth = 8.5;
-    const wallCenterZ = 0; // The front of the box is at z=0
+    const wallCenterZ = -boxDepth / 2;
     const outerWidth = innerWidth + (2 * wallThickness);
     const outerHeight = innerHeight + (2 * wallThickness);
     shadowBoxOuterHeight = outerHeight; // Store for camera reset
@@ -1327,32 +1286,34 @@ function layoutScene() {
     wall.position.z = -boxDepth;
     wall.rotation.set(0, 0, 0);
 
-    // --- REWORKED: Create dynamic wall geometries instead of static boxes ---
-    const w = innerWidth / 2;
-    const h = innerHeight / 2;
-    const z_front = 0;
-    const z_back = -boxDepth;
-
-    // Define the 8 corners of the box's interior space
-    const corners = {
-        ftl: new THREE.Vector3(-w, h, z_front), // front-top-left
-        ftr: new THREE.Vector3(w, h, z_front),  // front-top-right
-        fbl: new THREE.Vector3(-w, -h, z_front),// front-bottom-left
-        fbr: new THREE.Vector3(w, -h, z_front), // front-bottom-right
-        btl: new THREE.Vector3(-w, h, z_back),  // back-top-left
-        btr: new THREE.Vector3(w, h, z_back),   // back-top-right
-        bbl: new THREE.Vector3(-w, -h, z_back), // back-bottom-left
-        bbr: new THREE.Vector3(w, -h, z_back)   // back-bottom-right
-    };
-
-    // Store original corners for resetting
-    originalWallCorners.top = [corners.ftl.clone(), corners.ftr.clone(), corners.btl.clone(), corners.btr.clone()];
-    originalWallCorners.bottom = [corners.fbl.clone(), corners.fbr.clone(), corners.bbl.clone(), corners.bbr.clone()];
-    originalWallCorners.left = [corners.ftl.clone(), corners.fbl.clone(), corners.btl.clone(), corners.bbl.clone()];
-    originalWallCorners.right = [corners.ftr.clone(), corners.fbr.clone(), corners.btr.clone(), corners.bbr.clone()];
+    if (topWall.geometry) topWall.geometry.dispose();
+    if (bottomWall.geometry) bottomWall.geometry.dispose();
+    if (leftWall.geometry) leftWall.geometry.dispose();
+    if (rightWall.geometry) rightWall.geometry.dispose();
     
-    // Create and assign geometries
-    resetWallGeometry(); // Initialize walls with their correct geometry
+    const topGeo = new THREE.BoxGeometry(outerWidth, wallThickness, boxDepth);
+    topGeo.setAttribute('uv2', new THREE.BufferAttribute(topGeo.attributes.uv.array, 2));
+    topWall.geometry = topGeo;
+    topWall.position.set(0, innerHeight / 2 + wallThickness / 2, wallCenterZ);
+    topWall.rotation.set(0, 0, 0);
+
+    const bottomGeo = new THREE.BoxGeometry(outerWidth, wallThickness, boxDepth);
+    bottomGeo.setAttribute('uv2', new THREE.BufferAttribute(bottomGeo.attributes.uv.array, 2));
+    bottomWall.geometry = bottomGeo;
+    bottomWall.position.set(0, -innerHeight / 2 - wallThickness / 2, wallCenterZ);
+    bottomWall.rotation.set(0, 0, 0);
+
+    const leftGeo = new THREE.BoxGeometry(wallThickness, innerHeight, boxDepth);
+    leftGeo.setAttribute('uv2', new THREE.BufferAttribute(leftGeo.attributes.uv.array, 2));
+    leftWall.geometry = leftGeo;
+    leftWall.position.set(-innerWidth / 2 - wallThickness / 2, 0, wallCenterZ);
+    leftWall.rotation.set(0, 0, 0);
+    
+    const rightGeo = new THREE.BoxGeometry(wallThickness, innerHeight, boxDepth);
+    rightGeo.setAttribute('uv2', new THREE.BufferAttribute(rightGeo.attributes.uv.array, 2));
+    rightWall.geometry = rightGeo;
+    rightWall.position.set(innerWidth / 2 + wallThickness / 2, 0, wallCenterZ);
+    rightWall.rotation.set(0, 0, 0);
 
     // 3. Scale the clock to fit INSIDE the box's inner dimensions.
     const clockNativeDiameter = 22;
@@ -1363,7 +1324,7 @@ function layoutScene() {
     clockUnit.scale.set(scale, scale, scale);
 
     // 4. Set the clock's Z-position to be relative to the back wall.
-    const clockOffsetFromBack = 2.25;
+    const clockOffsetFromBack = 2.25; // Moved forward 0.75 units
     clockUnit.position.z = -boxDepth + clockOffsetFromBack;
 
     // 5. Camera now frames the CLOCK, not the box.
@@ -1371,9 +1332,11 @@ function layoutScene() {
     const cameraPadding = 2; // 1 unit on each side
 
     if (camera.aspect >= 1) { // Landscape or square view
+        // In landscape, height is the limiting dimension.
         const requiredFrustumHeight = finalClockDiameter + cameraPadding;
         maxZoomInDistance = (requiredFrustumHeight / 2) / Math.tan(fovInRadians / 2);
     } else { // Portrait view
+        // In portrait, width is the limiting dimension.
         const requiredFrustumWidth = finalClockDiameter + cameraPadding;
         const requiredFrustumHeight = requiredFrustumWidth / camera.aspect;
         maxZoomInDistance = (requiredFrustumHeight / 2) / Math.tan(fovInRadians / 2);
@@ -1415,19 +1378,27 @@ function layoutScene() {
 }
 
 let tiltX = 0, tiltY = 0; //
-function handleOrientation(event) { //
-  tiltY = event.beta || 0; //
-  tiltX = event.gamma || 0; //
+let neutralTilt = { x: 0, y: 0 }; // Store the 'zero' orientation
+
+function handleOrientation(event) {
+    // Calculate the tilt relative to the 'neutral' starting position
+    tiltY = (event.beta || 0) - neutralTilt.y;
+    tiltX = (event.gamma || 0) - neutralTilt.x;
 }
 
 function enableTilt() {
-    // --- NEW: Move walls out of the rotating group and into the scene directly ---
-    wallMeshes.forEach(wall => {
-        scene.add(wall);
-    });
-
     const startTilting = () => {
-        window.addEventListener('deviceorientation', handleOrientation);
+        // This function runs once to capture the initial orientation as the 'neutral' state.
+        const setNeutralOnce = (event) => {
+            neutralTilt.y = event.beta || 0;
+            neutralTilt.x = event.gamma || 0;
+            // Now that we have the neutral position, add the continuous event handler.
+            window.addEventListener('deviceorientation', handleOrientation);
+            // Remove this one-time listener so it doesn't run again.
+            window.removeEventListener('deviceorientation', setNeutralOnce);
+        };
+        // Add the one-time listener to set the neutral state.
+        window.addEventListener('deviceorientation', setNeutralOnce);
     };
 
     if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
@@ -1435,29 +1406,26 @@ function enableTilt() {
             if (permissionState === 'granted') {
                 startTilting();
             } else {
-                settings.tiltEnabled = false; 
+                // If permission is denied, turn the setting back off in the GUI.
+                settings.tiltEnabled = false;
                 const tiltController = gui.controllers.find(c => c.property === 'tiltEnabled');
                 if (tiltController) {
                     tiltController.updateDisplay();
                 }
-                 disableTilt(); // Explicitly call disable to clean up
             }
         });
     } else {
+        // For browsers that don't require permission.
         startTilting();
     }
 }
 
 function disableTilt() {
     window.removeEventListener('deviceorientation', handleOrientation);
+    // Reset tilt values and the neutral position when the feature is turned off.
+    neutralTilt = { x: 0, y: 0 };
     tiltX = 0;
     tiltY = 0;
-    
-    // --- NEW: Reset wall geometry and move them back into the main group ---
-    resetWallGeometry();
-    wallMeshes.forEach(wall => {
-        shadowBoxWalls.add(wall);
-    });
 }
 window.addEventListener('resize', () => { //
     camera.aspect = window.innerWidth / window.innerHeight; //
@@ -1498,61 +1466,40 @@ function animate() { //
         }
     }
 
-    // --- Tilt Camera Logic ---
-    if (settings.tiltEnabled && !isUserInteracting) {
-        const maxTilt = 25; 
-        const rotationMultiplier = 0.8;
+    // --- CORRECTED TILT LOGIC ---
+    // This entire block is wrapped in isMobileDevice to prevent it from ever
+    // interfering with desktop mouse controls.
+    if (isMobileDevice) {
+        // This logic runs when the user is not actively using touch controls
+        if (!isUserInteracting) {
+            let targetX = 0;
+            let targetY = 0;
 
-        const clampedTiltX = THREE.MathUtils.clamp(tiltX, -maxTilt, maxTilt);
-        const clampedTiltY = THREE.MathUtils.clamp(tiltY, -maxTilt, maxTilt);
+            // If tilt is enabled in the GUI, calculate the camera offset
+            if (settings.tiltEnabled) {
+                const maxTiltAngle = 30.0;
+                const maxCameraOffset = 3.5;
 
-        const targetRotY = THREE.MathUtils.degToRad(clampedTiltX) * rotationMultiplier;
-        const targetRotX = THREE.MathUtils.degToRad(clampedTiltY) * rotationMultiplier;
-        
-        const lerpFactor = Math.min(delta * 2.0, 1.0);
+                const clampedTiltX = THREE.MathUtils.clamp(tiltX, -maxTiltAngle, maxTiltAngle);
+                const clampedTiltY = THREE.MathUtils.clamp(tiltY, -maxTiltAngle, maxTiltAngle);
 
-        boxGroup.rotation.y = THREE.MathUtils.lerp(boxGroup.rotation.y, targetRotY, lerpFactor);
-        boxGroup.rotation.x = THREE.MathUtils.lerp(boxGroup.rotation.x, targetRotX, lerpFactor);
-        
-        // --- NEW: Holographic wall deformation logic ---
-        boxGroup.updateMatrixWorld(); // Ensure the matrix is up-to-date
-
-        const walls = [topWall, bottomWall, leftWall, rightWall];
-        const cornerKeys = ['top', 'bottom', 'left', 'right'];
-
-        walls.forEach((wall, i) => {
-            const key = cornerKeys[i];
-            const originalCorners = originalWallCorners[key]; // [ftl, ftr, btl, btr]
-
-            // Front corners stay fixed relative to the screen
-            const p0 = originalCorners[0].clone(); // front-left
-            const p1 = originalCorners[1].clone(); // front-right
-
-            // Back corners are transformed by the box's rotation
-            const p2 = originalCorners[2].clone().applyMatrix4(boxGroup.matrixWorld); // back-left
-            const p3 = originalCorners[3].clone().applyMatrix4(boxGroup.matrixWorld); // back-right
+                targetX = THREE.MathUtils.mapLinear(clampedTiltX, -maxTiltAngle, maxTiltAngle, maxCameraOffset, -maxCameraOffset);
+                targetY = THREE.MathUtils.mapLinear(clampedTiltY, -maxTiltAngle, maxTiltAngle, maxCameraOffset, -maxCameraOffset);
+            }
             
-            const vertices = new Float32Array([
-                ...p2.toArray(), ...p1.toArray(), ...p0.toArray(),
-                ...p2.toArray(), ...p3.toArray(), ...p1.toArray()
-            ]);
+            // The target position uses the calculated X/Y, but preserves the current camera.position.z for zoom.
+            // If tilt is disabled, targetX and targetY will be 0, causing the camera to smoothly return to center.
+            const targetPosition = new THREE.Vector3(targetX, targetY, camera.position.z);
 
-            wall.geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-            wall.geometry.attributes.position.needsUpdate = true;
-            wall.geometry.computeVertexNormals();
-        });
-
-
-    } else {
-        const lerpFactor = Math.min(delta * 2.0, 1.0);
-        if (Math.abs(boxGroup.rotation.x) > 0.0001 || Math.abs(boxGroup.rotation.y) > 0.0001) {
-            boxGroup.rotation.x = THREE.MathUtils.lerp(boxGroup.rotation.x, 0, lerpFactor);
-            boxGroup.rotation.y = THREE.MathUtils.lerp(boxGroup.rotation.y, 0, lerpFactor);
-        } else {
-            boxGroup.rotation.x = 0;
-            boxGroup.rotation.y = 0;
+            // Smoothly move the camera towards the target.
+            if (camera.position.distanceTo(targetPosition) > 0.01) {
+                camera.position.lerp(targetPosition, Math.min(delta * 4.0, 1.0));
+            }
         }
     }
+
+    // The boxGroup itself does not rotate for the tilt effect.
+    boxGroup.rotation.set(0, 0, 0);
 
     controls.update(); //
 
@@ -1624,9 +1571,3 @@ function animate() { //
 }
 
 animate();
-
-
-
-
-animate();
-
